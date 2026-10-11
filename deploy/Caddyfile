@@ -1,0 +1,40 @@
+# 홈서버 앞단 리버스 프록시. deploy.sh 가 ~/portfolio/Caddyfile 로 복사함
+# 인터넷 → Tailscale Funnel(HTTPS) → 127.0.0.1:8080 (여기) → 정적 페이지 / API
+{
+	# HTTPS 는 Funnel 이 처리하므로 여기서는 HTTP 만 받음
+	auto_https off
+	servers {
+		# 같은 서버의 tailscaled 가 붙여 준 X-Forwarded-For 를 믿음
+		trusted_proxies static 127.0.0.1/32 ::1/128
+	}
+}
+
+http://:8080 {
+	bind 127.0.0.1
+	encode zstd gzip
+
+	# 접속 로그 (Authorization, Cookie 헤더는 Caddy 가 기본으로 가림)
+	log {
+		output file {$HOME}/portfolio/logs/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+		format json
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		X-Frame-Options DENY
+		-Server
+	}
+
+	handle /api/* {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	handle {
+		root * {$HOME}/portfolio/site
+		file_server
+	}
+}

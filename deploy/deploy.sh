@@ -2,7 +2,7 @@
 # GitHub Actions self-hosted runner(홈서버)가 체크아웃한 저장소 루트에서 실행함
 # 1) API 를 새 릴리스 폴더에 설치하고 current 링크를 바꾼 뒤 재시작
 # 2) 헬스체크 실패 시 직전 릴리스로 되돌림
-# 3) 성공하면 정적 페이지를 Funnel 이 서비스하는 ~/portfolio/site 로 교체
+# 3) 성공하면 정적 페이지를 ~/portfolio/site 로 교체하고 Caddy 설정 반영
 set -euo pipefail
 
 BASE="$HOME/portfolio"
@@ -11,6 +11,8 @@ CURRENT="$BASE/current"
 SITE_DIR="$BASE/site"
 UNIT=portfolio-api.service
 HEALTH_URL=http://127.0.0.1:3000/api/health
+PROXY_URL=http://127.0.0.1:8080
+CADDY="$HOME/.local/bin/caddy"
 
 SHA=$(git rev-parse --short HEAD)
 RELEASE="$RELEASES/$(date +%Y%m%d-%H%M%S)-$SHA"
@@ -24,9 +26,9 @@ cp -r apps/api/dist apps/api/package.json "$RELEASE/apps/api/"
 
 echo "[deploy] systemd 유닛 갱신"
 mkdir -p "$HOME/.config/systemd/user"
-cp deploy/portfolio-api.service "$HOME/.config/systemd/user/$UNIT"
+cp deploy/portfolio-api.service deploy/caddy.service "$HOME/.config/systemd/user/"
 systemctl --user daemon-reload
-systemctl --user enable "$UNIT" >/dev/null
+systemctl --user enable "$UNIT" caddy.service >/dev/null
 
 wait_healthy() {
   for _ in $(seq 1 30); do
@@ -52,7 +54,19 @@ fi
 echo "[deploy] API 정상: $(curl -fsS "$HEALTH_URL")"
 
 echo "[deploy] 정적 페이지 교체"
+mkdir -p "$SITE_DIR" "$BASE/logs"
 rsync -a --delete apps/web/ "$SITE_DIR/"
+
+echo "[deploy] Caddy 설정 검사 후 반영"
+"$CADDY" validate --config deploy/Caddyfile --adapter caddyfile >/dev/null
+cp deploy/Caddyfile "$BASE/Caddyfile"
+if systemctl --user is-active --quiet caddy.service; then
+  systemctl --user reload caddy.service
+else
+  systemctl --user start caddy.service
+fi
+curl -fsS "$PROXY_URL/" -o /dev/null
+echo "[deploy] 프록시 경유 확인: $(curl -fsS "$PROXY_URL/api/health")"
 
 # 최근 릴리스 3개만 남김
 ls -1dt "$RELEASES"/*/ | tail -n +4 | xargs -r rm -rf

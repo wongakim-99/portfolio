@@ -10,18 +10,22 @@
 ```
 apps/web/        정적 페이지 (index.html, style.css, app.js). 빌드 없음
 apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지)
-deploy/          서버 배포 스크립트, systemd 사용자 유닛, 1회성 root 설정
+deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회성 서버 설정
 .github/workflows/deploy.yml
 ```
 
 ## 서버 구성
 
 ```
-인터넷 → Tailscale Funnel (gawon-dev:443)
-           ├─ /     → ~/portfolio/site        (apps/web 복사본, tailscaled 가 직접 서비스)
-           └─ /api  → 127.0.0.1:3000          (portfolio-api.service, systemd 사용자 유닛)
-                         └─ MongoDB 8.0       (127.0.0.1:27017, 인증 켜짐, apt 설치)
+인터넷 → Tailscale Funnel (HTTPS, gawon-dev:443)
+           └─ Caddy 127.0.0.1:8080          (caddy.service, deploy/Caddyfile)
+                ├─ /      → ~/portfolio/site      (apps/web 복사본)
+                └─ /api/* → 127.0.0.1:3000        (portfolio-api.service)
+                              └─ MongoDB 8.0      (127.0.0.1:27017, 인증 켜짐, apt 설치)
 ```
+
+Funnel 은 Caddy 하나만 가리킴. 경로 분기는 Caddyfile 에서 하므로 라우팅을 바꿔도 sudo 가 필요 없고, API 가 죽어도 정적 페이지는 계속 뜸.
+서버 밖에서 직접 열리는 포트는 없음 (3000, 8080, 27017 모두 127.0.0.1).
 
 | 항목 | 위치 |
 |---|---|
@@ -29,6 +33,7 @@ deploy/          서버 배포 스크립트, systemd 사용자 유닛, 1회성 r
 | API 환경변수 | `~/.config/portfolio/api.env` (권한 600, git 에 없음) |
 | Mongo 관리자 계정 | `~/.config/portfolio/mongo-admin.env` (권한 600) |
 | Node | `~/.local/node` (v24 LTS, 사용자 영역 설치) |
+| Caddy | `~/.local/bin/caddy`, 설정 `~/portfolio/Caddyfile`, 접속 로그 `~/portfolio/logs/access.log` |
 | Actions runner | `~/actions-runner`, `github-runner.service` (사용자 유닛) |
 
 ## API
@@ -63,16 +68,16 @@ npm test           # e2e 8건, 메모리 Mongo 사용
 1. GitKraken 이나 터미널에서 `main` 에 커밋, push
 2. 홈서버 runner 가 `npm ci → typecheck → build → test → deploy/deploy.sh` 실행
 3. `deploy.sh` 가 새 릴리스를 깔고 API 재시작, `/api/health` 가 30초 안에 응답하지 않으면 직전 릴리스로 되돌림
-4. API 가 정상이면 `apps/web` 을 `~/portfolio/site` 로 교체
+4. API 가 정상이면 `apps/web` 을 `~/portfolio/site` 로 교체하고, Caddyfile 을 검사한 뒤 reload
 
 진행 상황은 GitHub 저장소의 Actions 탭에서 확인.
 
 ## 처음 한 번만 한 설정
 
-- `deploy/root-setup.sh` 를 서버에서 `sudo bash` 로 실행: MongoDB 8.0 설치, 인증 켜기, tailscale operator 지정
-- Mongo 계정 생성 (localhost exception 으로 관리자 생성 후 앱 전용 `portfolio` 계정, readWrite)
-- `loginctl enable-linger ggw1999`: 로그인하지 않아도 사용자 서비스가 부팅 시 뜨도록
-- Funnel: `tailscale funnel --bg /home/ggw1999/portfolio/site`, `tailscale funnel --bg --set-path /api http://127.0.0.1:3000/api`
+1. `deploy/root-setup.sh` 를 서버에서 `sudo bash` 로 실행: MongoDB 8.0 설치, 인증 켜기, tailscale operator 지정
+2. Mongo 계정 생성: localhost exception 으로 관리자 생성 후 앱 전용 `portfolio` 계정(readWrite). 비밀번호는 서버에서 생성해 `~/.config/portfolio/` 에만 저장
+3. `deploy/server-setup.sh` 실행 (sudo 불필요): linger, Node, Caddy, Actions runner 설치와 등록
+4. 첫 배포 후 Funnel 을 Caddy 로 연결: `tailscale funnel --bg http://127.0.0.1:8080`
 
 ## 공개 전 확인할 것
 
