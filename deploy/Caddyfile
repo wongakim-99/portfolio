@@ -1,5 +1,5 @@
 # 홈서버 앞단 리버스 프록시. deploy.sh 가 ~/portfolio/Caddyfile 로 복사함
-# 인터넷 → Tailscale Funnel(HTTPS) → 127.0.0.1:8080 (여기) → 정적 페이지 / API
+# 인터넷 → Tailscale Funnel(HTTPS) → 127.0.0.1:8090 (여기) → 정적 페이지 / API
 {
 	# HTTPS 는 Funnel 이 처리하므로 여기서는 HTTP 만 받음
 	auto_https off
@@ -9,7 +9,7 @@
 	}
 }
 
-http://:8080 {
+http://:8090 {
 	bind 127.0.0.1
 	encode zstd gzip
 

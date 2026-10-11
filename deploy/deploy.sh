@@ -11,7 +11,7 @@ CURRENT="$BASE/current"
 SITE_DIR="$BASE/site"
 UNIT=portfolio-api.service
 HEALTH_URL=http://127.0.0.1:3000/api/health
-PROXY_URL=http://127.0.0.1:8080
+PROXY_URL=http://127.0.0.1:8090
 CADDY="$HOME/.local/bin/caddy"
 
 SHA=$(git rev-parse --short HEAD)
@@ -63,10 +63,25 @@ cp deploy/Caddyfile "$BASE/Caddyfile"
 if systemctl --user is-active --quiet caddy.service; then
   systemctl --user reload caddy.service
 else
-  systemctl --user start caddy.service
+  systemctl --user restart caddy.service
 fi
-curl -fsS "$PROXY_URL/" -o /dev/null
-echo "[deploy] 프록시 경유 확인: $(curl -fsS "$PROXY_URL/api/health")"
+
+# 다른 프로그램이 포트를 쓰고 있으면 엉뚱한 응답이 올 수 있어 Caddy 상태와 API 응답을 같이 봄
+proxy_ok=false
+for _ in $(seq 1 10); do
+  if systemctl --user is-active --quiet caddy.service \
+    && curl -fsS "$PROXY_URL/api/health" 2>/dev/null | grep -q '"status":"ok"'; then
+    proxy_ok=true
+    break
+  fi
+  sleep 1
+done
+if [[ "$proxy_ok" != true ]]; then
+  echo "[deploy] Caddy 경유 확인 실패, 로그:" >&2
+  journalctl --user -u caddy.service -n 20 --no-pager -o cat >&2 || true
+  exit 1
+fi
+echo "[deploy] Caddy 경유 정상"
 
 # 최근 릴리스 3개만 남김
 ls -1dt "$RELEASES"/*/ | tail -n +4 | xargs -r rm -rf

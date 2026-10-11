@@ -18,14 +18,14 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 
 ```
 인터넷 → Tailscale Funnel (HTTPS, gawon-dev:443)
-           └─ Caddy 127.0.0.1:8080          (caddy.service, deploy/Caddyfile)
+           └─ Caddy 127.0.0.1:8090          (caddy.service, deploy/Caddyfile)
                 ├─ /      → ~/portfolio/site      (apps/web 복사본)
                 └─ /api/* → 127.0.0.1:3000        (portfolio-api.service)
                               └─ MongoDB 8.0      (127.0.0.1:27017, 인증 켜짐, apt 설치)
 ```
 
 Funnel 은 Caddy 하나만 가리킴. 경로 분기는 Caddyfile 에서 하므로 라우팅을 바꿔도 sudo 가 필요 없고, API 가 죽어도 정적 페이지는 계속 뜸.
-서버 밖에서 직접 열리는 포트는 없음 (3000, 8080, 27017 모두 127.0.0.1).
+서버 밖에서 직접 열리는 포트는 없음 (3000, 8090, 27017 모두 127.0.0.1).
 
 | 항목 | 위치 |
 |---|---|
@@ -77,7 +77,7 @@ npm test           # e2e 8건, 메모리 Mongo 사용
 1. `deploy/root-setup.sh` 를 서버에서 `sudo bash` 로 실행: MongoDB 8.0 설치, 인증 켜기, tailscale operator 지정
 2. Mongo 계정 생성: localhost exception 으로 관리자 생성 후 앱 전용 `portfolio` 계정(readWrite). 비밀번호는 서버에서 생성해 `~/.config/portfolio/` 에만 저장
 3. `deploy/server-setup.sh` 실행 (sudo 불필요): linger, Node, Caddy, Actions runner 설치와 등록
-4. 첫 배포 후 Funnel 을 Caddy 로 연결: `tailscale funnel --bg http://127.0.0.1:8080`
+4. 첫 배포 후 Funnel 을 Caddy 로 연결: `tailscale funnel --bg http://127.0.0.1:8090`
 
 ## 공개 전 확인할 것
 
