@@ -1,0 +1,27 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    # 홈서버에 설치한 self-hosted runner 에서 실행 (저장소는 private 유지)
+    runs-on: [self-hosted, homeserver]
+    timeout-minutes: 15
+    env:
+      # e2e 테스트의 메모리 Mongo 를 서버에 설치된 mongod 로 띄움 (바이너리 다운로드 생략)
+      MONGOMS_SYSTEM_BINARY: /usr/bin/mongod
+    steps:
+      - uses: actions/checkout@v7
+      - run: node -v && npm -v
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - run: bash deploy/deploy.sh

@@ -1,0 +1,18 @@
+# GitHub Actions self-hosted runner 를 사용자 서비스로 실행함 (sudo 불필요, linger 필요)
+# 설치: cp deploy/github-runner.service ~/.config/systemd/user/ && systemctl --user enable --now github-runner
+[Unit]
+Description=GitHub Actions runner (portfolio)
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h/actions-runner
+ExecStart=%h/actions-runner/run.sh
+Environment=PATH=%h/.local/node/bin:/usr/local/bin:/usr/bin:/bin
+Restart=always
+RestartSec=5
+KillMode=process
+KillSignal=SIGTERM
+TimeoutStopSec=5min
+
+[Install]
+WantedBy=default.target
