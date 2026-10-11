@@ -35,6 +35,8 @@ http://:8090 {
 
 	handle {
 		root * {$HOME}/portfolio/site
+		# 파일 이름에 버전이 없어서, 배포 직후 옛 CSS 와 새 HTML 이 섞이지 않게 매번 재검증함
+		header Cache-Control "no-cache"
 		file_server
 	}
 }

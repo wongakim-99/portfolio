@@ -13,10 +13,17 @@ UNIT=portfolio-api.service
 HEALTH_URL=http://127.0.0.1:3000/api/health
 PROXY_URL=http://127.0.0.1:8090
 CADDY="$HOME/.local/bin/caddy"
+PDF=apps/web/gawon-portfolio.pdf
 
 SHA=$(git rev-parse --short HEAD)
 RELEASE="$RELEASES/$(date +%Y%m%d-%H%M%S)-$SHA"
 PREV=$(readlink -f "$CURRENT" 2>/dev/null || true)
+
+# PDF 는 npm run build 에서 만들어짐. 없으면 API 를 건드리기 전에 멈춤
+if [[ ! -s "$PDF" ]]; then
+  echo "[deploy] $PDF 가 없음. npm run build 결과 확인 필요" >&2
+  exit 1
+fi
 
 echo "[deploy] 릴리스 준비: $RELEASE"
 mkdir -p "$RELEASE/apps/api"

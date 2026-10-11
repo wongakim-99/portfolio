@@ -8,9 +8,14 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "npm run dev -w apps/api",
-    "build": "npm run build -w apps/api",
+    "dev": "npm run pdf && npm run dev -w apps/api",
+    "build": "npm run build -w apps/api && npm run pdf",
+    "pdf": "node scripts/portfolio-pdf.mjs",
     "typecheck": "npm run typecheck -w apps/api",
-    "test": "npm test -w apps/api"
+    "test": "npm test -w apps/api && node --test \"scripts/*.test.mjs\""
+  },
+  "devDependencies": {
+    "node-html-parser": "^9.0.4",
+    "pdfkit": "^0.20.2"
   }
 }
