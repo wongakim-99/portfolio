@@ -1,0 +1,63 @@
+# 포트폴리오 운영 구성. deploy.sh 가 RELEASE(커밋 태그)와 PORTFOLIO_CONFIG(설정 폴더)를 넣어 실행함
+# 호스트에 열리는 포트는 127.0.0.1:8090 하나뿐이고, Tailscale Funnel 이 이 포트를 가리킴
+name: portfolio
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+
+services:
+  web:
+    image: portfolio-web:${RELEASE:?RELEASE 가 필요함}
+    restart: unless-stopped
+    ports:
+      # Docker 로 연 포트는 UFW 를 거치지 않으므로 반드시 127.0.0.1 로 묶음
+      - 127.0.0.1:8090:8090
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [edge]
+    security_opt: [no-new-privileges:true]
+    logging: *logging
+
+  api:
+    image: portfolio-api:${RELEASE:?RELEASE 가 필요함}
+    restart: unless-stopped
+    env_file: ${PORTFOLIO_CONFIG:?PORTFOLIO_CONFIG 가 필요함}/api.docker.env
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks: [edge, data]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    logging: *logging
+
+  mongo:
+    image: mongo:8.0
+    restart: unless-stopped
+    # 노트북 메모리(7.5GB)에 맞춰 캐시를 줄임. 기본값은 메모리의 절반 가까이 잡음
+    command: [--wiredTigerCacheSizeGB, "0.25"]
+    env_file: ${PORTFOLIO_CONFIG:?PORTFOLIO_CONFIG 가 필요함}/mongo.env
+    volumes:
+      - mongo-data:/data/db
+    networks: [data]
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --norc, --eval, "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    logging: *logging
+
+networks:
+  edge: {}
+  # DB 망은 인터넷으로 나가는 길이 없음
+  data:
+    internal: true
+
+volumes:
+  mongo-data: {}

@@ -13,7 +13,8 @@ jobs:
   deploy:
     # 홈서버에 설치한 self-hosted runner 에서 실행 (저장소는 private 유지)
     runs-on: [self-hosted, homeserver]
-    timeout-minutes: 15
+    # 첫 배포는 Docker 기본 이미지(node, caddy, mongo)를 받느라 오래 걸림
+    timeout-minutes: 25
     env:
       # e2e 테스트의 메모리 Mongo 를 서버에 설치된 mongod 로 띄움 (바이너리 다운로드 생략)
       MONGOMS_SYSTEM_BINARY: /usr/bin/mongod

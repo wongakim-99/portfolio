@@ -1,0 +1,11 @@
+# 이미지에 들어가지 않아도 되는 것. apps/web/gawon-portfolio.pdf 는 빼면 안 됨
+.git
+.github
+**/node_modules
+**/dist
+**/*.tsbuildinfo
+apps/api/test
+apps/api/coverage
+scripts
+.env
+**/.DS_Store

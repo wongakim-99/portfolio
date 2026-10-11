@@ -57,6 +57,18 @@ describe('views', () => {
     expect(again.body.total).toBe(first.body.total);
   });
 
+  // Caddy 컨테이너가 붙여 넘긴 X-Forwarded-For 에서 맨 오른쪽의 공인 주소를 방문자로 봄
+  it('프록시 뒤에서도 방문자를 주소별로 구분하고, 앞쪽에 끼워 넣은 주소는 무시함', async () => {
+    const server = app.getHttpServer();
+    const via = (forwarded: string) =>
+      request(server).post('/api/views').set('User-Agent', 'visitor-xff').set('X-Forwarded-For', forwarded).expect(200);
+    const first = await via('203.0.113.7, 172.18.0.1');
+    const spoofed = await via('198.51.100.1, 203.0.113.7, 172.18.0.1');
+    expect(spoofed.body.total).toBe(first.body.total);
+    const other = await via('203.0.113.8, 172.18.0.1');
+    expect(other.body.total).toBe(first.body.total + 1);
+  });
+
   it('다른 방문자는 1 증가', async () => {
     const server = app.getHttpServer();
     const before = await request(server).get('/api/views').expect(200);
@@ -188,11 +200,13 @@ describe('server', () => {
     expect(res.body).toMatchObject({ cpuTemp: null, battery: null });
   });
 
-  it('릴리스 폴더 이름에서 커밋과 배포 시각을 꺼냄', () => {
-    const release = readRelease('/home/u/portfolio/releases/20261011-144932-6cab207/apps/api');
-    expect(release?.commit).toBe('6cab207');
-    expect(new Date(release!.deployedAt).getTime()).toBe(new Date(2026, 9, 11, 14, 49, 32).getTime());
-    expect(readRelease('/Users/me/portfolio/apps/api')).toBeNull();
+  it('이미지에 넣어 둔 커밋과 빌드 시각을 꺼냄', () => {
+    expect(readRelease({ RELEASE_COMMIT: '6cab207f4a71', RELEASE_BUILT_AT: '2026-10-11T05:49:32Z' })).toEqual({
+      commit: '6cab207',
+      deployedAt: '2026-10-11T05:49:32.000Z',
+    });
+    expect(readRelease({ RELEASE_COMMIT: 'af15ab4', RELEASE_BUILT_AT: 'nope' })).toEqual({ commit: 'af15ab4', deployedAt: null });
+    expect(readRelease({})).toBeNull();
   });
 });
 

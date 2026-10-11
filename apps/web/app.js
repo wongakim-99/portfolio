@@ -216,7 +216,7 @@ async function refreshServer() {
     heroStatus.textContent = `이 페이지를 보내는 집 노트북 / ${bits.join(' / ')}`;
 
     receipt.commit.textContent = status.release ? status.release.commit : '로컬 실행';
-    receipt.deployed.textContent = status.release ? formatDeployedAt(status.release.deployedAt) : '-';
+    receipt.deployed.textContent = status.release?.deployedAt ? formatDeployedAt(status.release.deployedAt) : '-';
     receipt.uptime.textContent = formatUptime(status.uptime);
     receipt.temp.textContent = status.cpuTemp === null ? '센서 없음' : `${status.cpuTemp}°C`;
     receipt.load.textContent = status.load.toFixed(2);

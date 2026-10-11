@@ -35,25 +35,39 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 
 ## 서버 구성
 
+포트폴리오는 Docker 컨테이너 세 개로 돎 (`deploy/docker-compose.yml`, 프로젝트 이름 `portfolio`).
+
 ```
 인터넷 → Tailscale Funnel (HTTPS, gawon-dev:443)
-           └─ Caddy 127.0.0.1:8090          (caddy.service, deploy/Caddyfile)
-                ├─ /      → ~/portfolio/site      (apps/web 복사본)
-                └─ /api/* → 127.0.0.1:3000        (portfolio-api.service)
-                              └─ MongoDB 8.0      (127.0.0.1:27017, 인증 켜짐, apt 설치)
+           └─ 호스트 127.0.0.1:8090
+                └─ web 컨테이너: Caddy + 정적 페이지      (deploy/web.Dockerfile, deploy/Caddyfile)
+                     ├─ /      → /srv (apps/web, PDF 포함)
+                     └─ /api/* → api 컨테이너 :3000      (apps/api/Dockerfile)
+                                  └─ mongo 컨테이너 :27017 (mongo:8.0, 볼륨 portfolio_mongo-data)
 ```
 
-Funnel 은 Caddy 하나만 가리킴. 경로 분기는 Caddyfile 에서 하므로 라우팅을 바꿔도 sudo 가 필요 없고, API 가 죽어도 정적 페이지는 계속 뜸.
-서버 밖에서 직접 열리는 포트는 없음 (3000, 8090, 27017 모두 127.0.0.1).
+- 호스트에 열리는 포트는 `127.0.0.1:8090` 하나뿐. Docker 로 연 포트는 UFW 를 거치지 않아서 반드시 127.0.0.1 로 묶음
+- DB 망(`data`)은 인터넷으로 나가는 길이 없고, mongo 는 api 컨테이너에서만 닿음
+- api 컨테이너는 `node` 사용자, 읽기 전용 파일 시스템으로 돎
+- 노트북 센서(CPU 온도, 배터리)는 컨테이너에서도 호스트 `/sys` 가 그대로 보여서 따로 연결하지 않음
 
 | 항목 | 위치 |
 |---|---|
-| API 릴리스 | `~/portfolio/releases/<시각>-<커밋>`, 실행 중인 것은 `~/portfolio/current` 링크 |
-| API 환경변수 | `~/.config/portfolio/api.env` (권한 600, git 에 없음) |
-| Mongo 관리자 계정 | `~/.config/portfolio/mongo-admin.env` (권한 600) |
-| Node | `~/.local/node` (v24 LTS, 사용자 영역 설치) |
-| Caddy | `~/.local/bin/caddy`, 설정 `~/portfolio/Caddyfile`, 접속 로그 `~/portfolio/logs/access.log` |
-| Actions runner | `~/actions-runner`, `github-runner.service` (사용자 유닛) |
+| 지금 돌고 있는 버전 | `~/portfolio/docker-release` (커밋 태그). 이미지는 `portfolio-api:<커밋>`, `portfolio-web:<커밋>` 최근 3개 보관 |
+| API 환경변수 | `~/.config/portfolio/api.docker.env` (권한 600, git 에 없음) |
+| Mongo 계정 | `~/.config/portfolio/mongo.env` (root 와 앱 계정 비밀번호, 권한 600) |
+| 접속 로그 | `docker logs portfolio-web-1` (JSON, 10MB 5개까지 보관) |
+| Actions runner | `~/actions-runner`, `github-runner.service` (사용자 유닛, docker 그룹) |
+| 예전 방식 | `portfolio-api.service`, `caddy.service`, apt `mongod` 는 전환 뒤 꺼 둠. 되살리려면 `systemctl --user enable --now` |
+
+자주 쓰는 명령 (서버에서):
+
+```bash
+cd ~/actions-runner/_work/portfolio/portfolio
+export PORTFOLIO_CONFIG=~/.config/portfolio RELEASE=$(cat ~/portfolio/docker-release)
+docker compose -f deploy/docker-compose.yml ps          # 상태
+docker compose -f deploy/docker-compose.yml logs -f api  # API 로그
+```
 
 ## API
 
@@ -71,8 +85,8 @@ Funnel 은 Caddy 하나만 가리킴. 경로 분기는 Caddyfile 에서 하므�
 메시지 확인 (서버에서):
 
 ```bash
-source ~/.config/portfolio/api.env
-curl -s -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:3000/api/messages
+source ~/.config/portfolio/api.docker.env
+curl -s -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/messages
 ```
 
 ## 로컬 개발
@@ -82,25 +96,30 @@ npm install
 npm run dev        # PDF 생성 후 메모리 Mongo + API watch, http://127.0.0.1:3000 에서 페이지까지 확인
 npm run typecheck
 npm run build      # API 빌드 + 포트폴리오 PDF 생성
-npm test           # API e2e 14건(메모리 Mongo) + PDF 생성기 7건
+npm test           # API e2e 15건(메모리 Mongo) + PDF 생성기 7건
 ```
 
 ## 배포 흐름
 
 1. GitKraken 이나 터미널에서 `main` 에 커밋, push
 2. 홈서버 runner 가 `npm ci → typecheck → build(PDF 포함) → test → deploy/deploy.sh` 실행
-3. `deploy.sh` 가 새 릴리스를 깔고 API 재시작, `/api/health` 가 30초 안에 응답하지 않으면 직전 릴리스로 되돌림
-4. API 가 정상이면 `apps/web` 을 `~/portfolio/site` 로 교체하고(PDF 포함), Caddyfile 을 검사한 뒤 reload
+3. `deploy.sh` 가 커밋 태그로 api, web 이미지를 만들고 `docker compose up --wait` 로 교체
+4. Caddy 를 거쳐 `/api/server` 가 이번 커밋을 돌려주고 페이지와 PDF 가 열리는지 확인. 실패하면 직전 태그로 되돌림
 5. 정적 파일은 `Cache-Control: no-cache` 로 내보내서 배포 직후 옛 CSS 가 남지 않음
 
 진행 상황은 GitHub 저장소의 Actions 탭에서 확인.
 
 ## 처음 한 번만 한 설정
 
-1. `deploy/root-setup.sh` 를 서버에서 `sudo bash` 로 실행: MongoDB 8.0 설치, 인증 켜기, tailscale operator 지정
-2. Mongo 계정 생성: localhost exception 으로 관리자 생성 후 앱 전용 `portfolio` 계정(readWrite). 비밀번호는 서버에서 생성해 `~/.config/portfolio/` 에만 저장
-3. `deploy/server-setup.sh` 실행 (sudo 불필요): linger, Node, Caddy, Actions runner 설치와 등록
-4. 첫 배포 후 Funnel 을 Caddy 로 연결: `tailscale funnel --bg http://127.0.0.1:8090`
+1. `deploy/root-setup.sh` 를 서버에서 `sudo bash` 로 실행: MongoDB 8.0 설치, 인증 켜기, tailscale operator 지정 (호스트 mongod 는 CI 테스트와 첫 전환 때 데이터 옮기기에 씀)
+2. `deploy/server-setup.sh` 실행 (sudo 불필요): linger, Node, Actions runner 설치와 등록
+3. Funnel 을 연결: `tailscale funnel --bg http://127.0.0.1:8090`
+4. Docker 전환 (2026-10-11):
+   - sudo 로 계정을 docker 그룹에 넣고 사용자 서비스 관리자를 다시 띄움: `sudo usermod -aG docker $USER && sudo systemctl restart user@$(id -u).service`
+   - `deploy/docker-setup.sh` 실행 (sudo 불필요): `mongo.env`, `api.docker.env` 생성. HASH_SALT, ADMIN_TOKEN 은 기존 값 유지
+   - 다음 push 의 `deploy.sh` 가 예전 API 를 멈추고 호스트 MongoDB 데이터를 컨테이너로 옮긴 뒤 교체함. 실패하면 예전 systemd 서비스를 다시 켬
+
+docker 그룹은 사실상 root 권한이라 runner 를 거치는 이 저장소는 private 으로 유지함.
 
 ## 공개 전 확인할 것
 

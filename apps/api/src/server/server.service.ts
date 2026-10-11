@@ -1,5 +1,4 @@
 import { Injectable } from '@nestjs/common';
-import { realpathSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -11,12 +10,10 @@ export interface ServerStatus {
   memoryUsedPercent: number;
   cpuTemp: number | null;
   battery: { percent: number; charging: boolean; pluggedIn: boolean | null } | null;
-  release: { commit: string; deployedAt: string } | null;
+  release: { commit: string; deployedAt: string | null } | null;
 }
 
 const CACHE_MS = 5_000;
-// deploy.sh 가 만드는 릴리스 폴더 이름. 예: 20261011-144932-6cab207
-const RELEASE_DIR = /\/(\d{4})(\d{2})(\d{2})-(\d{2})(\d{2})(\d{2})-([0-9a-f]{7,40})\//;
 // 노트북 CPU 온도는 x86_pkg_temp 가 가장 정확하고, 없으면 메인보드 센서(acpitz)를 씀
 const THERMAL_TYPES = ['x86_pkg_temp', 'acpitz'];
 
@@ -25,7 +22,7 @@ const THERMAL_TYPES = ['x86_pkg_temp', 'acpitz'];
 export class ServerService {
   // 테스트에서 가짜 /sys 를 쓰려고 경로를 바꿀 수 있게 둠
   private readonly sysRoot = process.env.SYSFS_ROOT ?? '/sys';
-  private readonly release = readRelease(process.cwd());
+  private readonly release = readRelease(process.env);
   private cache?: { at: number; value: Promise<ServerStatus> };
 
   status(): Promise<ServerStatus> {
@@ -86,19 +83,15 @@ export class ServerService {
   }
 }
 
-export function readRelease(cwd: string): ServerStatus['release'] {
-  let resolved = cwd;
-  try {
-    resolved = realpathSync(cwd);
-  } catch {
-    // 경로를 못 풀면 그대로 씀
-  }
-  const match = RELEASE_DIR.exec(`${resolved}/`);
-  if (!match) return null;
-  const [, y, mo, d, h, mi, s, commit] = match;
-  // 폴더 이름은 서버 시간대 기준이라 같은 시간대로 해석함
-  const deployedAt = new Date(+y, +mo - 1, +d, +h, +mi, +s);
-  return { commit: commit.slice(0, 7), deployedAt: deployedAt.toISOString() };
+// 이미지를 만들 때 deploy.sh 가 커밋과 빌드 시각을 환경변수로 넣어 둠 (apps/api/Dockerfile)
+export function readRelease(env: NodeJS.ProcessEnv): ServerStatus['release'] {
+  const commit = env.RELEASE_COMMIT?.trim();
+  if (!commit) return null;
+  const builtAt = new Date(env.RELEASE_BUILT_AT ?? '');
+  return {
+    commit: commit.slice(0, 7),
+    deployedAt: Number.isNaN(builtAt.getTime()) ? null : builtAt.toISOString(),
+  };
 }
 
 async function list(dir: string): Promise<string[]> {

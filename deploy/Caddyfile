@@ -1,24 +1,21 @@
-# 홈서버 앞단 리버스 프록시. deploy.sh 가 ~/portfolio/Caddyfile 로 복사함
-# 인터넷 → Tailscale Funnel(HTTPS) → 127.0.0.1:8090 (여기) → 정적 페이지 / API
+# 홈서버 앞단 리버스 프록시. web 이미지(deploy/web.Dockerfile)에 들어감
+# 인터넷 → Tailscale Funnel(HTTPS) → 호스트 127.0.0.1:8090 → web 컨테이너(여기) → 정적 페이지 / api 컨테이너
 {
 	# HTTPS 는 Funnel 이 처리하므로 여기서는 HTTP 만 받음
 	auto_https off
 	servers {
-		# 같은 서버의 tailscaled 가 붙여 준 X-Forwarded-For 를 믿음
-		trusted_proxies static 127.0.0.1/32 ::1/128
+		# 호스트의 tailscaled 가 붙인 X-Forwarded-For 를 믿음. 컨테이너 안에서는 그 연결이 Docker 게이트웨이(사설 대역)로 보임
+		# 포트는 호스트 127.0.0.1 에만 열려 있어 바깥에서 이 경로로 바로 들어올 수 없음
+		trusted_proxies static private_ranges
 	}
 }
 
 http://:8090 {
-	bind 127.0.0.1
 	encode zstd gzip
 
-	# 접속 로그 (Authorization, Cookie 헤더는 Caddy 가 기본으로 가림)
+	# 접속 로그는 표준 출력으로 남겨 docker logs 와 관리 패널에서 봄 (Authorization, Cookie 헤더는 Caddy 가 기본으로 가림)
 	log {
-		output file {$HOME}/portfolio/logs/access.log {
-			roll_size 10MiB
-			roll_keep 5
-		}
+		output stdout
 		format json
 	}
 
@@ -30,11 +27,11 @@ http://:8090 {
 	}
 
 	handle /api/* {
-		reverse_proxy 127.0.0.1:3000
+		reverse_proxy api:3000
 	}
 
 	handle {
-		root * {$HOME}/portfolio/site
+		root * /srv
 		# 파일 이름에 버전이 없어서, 배포 직후 옛 CSS 와 새 HTML 이 섞이지 않게 매번 재검증함
 		header Cache-Control "no-cache"
 		file_server
