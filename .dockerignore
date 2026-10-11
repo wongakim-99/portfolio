@@ -9,3 +9,4 @@ apps/api/coverage
 scripts
 .env
 **/.DS_Store
+docs

@@ -33,6 +33,19 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 - `npm test` 가 금지 문자(가운뎃점, em dash 등)와 '(이론상 비교)' 단서 누락도 검사함
 - 로컬에서 바로 보려면 `npm run pdf`
 
+## 다이어그램
+
+원본은 `docs/diagrams/*.drawio` 이다. draw.io 앱으로 열어 고친 뒤 PNG 로 다시 내보낸다.
+
+```bash
+/Applications/draw.io.app/Contents/MacOS/draw.io --export --format png --scale 2 --border 24 \
+  -o docs/diagrams/architecture.png docs/diagrams/architecture.drawio
+```
+
+![전체 구조](docs/diagrams/architecture.png)
+
+![배포 파이프라인](docs/diagrams/deploy-pipeline.png)
+
 ## 서버 구성
 
 포트폴리오는 Docker 컨테이너 세 개로 돎 (`deploy/docker-compose.yml`, 프로젝트 이름 `portfolio`).
