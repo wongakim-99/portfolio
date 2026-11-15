@@ -111,7 +111,7 @@ function updateUser() {
   if (user) {
     $('#me-link').href = `community.html?user=${encodeURIComponent(user.id)}`;
     $('#me-link').setAttribute('aria-label', `내 페이지 (${user.name})`);
-    $('#me-avatar').replaceChildren(avatar(user));
+    $('#me-link').replaceChildren(avatar(user));
     $('#account-email').textContent = user.email;
   }
   $('#admin-link').hidden = !can('messages:read');
