@@ -1,8 +1,8 @@
 import Foundation
 import Security
 
-guard CommandLine.arguments.count == 2 else {
-    fputs("네이버 메일 주소가 필요합니다.\n", stderr)
+guard CommandLine.arguments.count == 2 || CommandLine.arguments.count == 4 else {
+    fputs("계정과 선택적인 키체인 항목 이름이 필요합니다.\n", stderr)
     exit(1)
 }
 
@@ -13,20 +13,21 @@ guard !password.isEmpty else {
     exit(1)
 }
 
-let service = "gawon-portfolio-community-smtp"
+let service = CommandLine.arguments.count == 4 ? CommandLine.arguments[2] : "gawon-portfolio-community-smtp"
+let label = CommandLine.arguments.count == 4 ? CommandLine.arguments[3] : "포트폴리오 피드 네이버 SMTP"
 let query: [String: Any] = [
     kSecClass as String: kSecClassGenericPassword,
     kSecAttrService as String: service,
     kSecAttrAccount as String: account,
 ]
 var item = query
-item[kSecAttrLabel as String] = "포트폴리오 피드 네이버 SMTP"
+item[kSecAttrLabel as String] = label
 item[kSecValueData as String] = password
 
 var result = SecItemAdd(item as CFDictionary, nil)
 if result == errSecDuplicateItem {
     result = SecItemUpdate(query as CFDictionary, [
-        kSecAttrLabel as String: "포트폴리오 피드 네이버 SMTP",
+        kSecAttrLabel as String: label,
         kSecValueData as String: password,
     ] as CFDictionary)
 }
