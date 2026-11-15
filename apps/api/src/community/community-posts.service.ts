@@ -3,8 +3,9 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
 import type { ReportDto, WriteCommentDto, WritePostDto } from './community.dto.js';
-import { CommunityComment, CommunityPost, CommunityReport } from './community.schemas.js';
+import { CommunityComment, CommunityPost, CommunityReport, CommunityUser } from './community.schemas.js';
 import type { CommunityIdentity } from './community-auth.service.js';
+import { avatarUrl } from './community-storage.service.js';
 
 function objectId(value: string): Types.ObjectId {
   if (!/^[a-f\d]{24}$/i.test(value)) throw new NotFoundException('글을 찾을 수 없습니다.');
@@ -17,17 +18,28 @@ export class CommunityPostsService {
     @InjectModel(CommunityPost.name) private readonly posts: Model<CommunityPost>,
     @InjectModel(CommunityComment.name) private readonly comments: Model<CommunityComment>,
     @InjectModel(CommunityReport.name) private readonly reports: Model<CommunityReport>,
+    @InjectModel(CommunityUser.name) private readonly users: Model<CommunityUser>,
   ) {}
 
-  async list(before?: string) {
-    const filter = before ? { _id: { $lt: objectId(before) } } : {};
+  // 글과 댓글에는 이름만 적어 두고, 프로필 사진은 지금 설정된 것을 사용자 문서에서 찾아 붙임
+  private async avatars(authorIds: Types.ObjectId[]): Promise<Map<string, string | null>> {
+    const users = await this.users.find({ _id: { $in: authorIds } }, { avatar: 1 }).lean();
+    return new Map(users.map((user) => [String(user._id), avatarUrl(user.avatar)]));
+  }
+
+  async list(before?: string, author?: string) {
+    const filter = {
+      ...(before ? { _id: { $lt: objectId(before) } } : {}),
+      ...(author ? { authorId: objectId(author) } : {}),
+    };
     const results = await this.posts.find(filter, { title: 1, body: 1, authorId: 1, authorName: 1, commentCount: 1, createdAt: 1, updatedAt: 1 })
       .sort({ _id: -1 }).limit(11).lean();
     const page = results.slice(0, 10);
+    const avatars = await this.avatars(page.map((post) => post.authorId));
     return {
       posts: page.map((post) => ({
         id: String(post._id), title: post.title, excerpt: post.body.slice(0, 220),
-        authorId: String(post.authorId), authorName: post.authorName,
+        authorId: String(post.authorId), authorName: post.authorName, authorAvatarUrl: avatars.get(String(post.authorId)) ?? null,
         commentCount: post.commentCount, createdAt: post.createdAt, updatedAt: post.updatedAt,
       })),
       nextCursor: results.length > 10 ? String(page.at(-1)!._id) : null,
@@ -37,9 +49,10 @@ export class CommunityPostsService {
   async get(id: string) {
     const post = await this.posts.findById(objectId(id)).lean();
     if (!post) throw new NotFoundException('글을 찾을 수 없습니다.');
+    const avatars = await this.avatars([post.authorId]);
     return {
       id: String(post._id), title: post.title, body: post.body,
-      authorId: String(post.authorId), authorName: post.authorName,
+      authorId: String(post.authorId), authorName: post.authorName, authorAvatarUrl: avatars.get(String(post.authorId)) ?? null,
       commentCount: post.commentCount, createdAt: post.createdAt, updatedAt: post.updatedAt,
     };
   }
@@ -83,10 +96,11 @@ export class CommunityPostsService {
       : { postId: objectId(postId) };
     const results = await this.comments.find(filter).sort({ _id: 1 }).limit(41).lean();
     const page = results.slice(0, 40);
+    const avatars = await this.avatars(page.map((comment) => comment.authorId));
     return {
       comments: page.map((comment) => ({
         id: String(comment._id), postId: String(comment.postId), body: comment.body,
-        authorId: String(comment.authorId), authorName: comment.authorName,
+        authorId: String(comment.authorId), authorName: comment.authorName, authorAvatarUrl: avatars.get(String(comment.authorId)) ?? null,
         createdAt: comment.createdAt, updatedAt: comment.updatedAt,
       })),
       nextCursor: results.length > 40 ? String(page.at(-1)!._id) : null,
@@ -99,7 +113,10 @@ export class CommunityPostsService {
     if (!post) throw new NotFoundException('글을 찾을 수 없습니다.');
     const comment = await this.comments.create({ postId: id, authorId: objectId(author.id), authorName: author.name, body: dto.body });
     await this.posts.updateOne({ _id: id }, { $inc: { commentCount: 1 } });
-    return { id: String(comment._id), body: comment.body, authorId: author.id, authorName: author.name, createdAt: comment.createdAt };
+    return {
+      id: String(comment._id), body: comment.body, authorId: author.id, authorName: author.name,
+      authorAvatarUrl: author.avatarUrl, createdAt: comment.createdAt,
+    };
   }
 
   async editComment(id: string, dto: WriteCommentDto, author: CommunityIdentity) {

@@ -1,14 +1,16 @@
-import type { INestApplication } from '@nestjs/common';
+import { NotFoundException, type INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Test } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { Readable } from 'node:stream';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { readRelease } from '../src/server/server.service.js';
 import { CommunityMailService } from '../src/community/community-mail.service.js';
+import { CommunityStorageService } from '../src/community/community-storage.service.js';
 import { configureApp } from '../src/setup.js';
 
 const ADMIN_TOKEN = 'test-admin-token-0123456789abcdef';
@@ -19,12 +21,45 @@ const fakeMail = {
   async sendVerify(to: string, _name: string, token: string) { sentMail.push({ kind: 'verify' as const, to, token }); },
   async sendReset(to: string, _name: string, token: string) { sentMail.push({ kind: 'reset' as const, to, token }); },
 };
+// MinIO 대신 메모리에 사진을 보관함
+const storedFiles = new Map<string, Buffer>();
+const fakeStorage = {
+  ready: true,
+  async put(key: string, body: Buffer) { storedFiles.set(key, body); },
+  async get(key: string) {
+    const body = storedFiles.get(key);
+    if (!body) throw new NotFoundException('사진을 찾을 수 없습니다.');
+    return Readable.from([body]);
+  },
+  async remove(key: string) { storedFiles.delete(key); },
+};
+
+// 머리만 갖춘 사진. API 는 파일 앞부분으로 형식과 가로세로 크기만 확인함
+function png(width: number, height: number): Buffer {
+  const data = Buffer.alloc(33);
+  Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).copy(data);
+  data.writeUInt32BE(13, 8);
+  data.write('IHDR', 12, 'latin1');
+  data.writeUInt32BE(width, 16);
+  data.writeUInt32BE(height, 20);
+  return data;
+}
+function jpeg(width: number, height: number): Buffer {
+  const app0 = Buffer.concat([Buffer.from([0xff, 0xe0, 0x00, 0x10]), Buffer.from('JFIF\0', 'latin1'), Buffer.alloc(9)]);
+  const sof = Buffer.alloc(19);
+  sof.set([0xff, 0xc0, 0x00, 0x11, 0x08]);
+  sof.writeUInt16BE(height, 5);
+  sof.writeUInt16BE(width, 7);
+  return Buffer.concat([Buffer.from([0xff, 0xd8]), app0, sof]);
+}
 
 // ConfigModule.forRoot 가 import 시점에 env 를 읽으므로 env 를 먼저 채우고 동적 import 함
 async function createApp(): Promise<INestApplication<App>> {
   const { AppModule } = await import('../src/app.module.js');
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(CommunityMailService).useValue(fakeMail).compile();
+    .overrideProvider(CommunityMailService).useValue(fakeMail)
+    .overrideProvider(CommunityStorageService).useValue(fakeStorage)
+    .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
   await app.init();
@@ -252,6 +287,59 @@ describe('community', () => {
     await request(server).post('/api/community/auth/login')
       .set('X-Forwarded-For', '203.0.113.99, 172.18.0.1')
       .send({ email: 'writer@example.com', password: 'new verified password 2026' }).expect(200);
+  });
+
+  it('내 페이지: 사진은 형식과 크기를 확인해 바꾸고, 이름을 바꾸면 글에도 반영', async () => {
+    const server = app.getHttpServer();
+    // 앞선 테스트가 기본 주소의 요청 한도를 써 버려서 다른 주소로 보냄
+    const ip = '203.0.113.120, 172.18.0.1';
+    await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+      .send({ email: 'photo@example.com', name: '사진주인', password: 'correct horse battery staple' }).expect(202);
+    const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === 'photo@example.com')!.token;
+    const verified = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+    const cookie = (verified.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    const id = verified.body.user.id;
+    expect(verified.body.user.avatarUrl).toBeNull();
+    await request(server).post('/api/community/posts').set('X-Forwarded-For', ip).set('Cookie', cookie)
+      .send({ title: '사진 올린 사람의 글', body: '프로필 사진이 글 목록에도 보이는지 확인합니다.' }).expect(201);
+
+    const upload = (body: Buffer, type = 'image/png') => request(server).put('/api/community/me/avatar')
+      .set('X-Forwarded-For', ip).set('Cookie', cookie).set('Content-Type', type).send(body);
+    await request(server).put('/api/community/me/avatar').set('X-Forwarded-For', ip)
+      .set('Content-Type', 'image/png').send(png(64, 64)).expect(401);
+    await upload(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>')).expect(415);
+    await upload(png(4000, 10)).expect(400);
+    await upload(Buffer.alloc(1024 * 1024 + 1)).expect(413);
+    const first = await upload(png(64, 64)).expect(200);
+    expect(first.body.avatarUrl).toMatch(new RegExp(`^/api/community/avatars/${id}-[a-f0-9]{16}\\.png$`));
+    const image = await request(server).get(first.body.avatarUrl).expect(200);
+    expect(image.headers['content-type']).toBe('image/png');
+    expect(image.headers['cache-control']).toContain('immutable');
+
+    // 새 사진을 올리면 옛 사진은 저장소에서 지움. 파일 이름의 형식은 올린 내용으로 정함
+    const second = await upload(jpeg(512, 512), 'image/webp').expect(200);
+    expect(second.body.avatarUrl).toMatch(/\.jpg$/);
+    await request(server).get(first.body.avatarUrl).expect(404);
+    expect([...storedFiles.keys()].filter((key) => key.includes(id))).toHaveLength(1);
+
+    await request(server).patch('/api/community/me/profile').set('X-Forwarded-For', ip)
+      .send({ name: '새 이름', bio: '' }).expect(401);
+    const updated = await request(server).patch('/api/community/me/profile').set('X-Forwarded-For', ip).set('Cookie', cookie)
+      .send({ name: '  새   이름 ', bio: '  집 노트북으로 서버를 돌립니다.  ' }).expect(200);
+    expect(updated.body.user).toMatchObject({ id, name: '새 이름', bio: '집 노트북으로 서버를 돌립니다.', avatarUrl: second.body.avatarUrl, postCount: 1 });
+    const publicProfile = await request(server).get(`/api/community/users/${id}`).expect(200);
+    expect(publicProfile.body).not.toHaveProperty('email');
+    const mine = await request(server).get(`/api/community/posts?author=${id}`).expect(200);
+    expect(mine.body.posts).toHaveLength(1);
+    expect(mine.body.posts[0]).toMatchObject({ authorName: '새 이름', authorAvatarUrl: second.body.avatarUrl });
+    expect((await request(server).get('/api/community/auth/me').set('Cookie', cookie).expect(200)).body.user.avatarUrl)
+      .toBe(second.body.avatarUrl);
+
+    await request(server).delete('/api/community/me/avatar').set('Cookie', cookie).expect(204);
+    await request(server).get(second.body.avatarUrl).expect(404);
+    expect((await request(server).get(`/api/community/users/${id}`).expect(200)).body.avatarUrl).toBeNull();
+    await request(server).get('/api/community/avatars/..%2F..%2Fsecret.png').expect(404);
+    await request(server).get('/api/community/users/000000000000000000000000').expect(404);
   });
 });
 

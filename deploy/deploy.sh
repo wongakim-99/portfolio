@@ -52,8 +52,9 @@ if [[ ! -s "$PDF" ]]; then
   echo "[deploy] $PDF 가 없음. npm run build 결과 확인 필요" >&2
   exit 1
 fi
-if [[ ! -f "$CONFIG/api.docker.env" || ! -f "$CONFIG/mongo.env" ]]; then
-  echo "[deploy] $CONFIG 에 api.docker.env, mongo.env 가 없음. deploy/docker-setup.sh 를 먼저 실행할 것" >&2
+if [[ ! -f "$CONFIG/api.docker.env" || ! -f "$CONFIG/mongo.env" || ! -f "$CONFIG/minio.env" ]] \
+  || ! grep -q '^MINIO_ACCESS_KEY=' "$CONFIG/api.docker.env"; then
+  echo "[deploy] $CONFIG 의 api.docker.env, mongo.env, minio.env 설정이 모자람. deploy/docker-setup.sh 를 먼저 실행할 것" >&2
   exit 1
 fi
 
@@ -68,6 +69,10 @@ compose "$SHA" config -q
 echo "[deploy] DB 준비"
 compose "$SHA" up -d --wait --wait-timeout 90 mongo
 mongo_root 'mongosh --quiet --norc --file /dev/stdin' < deploy/mongo-ensure-user.js
+
+echo "[deploy] 사진 저장소 준비"
+compose "$SHA" up -d --wait --wait-timeout 90 minio
+compose "$SHA" exec -T minio sh -s < deploy/minio-ensure-bucket.sh
 
 MIGRATING=false
 if legacy_active; then

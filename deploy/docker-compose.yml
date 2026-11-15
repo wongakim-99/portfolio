@@ -29,6 +29,8 @@ services:
     depends_on:
       mongo:
         condition: service_healthy
+      minio:
+        condition: service_healthy
     networks: [edge, data]
     read_only: true
     tmpfs: [/tmp]
@@ -53,6 +55,32 @@ services:
       start_period: 30s
     logging: *logging
 
+  # 피드 프로필 사진 저장소. 버킷은 공개하지 않고 api 만 내부 망으로 닿음 (버킷과 API 계정은 deploy/minio-ensure-bucket.sh)
+  # MinIO 가 공식 Docker 이미지 배포를 멈춰서, 같은 소스를 빌드해 올리는 pgsty/minio 를 태그 고정으로 씀
+  minio:
+    image: pgsty/minio:RELEASE.2026-08-04T00-00-00Z
+    restart: unless-stopped
+    command: [server, /data, --certs-dir, /tmp/certs]
+    env_file: ${PORTFOLIO_CONFIG:?PORTFOLIO_CONFIG 가 필요함}/minio.env
+    environment:
+      # 웹 콘솔은 쓰지 않음. 버킷 확인은 README 의 mc 명령으로 함
+      MINIO_BROWSER: "off"
+      MC_CONFIG_DIR: /tmp/mc
+    volumes:
+      - minio-data:/data
+    networks: [data]
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, curl, -fsS, -o, /dev/null, http://127.0.0.1:9000/minio/health/live]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    logging: *logging
+
 networks:
   edge: {}
   # DB 망은 인터넷으로 나가는 길이 없음
@@ -61,3 +89,4 @@ networks:
 
 volumes:
   mongo-data: {}
+  minio-data: {}

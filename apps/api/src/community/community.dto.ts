@@ -72,6 +72,18 @@ export class WritePostDto {
   body: string;
 }
 
+export class ProfileDto {
+  @Transform(oneLine)
+  @IsString()
+  @Length(2, 30)
+  name: string;
+
+  @Transform(trim)
+  @IsString()
+  @MaxLength(300)
+  bio: string;
+}
+
 export class WriteCommentDto {
   @Transform(trim)
   @IsString()

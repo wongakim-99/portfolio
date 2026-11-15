@@ -1,13 +1,17 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, Post, Patch, Query, Req, Res,
+  Body, Controller, Delete, Get, HttpCode, NotFoundException, Post, Patch, Put, Query, Req, Res,
   UnsupportedMediaTypeException, UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AdminTokenGuard } from '../messages/admin-token.guard.js';
 import { CommunityAuthService } from './community-auth.service.js';
-import { ChangePasswordDto, EmailDto, LoginDto, RegisterDto, ReportDto, ResetPasswordDto, TokenDto, WriteCommentDto, WritePostDto } from './community.dto.js';
+import { ChangePasswordDto, EmailDto, LoginDto, ProfileDto, RegisterDto, ReportDto, ResetPasswordDto, TokenDto, WriteCommentDto, WritePostDto } from './community.dto.js';
 import { CommunityPostsService } from './community-posts.service.js';
+import { CommunityProfileService } from './community-profile.service.js';
+import { AVATAR_FILE, CommunityStorageService } from './community-storage.service.js';
+
+const AVATAR_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' } as const;
 
 function jsonOnly(req: Request): void {
   if (!req.is('application/json')) throw new UnsupportedMediaTypeException('JSON 요청만 받을 수 있습니다.');
@@ -18,6 +22,8 @@ export class CommunityController {
   constructor(
     private readonly auth: CommunityAuthService,
     private readonly posts: CommunityPostsService,
+    private readonly profiles: CommunityProfileService,
+    private readonly storage: CommunityStorageService,
   ) {}
 
   @Get('auth/me')
@@ -29,7 +35,7 @@ export class CommunityController {
   @Get('auth/config')
   @SkipThrottle()
   config() {
-    return { registrationEnabled: this.auth.registrationEnabled };
+    return { registrationEnabled: this.auth.registrationEnabled, uploadsEnabled: this.storage.ready };
   }
 
   @Post('auth/register')
@@ -104,10 +110,56 @@ export class CommunityController {
     await this.auth.changePassword(req, dto);
   }
 
+  @Get('users/:id')
+  @SkipThrottle()
+  profile(@Req() req: Request) {
+    return this.profiles.profile(req.params.id as string);
+  }
+
+  @Patch('me/profile')
+  @Throttle({ default: { limit: 10, ttl: 60 * 60_000 } })
+  async updateProfile(@Body() dto: ProfileDto, @Req() req: Request) {
+    this.auth.assertSameOrigin(req);
+    jsonOnly(req);
+    return { user: await this.profiles.update(await this.auth.require(req), dto) };
+  }
+
+  // 본문은 사진 파일 그대로 받음 (setup.ts 의 raw 본문 파서, 1MB 제한)
+  @Put('me/avatar')
+  @Throttle({ default: { limit: 10, ttl: 60 * 60_000 } })
+  async uploadAvatar(@Req() req: Request) {
+    this.auth.assertSameOrigin(req);
+    return this.profiles.setAvatar(await this.auth.require(req), req.body);
+  }
+
+  @Delete('me/avatar')
+  @HttpCode(204)
+  async removeAvatar(@Req() req: Request) {
+    this.auth.assertSameOrigin(req);
+    await this.profiles.removeAvatar(await this.auth.require(req));
+  }
+
+  @Get('avatars/:file')
+  @SkipThrottle()
+  async avatar(@Req() req: Request, @Res() res: Response) {
+    const file = req.params.file as string;
+    if (!AVATAR_FILE.test(file)) throw new NotFoundException('사진을 찾을 수 없습니다.');
+    const body = await this.storage.get(`avatars/${file}`);
+    res.set({
+      'Content-Type': AVATAR_TYPES[file.split('.').pop() as keyof typeof AVATAR_TYPES],
+      // 사진을 바꾸면 파일 이름이 바뀌므로 같은 주소의 내용은 다시 바뀌지 않음
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Security-Policy': "default-src 'none'",
+      'Cross-Origin-Resource-Policy': 'same-origin',
+    });
+    body.on('error', () => res.destroy());
+    body.pipe(res);
+  }
+
   @Get('posts')
   @SkipThrottle()
-  list(@Query('before') before?: string) {
-    return this.posts.list(before);
+  list(@Query('before') before?: string, @Query('author') author?: string) {
+    return this.posts.list(before, author);
   }
 
   @Get('posts/:id')

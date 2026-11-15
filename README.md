@@ -9,7 +9,7 @@
 
 ```
 apps/web/        정적 페이지 (홈, 포트폴리오, 피드). 별도 프런트엔드 빌드 없음
-apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지, 서버 상태, 하이파이브)
+apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지, 서버 상태, 하이파이브, 피드, 프로필 사진)
 scripts/         포트폴리오 PDF 생성기와 테스트, PDF 용 글꼴(IBM Plex Sans KR, OFL)
 deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회성 서버 설정
 .github/workflows/deploy.yml
@@ -22,6 +22,7 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 - `/` 홈: 스티커 붙은 홈서버 노트북, 페이지 안내, 배포 영수증과 엽서
 - `/portfolio.html`: 소개, 경력, 프로젝트, 기술, 이력을 담은 종이 포트폴리오. 목차는 이 페이지 안에서만 이동
 - `/community.html`: 긴 글과 댓글을 읽고, 이메일 확인을 마친 계정으로 작성하는 피드
+- `/community.html?user=<회원_ID>`: 회원 페이지. 프로필 사진, 이름, 소개, 쓴 글. 내 페이지에서는 사진과 프로필을 고치고 비밀번호 변경, 로그아웃을 함
 - 옛 `/#about`, `/#projects` 등의 링크는 해당 포트폴리오 섹션으로 이동
 
 - 노트북 스티커는 끌어서 옮길 수 있음. 위치는 방문자 브라우저에만 저장
@@ -36,6 +37,10 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 - 가입 확인 링크는 1시간, 비밀번호 재설정 링크는 30분 동안 한 번만 사용함. 링크 토큰과 세션 토큰은 해시만 MongoDB에 저장함
 - 비밀번호는 scrypt로 해시하고, 로그인 세션은 30일 만료 HttpOnly, Secure, SameSite=Strict 쿠키로 유지함. 로컬 HTTP 개발에서는 Secure 대신 별도 개발 쿠키를 사용함
 - 게시글 본문은 줄바꿈을 살린 일반 텍스트다. 브라우저에서는 사용자 글을 `textContent`로 표시함
+- 프로필 사진은 브라우저에서 가운데 기준 정사각형 512px 이하로 다시 그려 올림. 이때 촬영 위치 같은 사진 속 정보(EXIF)가 빠짐
+- API 는 파일 내용으로 JPG, PNG, WebP 인지와 가로세로 2048px 이하인지를 다시 확인하고 MinIO 버킷 `community-media` 의 `avatars/` 에 저장함. 1MB 를 넘으면 413
+- 버킷은 공개하지 않음. 사진은 `/api/community/avatars/<파일>` 로 API 가 읽어 내보내고, 사진을 바꾸면 새 파일 이름을 쓰므로 1년 캐시함. 옛 사진은 바꾸거나 지울 때 버킷에서도 지움
+- 이름을 바꾸면 그동안 쓴 글과 댓글의 작성자 이름도 함께 바뀜. 이메일은 내 페이지에서 본인에게만 보임
 - 가입, 로그인, 글쓰기, 댓글, 신고에는 요청 제한이 적용됨. 신고 내역은 아래 관리자 API로 확인하고 글과 댓글을 삭제할 수 있음
 - 기존 MongoDB 백업은 `portfolio` 데이터베이스 전체를 덤프하므로 피드 컬렉션도 포함됨
 
@@ -89,7 +94,7 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
 
 ## 서버 구성
 
-포트폴리오는 Docker 컨테이너 세 개로 돎 (`deploy/docker-compose.yml`, 프로젝트 이름 `portfolio`).
+포트폴리오는 Docker 컨테이너 네 개로 돎 (`deploy/docker-compose.yml`, 프로젝트 이름 `portfolio`).
 
 ```
 인터넷 → Tailscale Funnel (HTTPS, gawon-dev:443)
@@ -97,19 +102,23 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
                 └─ web 컨테이너: Caddy + 정적 페이지      (deploy/web.Dockerfile, deploy/Caddyfile)
                      ├─ /      → /srv (apps/web, PDF 포함)
                      └─ /api/* → api 컨테이너 :3000      (apps/api/Dockerfile)
-                                  └─ mongo 컨테이너 :27017 (mongo:8.0, 볼륨 portfolio_mongo-data)
+                                  ├─ mongo 컨테이너 :27017 (mongo:8.0, 볼륨 portfolio_mongo-data)
+                                  └─ minio 컨테이너 :9000  (pgsty/minio, 볼륨 portfolio_minio-data, 프로필 사진)
 ```
 
 - 호스트에 열리는 포트는 `127.0.0.1:8090` 하나뿐. Docker 로 연 포트는 UFW 를 거치지 않아서 반드시 127.0.0.1 로 묶음
-- DB 망(`data`)은 인터넷으로 나가는 길이 없고, mongo 는 api 컨테이너에서만 닿음
+- DB 망(`data`)은 인터넷으로 나가는 길이 없고, mongo 와 minio 는 api 컨테이너에서만 닿음
+- MinIO 가 공식 Docker 이미지 배포를 멈춰서 같은 소스를 빌드해 올리는 `pgsty/minio` 를 태그 고정으로 씀. 웹 콘솔은 끄고, 읽기 전용 파일 시스템과 모든 권한(capability)을 뺀 채로 돎
+- API 는 MinIO root 가 아니라 `portfolio-api` 계정으로 붙음. 이 계정은 `community-media` 버킷의 객체 읽기, 쓰기, 삭제만 할 수 있고 목록 조회와 버킷 생성은 못 함. 버킷과 계정은 배포 때마다 `deploy/minio-ensure-bucket.sh` 가 확인함
 - api 컨테이너는 `node` 사용자, 읽기 전용 파일 시스템으로 돎
 - 노트북 센서(CPU 온도, 배터리)는 컨테이너에서도 호스트 `/sys` 가 그대로 보여서 따로 연결하지 않음
 
 | 항목 | 위치 |
 |---|---|
 | 지금 돌고 있는 버전 | `~/portfolio/docker-release` (커밋 태그). 이미지는 `portfolio-api:<커밋>`, `portfolio-web:<커밋>` 최근 3개 보관 |
-| API 환경변수 | `~/.config/portfolio/api.docker.env` (권한 600, git 에 없음) |
+| API 환경변수 | `~/.config/portfolio/api.docker.env` (권한 600, git 에 없음. `MINIO_*` 포함) |
 | Mongo 계정 | `~/.config/portfolio/mongo.env` (root 와 앱 계정 비밀번호, 권한 600) |
+| MinIO 계정 | `~/.config/portfolio/minio.env` (root 와 `portfolio-api` 계정 비밀번호, 권한 600) |
 | 접속 로그 | `docker logs portfolio-web-1` (JSON, 10MB 5개까지 보관) |
 | Actions runner | `~/actions-runner`, `github-runner.service` (사용자 유닛, docker 그룹) |
 | 예전 방식 | `portfolio-api.service`, `caddy.service`, apt `mongod` 는 전환 뒤 꺼 둠. 되살리려면 `systemctl --user enable --now` |
@@ -121,6 +130,9 @@ cd ~/actions-runner/_work/portfolio/portfolio
 export PORTFOLIO_CONFIG=~/.config/portfolio RELEASE=$(cat ~/portfolio/docker-release)
 docker compose -f deploy/docker-compose.yml ps          # 상태
 docker compose -f deploy/docker-compose.yml logs -f api  # API 로그
+# 버킷에 든 프로필 사진 보기 (root 비밀번호는 컨테이너 환경변수에서 읽음)
+docker compose -f deploy/docker-compose.yml exec minio sh -c \
+  'MC_HOST_local="http://$MINIO_ROOT_USER:$MINIO_ROOT_PASSWORD@127.0.0.1:9000" mc ls -r local/community-media'
 ```
 
 ## 관리 패널 (gawon-control)
@@ -131,6 +143,7 @@ docker compose -f deploy/docker-compose.yml logs -f api  # API 로그
 - tailnet 밖에서는 SSH 터널로: `ssh -L 4100:127.0.0.1:4100 homeserver` 후 `http://127.0.0.1:4100`
 - 할 수 있는 것: 컨테이너 상태와 시작, 중지, 로그, 서버 CPU, 메모리, 디스크, Docker 정리, 웹 터미널(`docker` 명령), 감사 로그
 - 백업: 대상 `portfolio` 를 매일 04:00 에 덤프, 14일 보관. 읽기 전용 계정(`portfolio-backup`)으로 내부 망(`portfolio_data`)에 붙어서 뜸. 파일은 서버 `~/backups/mongodb/portfolio/`
+- MinIO 볼륨(`portfolio_minio-data`, 프로필 사진)은 아직 백업 대상이 아님. 사진을 잃으면 각자 다시 올리면 되는 정도라 두었고, 필요해지면 따로 추가
 - 관리자 비밀번호 변경: 관리 패널의 `권한 관리 → 사용자 목록 → 본인 계정의 열쇠 아이콘 → 변경`
 
 새 서비스(예: gawon-log 블로그)를 올릴 때도 같은 방식으로 함: 자기 저장소에 compose 를 두고, 포트는 `127.0.0.1` 로만 열고, DB 는 내부 망에 둠. 패널은 서버의 모든 컨테이너를 자동으로 보여 줌.
@@ -159,9 +172,10 @@ curl -s -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/messag
 ```bash
 npm install
 npm run dev        # PDF 생성 후 메모리 Mongo + API watch, http://127.0.0.1:3000 에서 페이지까지 확인
+                   # MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY 를 함께 주면 사진 올리기도 켜짐 (없으면 꺼진 채로 뜸)
 npm run typecheck
 npm run build      # API 빌드 + 포트폴리오 PDF 생성
-npm test           # API e2e 15건(메모리 Mongo) + PDF 생성기 7건
+npm test           # API e2e 19건(메모리 Mongo, MinIO 는 메모리 가짜) + PDF 생성기 6건
 ```
 
 ## 배포 흐름
@@ -183,6 +197,7 @@ npm test           # API e2e 15건(메모리 Mongo) + PDF 생성기 7건
    - sudo 로 계정을 docker 그룹에 넣고 사용자 서비스 관리자를 다시 띄움: `sudo usermod -aG docker $USER && sudo systemctl restart user@$(id -u).service`
    - `deploy/docker-setup.sh` 실행 (sudo 불필요): `mongo.env`, `api.docker.env` 생성. HASH_SALT, ADMIN_TOKEN 은 기존 값 유지
    - 다음 push 의 `deploy.sh` 가 예전 API 를 멈추고 호스트 MongoDB 데이터를 컨테이너로 옮긴 뒤 교체함. 실패하면 예전 systemd 서비스를 다시 켬
+5. 프로필 사진 저장소 추가 (2026-11-15): `deploy/docker-setup.sh` 를 다시 실행해 `minio.env` 를 만들고 `api.docker.env` 에 `MINIO_*` 를 덧붙임. 다음 push 의 `deploy.sh` 가 minio 컨테이너, 버킷, API 계정을 만듦
 
 docker 그룹은 사실상 root 권한이라 runner 를 거치는 이 저장소는 private 으로 유지함.
 

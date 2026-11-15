@@ -12,6 +12,13 @@ export class CommunityUser {
   @Prop({ type: String, required: true })
   passwordHash: string;
 
+  @Prop({ type: String, default: '' })
+  bio: string;
+
+  // MinIO 버킷의 avatars/ 아래 파일 이름. 사진을 바꿀 때마다 새 이름을 써서 브라우저가 오래 캐시해도 됨
+  @Prop({ type: String, default: null })
+  avatar: string | null;
+
   @Prop({ type: Date, default: null })
   verifiedAt: Date | null;
 
@@ -82,6 +89,8 @@ export class CommunityPost {
 }
 
 export const CommunityPostSchema = SchemaFactory.createForClass(CommunityPost);
+// 회원 페이지의 쓴 글 목록
+CommunityPostSchema.index({ authorId: 1, _id: -1 });
 
 @Schema({ collection: 'community_comments', versionKey: false, timestamps: true })
 export class CommunityComment {
@@ -103,6 +112,7 @@ export class CommunityComment {
 
 export const CommunityCommentSchema = SchemaFactory.createForClass(CommunityComment);
 CommunityCommentSchema.index({ postId: 1, _id: 1 });
+CommunityCommentSchema.index({ authorId: 1 });
 
 @Schema({ collection: 'community_reports', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })
 export class CommunityReport {

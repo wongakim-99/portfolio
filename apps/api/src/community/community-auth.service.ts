@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 import type { ChangePasswordDto, LoginDto, RegisterDto } from './community.dto.js';
 import { CommunityMailService } from './community-mail.service.js';
 import { CommunitySession, CommunityToken, CommunityUser } from './community.schemas.js';
+import { avatarUrl } from './community-storage.service.js';
 
 const SCRYPT_OPTIONS = { N: 1 << 14, r: 8, p: 5, maxmem: 64 * 1024 * 1024 };
 const SESSION_AGE_MS = 30 * 24 * 60 * 60 * 1000;
@@ -15,7 +16,11 @@ const RESET_AGE_MS = 30 * 60 * 1000;
 const COOKIE_NAME = process.env.NODE_ENV === 'production' ? '__Host-community' : 'community_dev';
 const DUMMY_SALT = '75a01a8965ae6ecda2a65c3829c20abd';
 
-export type CommunityIdentity = { id: string; name: string; email: string };
+export type CommunityIdentity = { id: string; name: string; email: string; avatarUrl: string | null };
+
+function identity(user: { _id: Types.ObjectId; email: string; name: string; avatar?: string | null }): CommunityIdentity {
+  return { id: String(user._id), email: user.email, name: user.name, avatarUrl: avatarUrl(user.avatar) };
+}
 
 function tokenHash(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -123,7 +128,7 @@ export class CommunityAuthService {
     }, { returnDocument: 'after' });
     if (!user) throw new BadRequestException('계정을 찾을 수 없습니다.');
     await this.issue(user._id, res);
-    return { id: String(user._id), email: user.email, name: user.name };
+    return identity(user);
   }
 
   async resendVerification(dto: LoginDto): Promise<void> {
@@ -172,7 +177,7 @@ export class CommunityAuthService {
     }
     if (!user!.verifiedAt) throw new ForbiddenException('이메일 확인 후 로그인해 주세요.');
     await this.issue(user!._id, res);
-    return { id: String(user!._id), email: user!.email, name: user!.name };
+    return identity(user!);
   }
 
   async current(req: Request): Promise<CommunityIdentity | null> {
@@ -180,8 +185,8 @@ export class CommunityAuthService {
     if (!token) return null;
     const session = await this.sessions.findOne({ tokenHash: tokenHash(token), expiresAt: { $gt: new Date() } }).lean();
     if (!session) return null;
-    const user = await this.users.findOne({ _id: session.userId, verifiedAt: { $ne: null } }, { name: 1, email: 1 }).lean();
-    return user ? { id: String(user._id), email: user.email, name: user.name } : null;
+    const user = await this.users.findOne({ _id: session.userId, verifiedAt: { $ne: null } }, { name: 1, email: 1, avatar: 1 }).lean();
+    return user ? identity(user) : null;
   }
 
   async require(req: Request): Promise<CommunityIdentity> {

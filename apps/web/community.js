@@ -4,6 +4,9 @@ const dateText = (value) => new Intl.DateTimeFormat('ko-KR', { year: 'numeric', 
 const draftKey = 'community-post-draft';
 let user = null;
 let openedPost = null;
+let openedProfile = null;
+let profileCursor = null;
+let uploadsEnabled = false;
 let editPostId = null;
 let postCursor = null;
 let commentCursor = null;
@@ -11,12 +14,12 @@ let reportTarget = null;
 let loginNext = null;
 let resetToken = null;
 
-async function request(path, { method = 'GET', body } = {}) {
+async function request(path, { method = 'GET', body, file } = {}) {
   const response = await fetch(`/api/community${path}`, {
     method,
     credentials: 'same-origin',
-    headers: body ? { 'Content-Type': 'application/json' } : undefined,
-    body: body ? JSON.stringify(body) : undefined,
+    headers: file ? { 'Content-Type': file.type } : body ? { 'Content-Type': 'application/json' } : undefined,
+    body: file ?? (body ? JSON.stringify(body) : undefined),
   });
   if (response.status === 204) return null;
   const data = await response.json().catch(() => ({}));
@@ -45,18 +48,65 @@ function button(text, onClick, className = 'text-btn') {
 }
 
 function showSection(which) {
-  for (const id of ['feed-section', 'post-section', 'editor-section']) {
+  for (const id of ['feed-section', 'post-section', 'profile-section', 'editor-section']) {
     $(`#${id}`).hidden = id !== which;
+  }
+}
+
+// 사진이 없으면 포스트잇 색 위에 이름 첫 글자를 손글씨로 씀. 색은 사용자마다 고정
+function avatar(person, className = 'avatar') {
+  const box = document.createElement('span');
+  box.className = className;
+  box.setAttribute('aria-hidden', 'true');
+  const sticky = [...person.id].reduce((sum, char) => sum + char.charCodeAt(0), 0) % 4 + 1;
+  box.style.setProperty('--avatar-bg', `var(--sticky-${sticky})`);
+  if (person.avatarUrl) {
+    const image = document.createElement('img');
+    image.src = person.avatarUrl;
+    image.alt = '';
+    image.loading = 'lazy';
+    image.decoding = 'async';
+    box.append(image);
+  } else {
+    box.textContent = [...person.name.trim()][0] ?? '?';
+  }
+  return box;
+}
+
+function authorLink(item) {
+  const link = document.createElement('a');
+  link.className = 'community-author';
+  link.href = `community.html?user=${encodeURIComponent(item.authorId)}`;
+  const name = document.createElement('span');
+  name.textContent = item.authorName;
+  link.append(avatar({ id: item.authorId, name: item.authorName, avatarUrl: item.authorAvatarUrl }), name);
+  return link;
+}
+
+function metaLine(element, items) {
+  element.replaceChildren();
+  for (const item of items) {
+    if (typeof item === 'string') {
+      const span = document.createElement('span');
+      span.textContent = item;
+      element.append(span);
+    } else {
+      element.append(item);
+    }
   }
 }
 
 function updateUser() {
   $('#auth-open').hidden = Boolean(user);
-  $('#account-open').hidden = !user;
+  $('#me-link').hidden = !user;
   $('#user-label').textContent = user ? `${user.name}님` : '';
   $('#comment-form').hidden = !user;
   $('#comment-login').hidden = Boolean(user);
-  if (user) $('#account-email').textContent = user.email;
+  if (user) {
+    $('#me-link').href = `community.html?user=${encodeURIComponent(user.id)}`;
+    $('#me-avatar').replaceChildren(avatar(user));
+    $('#account-email').textContent = user.email;
+  }
 }
 
 const lamp = $('#lamp');
@@ -143,7 +193,7 @@ for (const [formId, route] of [['login-form', '/auth/login'], ['register-form', 
       else if (openedPost) {
         renderPostActions(openedPost);
         loadComments(openedPost.id, true);
-      }
+      } else if (openedProfile) renderProfile();
     } catch (error) {
       status('#auth-status', error.message, 'error');
       $('#resend-open').hidden = error.status !== 403;
@@ -152,12 +202,6 @@ for (const [formId, route] of [['login-form', '/auth/login'], ['register-form', 
     }
   });
 }
-
-$('#account-open').addEventListener('click', () => { status('#account-status', ''); $('#account-dialog').showModal(); });
-$('#account-close').addEventListener('click', () => $('#account-dialog').close());
-$('#account-dialog').addEventListener('click', (event) => {
-  if (event.target === $('#account-dialog')) $('#account-dialog').close();
-});
 
 $('#reset-request-form').addEventListener('submit', async (event) => {
   event.preventDefault();
@@ -211,9 +255,9 @@ $('#logout').addEventListener('click', async () => {
     await request('/auth/logout', { method: 'POST' });
     user = null;
     updateUser();
-    $('#account-dialog').close();
     if (editPostId || params.has('write')) location.href = 'community.html';
     else if (openedPost) renderPostActions(openedPost);
+    else if (openedProfile) renderProfile();
   } catch (error) {
     status('#account-status', error.message, 'error');
   }
@@ -224,7 +268,7 @@ $('#write-open').addEventListener('click', () => {
   else location.href = 'community.html?write=1';
 });
 
-function postRow(post) {
+function postRow(post, { showAuthor = true } = {}) {
   const article = document.createElement('article');
   article.className = 'community-post';
   const link = document.createElement('a');
@@ -234,11 +278,7 @@ function postRow(post) {
   excerpt.textContent = post.excerpt.length >= 220 ? `${post.excerpt}…` : post.excerpt;
   const meta = document.createElement('div');
   meta.className = 'community-meta';
-  for (const item of [post.authorName, dateText(post.createdAt), `댓글 ${post.commentCount}`]) {
-    const span = document.createElement('span');
-    span.textContent = item;
-    meta.append(span);
-  }
+  metaLine(meta, [...(showAuthor ? [authorLink(post)] : []), dateText(post.createdAt), `댓글 ${post.commentCount}`]);
   article.append(link, excerpt, meta);
   return article;
 }
@@ -307,7 +347,7 @@ function renderPostActions(post) {
 }
 
 function renderPostMeta(post) {
-  $('#post-meta').textContent = `${post.authorName} / ${dateText(post.createdAt)} / 댓글 ${post.commentCount}`;
+  metaLine($('#post-meta'), [authorLink(post), dateText(post.createdAt), `댓글 ${post.commentCount}`]);
 }
 
 function commentRow(comment) {
@@ -315,7 +355,7 @@ function commentRow(comment) {
   article.className = 'community-comment';
   const meta = document.createElement('p');
   meta.className = 'community-meta';
-  meta.textContent = `${comment.authorName} / ${dateText(comment.createdAt)}`;
+  metaLine(meta, [authorLink(comment), dateText(comment.createdAt)]);
   const body = document.createElement('p');
   body.textContent = comment.body;
   const actions = document.createElement('div');
@@ -432,6 +472,151 @@ $('#comment-form').addEventListener('submit', async (event) => {
   finally { submit.disabled = false; }
 });
 
+function renderProfile() {
+  const profile = openedProfile;
+  const mine = user?.id === profile.id;
+  $('#profile-hand').textContent = mine ? '내 페이지' : `${profile.name}님의 페이지`;
+  $('#profile-name').textContent = profile.name;
+  $('#profile-photo').replaceChildren(avatar(profile));
+  const bio = $('#profile-bio');
+  bio.textContent = profile.bio || (mine ? '아직 소개가 없습니다. 아래 프로필 고치기에서 한 줄 남겨 보세요.' : '');
+  bio.classList.toggle('is-empty', !profile.bio);
+  bio.hidden = !profile.bio && !mine;
+  metaLine($('#profile-stats'), [`${dateText(profile.createdAt)} 가입`, `글 ${profile.postCount}`, `댓글 ${profile.commentCount}`]);
+  $('#avatar-actions').hidden = !mine || !uploadsEnabled;
+  $('#avatar-remove').hidden = !profile.avatarUrl;
+  $('#profile-owner').hidden = !mine;
+  $('#profile-posts-title').textContent = mine ? '내가 쓴 글' : '쓴 글';
+  if (mine) {
+    $('#profile-name-input').value = profile.name;
+    $('#profile-bio-input').value = profile.bio;
+  }
+  if (!mine) status('#avatar-status', '');
+  else if (!uploadsEnabled) status('#avatar-status', '사진 올리기는 저장소 설정을 마친 뒤 열립니다.');
+}
+
+async function loadProfilePosts() {
+  const list = $('#profile-post-list');
+  try {
+    const query = new URLSearchParams({ author: openedProfile.id });
+    if (profileCursor) query.set('before', profileCursor);
+    const data = await request(`/posts?${query}`);
+    if (!profileCursor) list.replaceChildren();
+    if (!data.posts.length && !profileCursor) {
+      const empty = document.createElement('p');
+      empty.className = 'community-empty';
+      empty.textContent = user?.id === openedProfile.id ? '아직 쓴 글이 없습니다. 첫 글을 남겨 보세요.' : '아직 쓴 글이 없습니다.';
+      list.append(empty);
+    }
+    for (const post of data.posts) list.append(postRow(post, { showAuthor: false }));
+    profileCursor = data.nextCursor;
+    $('#profile-posts-more').hidden = !profileCursor;
+  } catch {
+    const message = document.createElement('p');
+    message.className = 'community-empty';
+    message.textContent = '글 목록을 불러오지 못했습니다.';
+    list.replaceChildren(message);
+  }
+}
+$('#profile-posts-more').addEventListener('click', loadProfilePosts);
+
+async function showProfile(id) {
+  showSection('profile-section');
+  try {
+    openedProfile = await request(`/users/${encodeURIComponent(id)}`);
+    document.title = `${openedProfile.name} | 김가원 피드`;
+    renderProfile();
+    profileCursor = null;
+    await loadProfilePosts();
+  } catch {
+    $('#profile-name').textContent = '사용자를 찾을 수 없습니다';
+    $('#profile-bio').textContent = '탈퇴했거나 아직 이메일 확인을 마치지 않은 계정입니다.';
+    $('#profile-photo').hidden = true;
+    $('.profile-posts').hidden = true;
+  }
+}
+
+$('#profile-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const submit = $('button[type="submit"]', form);
+  submit.disabled = true;
+  try {
+    const { user: profile } = await request('/me/profile', { method: 'PATCH', body: Object.fromEntries(new FormData(form)) });
+    openedProfile = profile;
+    user = { ...user, name: profile.name };
+    updateUser();
+    renderProfile();
+    document.title = `${profile.name} | 김가원 피드`;
+    status('#profile-status', '프로필을 저장했습니다.', 'ok');
+  } catch (error) { status('#profile-status', error.message, 'error'); }
+  finally { submit.disabled = false; }
+});
+
+// 고른 사진을 가운데 기준 정사각형으로 잘라 512px 이하로 다시 그림
+// 다시 그리면서 촬영 위치 같은 사진 속 정보(EXIF)는 빠지고 파일도 작아짐
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => { URL.revokeObjectURL(url); resolve(image); };
+    image.onerror = () => { URL.revokeObjectURL(url); reject(new Error('이 사진은 열 수 없습니다. JPG나 PNG 사진으로 골라 주세요.')); };
+    image.src = url;
+  });
+}
+async function squarePhoto(file) {
+  const image = await loadImage(file);
+  const side = Math.min(image.naturalWidth, image.naturalHeight);
+  const size = Math.min(512, side);
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext('2d');
+  context.fillStyle = '#ffffff';
+  context.fillRect(0, 0, size, size);
+  context.imageSmoothingQuality = 'high';
+  context.drawImage(image, (image.naturalWidth - side) / 2, (image.naturalHeight - side) / 2, side, side, 0, 0, size, size);
+  const encode = (type, quality) => new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+  const webp = await encode('image/webp', 0.86);
+  return webp?.type === 'image/webp' ? webp : encode('image/jpeg', 0.88);
+}
+
+$('#avatar-pick').addEventListener('click', () => $('#avatar-file').click());
+$('#avatar-file').addEventListener('change', async (event) => {
+  const input = event.currentTarget;
+  const [file] = input.files;
+  input.value = '';
+  if (!file) return;
+  const pick = $('#avatar-pick');
+  pick.disabled = true;
+  status('#avatar-status', '사진을 다듬어 올리는 중입니다.');
+  try {
+    if (file.size > 40 * 1024 * 1024) throw new Error('40MB 이하 사진을 골라 주세요.');
+    const photo = await squarePhoto(file);
+    if (!photo) throw new Error('사진을 변환하지 못했습니다. 다른 사진으로 골라 주세요.');
+    const { avatarUrl } = await request('/me/avatar', { method: 'PUT', file: photo });
+    openedProfile.avatarUrl = avatarUrl;
+    user = { ...user, avatarUrl };
+    updateUser();
+    renderProfile();
+    status('#avatar-status', '프로필 사진을 바꿨습니다.', 'ok');
+  } catch (error) {
+    status('#avatar-status', error.status === 413 ? '사진이 너무 큽니다. 다른 사진으로 골라 주세요.' : error.message, 'error');
+  } finally { pick.disabled = false; }
+});
+$('#avatar-remove').addEventListener('click', async () => {
+  if (!confirm('프로필 사진을 지울까요?')) return;
+  try {
+    await request('/me/avatar', { method: 'DELETE' });
+    openedProfile.avatarUrl = null;
+    user = { ...user, avatarUrl: null };
+    updateUser();
+    renderProfile();
+    status('#avatar-status', '프로필 사진을 지웠습니다.', 'ok');
+  } catch (error) { status('#avatar-status', error.message, 'error'); }
+});
+
 function readDraft() {
   try { return JSON.parse(localStorage.getItem(draftKey)) ?? null; } catch { return null; }
 }
@@ -490,6 +675,7 @@ $('#post-form').addEventListener('submit', async (event) => {
     const config = await request('/auth/config');
     $('#register-tab').disabled = !config.registrationEnabled;
     $('#signup-note').hidden = config.registrationEnabled;
+    uploadsEnabled = Boolean(config.uploadsEnabled);
   } catch {
     $('#register-tab').disabled = true;
     $('#signup-note').hidden = false;
@@ -509,6 +695,7 @@ $('#post-form').addEventListener('submit', async (event) => {
   updateUser();
   if (resetToken) $('#reset-dialog').showModal();
   if (params.has('post')) await showPost(params.get('post'));
+  else if (params.has('user')) await showProfile(params.get('user'));
   else if (params.has('edit')) await showEditor(params.get('edit'));
   else if (params.has('write')) await showEditor();
   else { showSection('feed-section'); await loadPosts(); }
