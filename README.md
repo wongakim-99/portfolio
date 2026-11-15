@@ -35,7 +35,13 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 - 가입, 로그인, 글쓰기, 댓글, 신고에는 요청 제한이 적용됨. 신고 내역은 아래 관리자 API로 확인하고 글과 댓글을 삭제할 수 있음
 - 기존 MongoDB 백업은 `portfolio` 데이터베이스 전체를 덤프하므로 피드 컬렉션도 포함됨
 
-메일을 설정하기 전에는 가입 탭이 비활성화되고 가입 API도 503으로 응답한다. 홈서버의 `~/.config/portfolio/api.docker.env`에 아래 값을 추가한다. 이 파일은 git에 넣지 않고 권한 600을 유지한다.
+메일을 설정하기 전에는 가입 탭이 비활성화되고 가입 API도 503으로 응답한다. 네이버 애플리케이션 비밀번호를 새로 발급한 뒤, 이 Mac의 터미널에서 다음 스크립트를 실행한다. 비밀번호 입력은 화면에 표시되지 않고 SSH 표준 입력으로만 홈서버에 전달된다. 홈서버의 환경설정 파일은 git에 넣지 않으며 권한 600을 유지한다.
+
+```bash
+bash scripts/configure-community-smtp.sh
+```
+
+스크립트는 홈서버의 `~/.config/portfolio/api.docker.env`에 아래 값을 설정한다.
 
 ```dotenv
 COMMUNITY_SMTP_USER=<네이버 이메일 주소>
@@ -43,7 +49,7 @@ COMMUNITY_SMTP_PASSWORD=<네이버 애플리케이션 비밀번호>
 COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 ```
 
-기본 SMTP 서버는 `smtp.naver.com:465`(SSL)이다. 다른 서버를 쓸 때만 `COMMUNITY_SMTP_HOST`와 `COMMUNITY_SMTP_PORT`를 추가한다. 네이버 메일 환경설정에서 POP3/SMTP 또는 IMAP/SMTP 사용을 켜고, 네이버ID의 2단계 인증 관리에서 별도 애플리케이션 비밀번호를 만든다. 기존에 발급한 애플리케이션 비밀번호의 값은 네이버에서 다시 볼 수 없다.
+기본 SMTP 서버는 `smtp.naver.com:465`(SSL)이다. 다른 서버를 쓸 때만 `COMMUNITY_SMTP_HOST`와 `COMMUNITY_SMTP_PORT`를 추가한다. 이 설정에서는 네이버 메일 환경설정의 POP3/SMTP 사용을 켜고, 네이버ID의 2단계 인증 관리에서 별도 애플리케이션 비밀번호를 만든다. 기존에 발급한 애플리케이션 비밀번호의 값은 네이버에서 다시 볼 수 없다.
 
 운영자 신고 확인과 삭제는 기존 `ADMIN_TOKEN`을 사용한다. 토큰을 브라우저에 저장하거나 공개 페이지에 넣지 않는다.
 

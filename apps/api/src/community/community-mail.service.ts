@@ -6,13 +6,17 @@ export class CommunityMailService {
   private readonly user = process.env.COMMUNITY_SMTP_USER;
   private readonly password = process.env.COMMUNITY_SMTP_PASSWORD;
   private readonly baseUrl = process.env.COMMUNITY_BASE_URL;
+  private readonly host = process.env.COMMUNITY_SMTP_HOST || 'smtp.naver.com';
   readonly ready = Boolean(this.user && this.password && this.baseUrl && /^https:\/\//.test(this.baseUrl));
 
   private readonly transport = this.ready ? nodemailer.createTransport({
-    host: process.env.COMMUNITY_SMTP_HOST || 'smtp.naver.com',
+    host: this.host,
     port: Number(process.env.COMMUNITY_SMTP_PORT || 465),
     secure: Number(process.env.COMMUNITY_SMTP_PORT || 465) === 465,
-    auth: { user: this.user!, pass: this.password! },
+    auth: {
+      user: this.host === 'smtp.naver.com' ? this.user!.replace(/@naver\.com$/i, '') : this.user!,
+      pass: this.password!,
+    },
     connectionTimeout: 10_000,
     greetingTimeout: 10_000,
     socketTimeout: 15_000,
