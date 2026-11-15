@@ -17,6 +17,10 @@ export class Message {
   @Prop({ type: String })
   userAgent?: string;
 
+  // 관리실에서 처음 본 시각. 예전 쪽지에는 필드가 없고, 없으면 안 읽은 것으로 봄
+  @Prop({ type: Date, default: null })
+  readAt: Date | null;
+
   createdAt: Date;
 }
 

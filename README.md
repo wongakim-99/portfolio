@@ -63,10 +63,35 @@ COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 
 기본 SMTP 서버는 `smtp.naver.com:465`(SSL)이다. 다른 서버를 쓸 때만 `COMMUNITY_SMTP_HOST`와 `COMMUNITY_SMTP_PORT`를 추가한다. 이 설정에서는 네이버 메일 환경설정의 POP3/SMTP 사용을 켜고, 네이버ID의 2단계 인증 관리에서 별도 애플리케이션 비밀번호를 만든다. 기존에 발급한 애플리케이션 비밀번호의 값은 네이버에서 다시 볼 수 없다.
 
-운영자 신고 확인과 삭제는 기존 `ADMIN_TOKEN`을 사용한다. 토큰을 브라우저에 저장하거나 공개 페이지에 넣지 않는다.
+### 관리자 역할과 관리실 (RBAC)
+
+권한은 역할 단위로 묶어 둔다 (`apps/api/src/community/community-roles.ts`). 회원 문서에는 역할만 적고, 서버가 요청마다 DB 의 역할에서 권한을 다시 계산한다. 그래서 역할을 바꾸면 이미 로그인한 세션에도 바로 반영된다.
+
+| 역할 | 권한 |
+|---|---|
+| `member` (기본) | 없음. 글, 댓글, 신고, 내 페이지 같은 일반 기능만 씀 |
+| `admin` | `messages:read`, `messages:delete` (홈 엽서 쪽지), `reports:read`, `reports:dismiss` (신고), `content:moderate` (남의 글과 댓글 삭제) |
+
+- 내 글과 댓글만 고치고 지우는 규칙은 역할이 아니라 글쓴이가 누구인지로 따진다. 관리자도 남의 글 내용은 고칠 수 없고 삭제만 할 수 있다
+- 관리자로 로그인하면 피드 위에 `관리실` 버튼과 새 쪽지 수가 보이고, `/community.html?admin=1` 에서 쪽지함과 신고를 처리한다. 쪽지함을 열면 그때까지 온 쪽지는 읽은 것으로 바뀐다
+- 관리자 계정의 회원 페이지에는 `운영자` 도장이 찍힌다
+- 페이지는 권한 목록으로 버튼만 보이거나 숨기고, 실제 허용 여부는 서버의 `PermissionGuard` 가 확인한다
+
+역할 지정은 서버의 `ADMIN_TOKEN` 으로만 한다. 페이지에서 스스로 관리자가 되는 길은 없다. 이메일 확인을 마친 회원만 지정할 수 있다.
 
 ```bash
+source ~/.config/portfolio/api.docker.env
+curl -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"email":"<회원 이메일>","role":"admin"}' http://127.0.0.1:8090/api/community/admin/users/role
+# 되돌릴 때는 "role":"member"
+```
+
+관리 API 는 관리자 세션 말고도 `ADMIN_TOKEN` 으로 쓸 수 있다. 토큰을 브라우저에 저장하거나 공개 페이지에 넣지 않는다.
+
+```bash
+curl -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/messages
 curl -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/reports
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/reports/<신고_ID>
 curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/posts/<글_ID>
 curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/comments/<댓글_ID>
 ```
@@ -155,7 +180,7 @@ docker compose -f deploy/docker-compose.yml exec minio sh -c \
 | GET | `/api/views` | 누적 방문 수 |
 | POST | `/api/views` | 방문 기록. 같은 방문자는 30분 안에 다시 와도 한 번만 셈 (TTL 인덱스) |
 | POST | `/api/messages` | 메시지 남기기. IP 당 10분 3건, honeypot 으로 봇 차단 |
-| GET | `/api/messages` | 최근 메시지 50건. `Authorization: Bearer <ADMIN_TOKEN>` 필요 |
+| GET | `/api/messages` | 최근 메시지 50건. `Authorization: Bearer <ADMIN_TOKEN>` 필요. 사이트에서는 관리실 쪽지함으로 봄 |
 | GET | `/api/server` | 가동 시간, 부하, 메모리, CPU 온도, 배터리, 배포 커밋. 5초 캐시 |
 | GET | `/api/high-fives` | 누적 하이파이브 수 |
 | POST | `/api/high-fives` | `{ "count": 1~10 }`. 한 사람 하루 50번까지, IP 당 1분 20회 |
@@ -175,7 +200,7 @@ npm run dev        # PDF 생성 후 메모리 Mongo + API watch, http://127.0.0.
                    # MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY 를 함께 주면 사진 올리기도 켜짐 (없으면 꺼진 채로 뜸)
 npm run typecheck
 npm run build      # API 빌드 + 포트폴리오 PDF 생성
-npm test           # API e2e 19건(메모리 Mongo, MinIO 는 메모리 가짜) + PDF 생성기 6건
+npm test           # API e2e 20건(메모리 Mongo, MinIO 는 메모리 가짜) + PDF 생성기 6건
 ```
 
 ## 배포 흐름

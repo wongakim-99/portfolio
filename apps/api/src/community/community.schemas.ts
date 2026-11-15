@@ -12,6 +12,10 @@ export class CommunityUser {
   @Prop({ type: String, required: true })
   passwordHash: string;
 
+  // 역할만 적고 권한은 community-roles.ts 에서 역할로 계산함
+  @Prop({ type: String, enum: ['member', 'admin'], default: 'member' })
+  role: 'member' | 'admin';
+
   @Prop({ type: String, default: '' })
   bio: string;
 

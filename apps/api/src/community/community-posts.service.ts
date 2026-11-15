@@ -153,11 +153,35 @@ export class CommunityPostsService {
     }
   }
 
+  // 관리실에서 무엇이 신고됐는지 바로 보이도록 글 제목이나 댓글 앞부분을 함께 줌
   async reportsForAdmin() {
     const reports = await this.reports.find().sort({ _id: -1 }).limit(100).lean();
-    return reports.map((report) => ({
-      id: String(report._id), targetType: report.targetType, targetId: String(report.targetId),
-      reason: report.reason, createdAt: report.createdAt,
-    }));
+    const idsOf = (type: 'post' | 'comment') => reports.filter((report) => report.targetType === type).map((report) => report.targetId);
+    const [posts, comments] = await Promise.all([
+      this.posts.find({ _id: { $in: idsOf('post') } }, { title: 1, authorName: 1 }).lean(),
+      this.comments.find({ _id: { $in: idsOf('comment') } }, { body: 1, postId: 1, authorName: 1 }).lean(),
+    ]);
+    const postsById = new Map(posts.map((post) => [String(post._id), post]));
+    const commentsById = new Map(comments.map((comment) => [String(comment._id), comment]));
+    return reports.map((report) => {
+      const targetId = String(report.targetId);
+      const post = report.targetType === 'post' ? postsById.get(targetId) : undefined;
+      const comment = report.targetType === 'comment' ? commentsById.get(targetId) : undefined;
+      return {
+        id: String(report._id), targetType: report.targetType, targetId, reason: report.reason, createdAt: report.createdAt,
+        target: post ? { postId: targetId, authorName: post.authorName, text: post.title }
+          : comment ? { postId: String(comment.postId), authorName: comment.authorName, text: comment.body.slice(0, 160) }
+          : null,
+      };
+    });
+  }
+
+  reportCount(): Promise<number> {
+    return this.reports.countDocuments();
+  }
+
+  async dismissReport(id: string): Promise<void> {
+    const result = await this.reports.deleteOne({ _id: objectId(id) });
+    if (!result.deletedCount) throw new NotFoundException('신고를 찾을 수 없습니다.');
   }
 }

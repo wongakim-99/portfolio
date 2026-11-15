@@ -1,5 +1,6 @@
 import { Transform } from 'class-transformer';
-import { IsEmail, IsEnum, IsString, Length, MaxLength } from 'class-validator';
+import { IsEmail, IsEnum, IsIn, IsString, Length, MaxLength } from 'class-validator';
+import { ROLES, type Role } from './community-roles.js';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const oneLine = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value);
@@ -70,6 +71,16 @@ export class WritePostDto {
   @IsString()
   @Length(20, 20_000)
   body: string;
+}
+
+export class RoleDto {
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
+  @IsEmail()
+  @MaxLength(120)
+  email: string;
+
+  @IsIn(ROLES)
+  role: Role;
 }
 
 export class ProfileDto {

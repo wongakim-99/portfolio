@@ -341,6 +341,78 @@ describe('community', () => {
     await request(server).get('/api/community/avatars/..%2F..%2Fsecret.png').expect(404);
     await request(server).get('/api/community/users/000000000000000000000000').expect(404);
   });
+
+  it('관리자 역할: ADMIN_TOKEN 으로만 지정하고, 관리자는 쪽지와 신고를 보고 남의 글을 지울 수만 있음', async () => {
+    const server = app.getHttpServer();
+    const ip = '203.0.113.140, 172.18.0.1';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return { cookie: (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0], user: res.body.user };
+    };
+    const owner = await join('owner@example.com', '운영자');
+    const member = await join('member@example.com', '회원');
+    expect(owner.user).toMatchObject({ role: 'member', permissions: [] });
+    await request(server).post('/api/messages')
+      .send({ name: '방문객', email: 'guest@example.com', message: '홈서버 구경 잘 했어요' }).expect(201);
+
+    await request(server).get('/api/community/admin/messages').expect(401);
+    await request(server).get('/api/community/admin/messages').set('Cookie', owner.cookie).expect(403);
+    await request(server).put('/api/community/admin/users/role').set('Cookie', owner.cookie)
+      .send({ email: 'owner@example.com', role: 'admin' }).expect(401);
+    const assign = (body: object) => request(server).put('/api/community/admin/users/role')
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`).send(body);
+    await assign({ email: 'owner@example.com', role: 'root' }).expect(400);
+    await assign({ email: 'nobody@example.com', role: 'admin' }).expect(404);
+    await assign({ email: 'OWNER@example.com', role: 'admin' }).expect(200);
+
+    // 역할은 요청마다 다시 읽으므로 이미 로그인한 세션에도 바로 반영됨
+    expect((await request(server).get('/api/community/auth/me').set('Cookie', owner.cookie).expect(200)).body.user)
+      .toMatchObject({ role: 'admin', permissions: expect.arrayContaining(['messages:read', 'content:moderate']) });
+    expect((await request(server).get(`/api/community/users/${owner.user.id}`).expect(200)).body.role).toBe('admin');
+
+    const summary = await request(server).get('/api/community/admin/summary').set('Cookie', owner.cookie).expect(200);
+    expect(summary.body.unreadMessages).toBeGreaterThanOrEqual(1);
+    expect(summary.headers['cache-control']).toContain('no-store');
+    const inbox = await request(server).get('/api/community/admin/messages').set('Cookie', owner.cookie).expect(200);
+    const message = inbox.body.messages.find((item: { name: string }) => item.name === '방문객');
+    expect(message).toMatchObject({ email: 'guest@example.com', message: '홈서버 구경 잘 했어요', readAt: null });
+    expect(message).not.toHaveProperty('visitorHash');
+    await request(server).post('/api/community/admin/messages/read').set('Cookie', member.cookie).expect(403);
+    await request(server).post('/api/community/admin/messages/read').set('Cookie', owner.cookie)
+      .set('Origin', 'https://evil.example').expect(403);
+    await request(server).post('/api/community/admin/messages/read').set('Cookie', owner.cookie).expect(204);
+    expect((await request(server).get('/api/community/admin/summary').set('Cookie', owner.cookie).expect(200)).body.unreadMessages).toBe(0);
+    await request(server).delete(`/api/community/admin/messages/${message.id}`).set('Cookie', member.cookie).expect(403);
+    await request(server).delete(`/api/community/admin/messages/${message.id}`).set('Cookie', owner.cookie).expect(204);
+    await request(server).delete(`/api/community/admin/messages/${message.id}`).set('Cookie', owner.cookie).expect(404);
+
+    const post = await request(server).post('/api/community/posts').set('X-Forwarded-For', ip).set('Cookie', member.cookie)
+      .send({ title: '신고될 회원 글', body: '관리자가 지울 수 있는지 확인하려고 쓴 글입니다.' }).expect(201);
+    const postId = post.body.post.id;
+    const report = () => request(server).post('/api/community/reports').set('X-Forwarded-For', ip).set('Cookie', owner.cookie)
+      .send({ targetType: 'post', targetId: postId, reason: 'spam' });
+    await report().expect(204);
+    const reportsFor = async () => (await request(server).get('/api/community/admin/reports').set('Cookie', owner.cookie).expect(200))
+      .body.reports.filter((item: { targetId: string }) => item.targetId === postId);
+    const [reported] = await reportsFor();
+    expect(reported).toMatchObject({ reason: 'spam', target: { postId, text: '신고될 회원 글', authorName: '회원' } });
+    await request(server).delete(`/api/community/admin/reports/${reported.id}`).set('Cookie', owner.cookie).expect(204);
+    expect(await reportsFor()).toEqual([]);
+    await report().expect(204);
+
+    // 관리자도 남의 글 내용은 고칠 수 없고, 관리 삭제만 할 수 있음
+    await request(server).patch(`/api/community/posts/${postId}`).set('Cookie', owner.cookie)
+      .send({ title: '관리자가 고친 제목', body: '관리자라도 남의 글 내용은 고칠 수 없어야 합니다.' }).expect(403);
+    await request(server).delete(`/api/community/admin/posts/${postId}`).set('Cookie', member.cookie).expect(403);
+    await request(server).delete(`/api/community/admin/posts/${postId}`).set('Cookie', owner.cookie).expect(204);
+    expect(await reportsFor()).toEqual([]);
+
+    await assign({ email: 'owner@example.com', role: 'member' }).expect(200);
+    await request(server).get('/api/community/admin/messages').set('Cookie', owner.cookie).expect(403);
+  });
 });
 
 // 가짜 /sys 를 만들어 홈서버 노트북의 센서 파일 구조를 흉내 냄

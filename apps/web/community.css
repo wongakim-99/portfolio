@@ -8,6 +8,9 @@
 .community-user { color: var(--ink-soft); font-size: 14px; }
 .community-me { gap: 10px; padding-left: 9px; }
 .community-me .avatar { width: 28px; height: 28px; font-size: 20px; }
+.community-admin { gap: 8px; }
+.community-badge { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--stamp-red); color: #fff; font-family: var(--font-mono); font-size: 12px; font-weight: 600; line-height: 1; }
+.text-btn-danger, .text-btn-danger:hover { color: var(--stamp-red); }
 
 .community-sheet { min-height: 300px; }
 .community-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; padding-bottom: 24px; border-bottom: 1px solid var(--paper-rule); }
@@ -64,6 +67,9 @@
 .profile-photo-actions .tape:disabled { opacity: .6; cursor: wait; transform: none; }
 .profile-text { min-width: 0; padding-top: 4px; }
 .profile-hand { margin: 0 0 2px; color: var(--pen); font-size: clamp(25px, 3vw, 30px); transform: rotate(-2deg); transform-origin: left; }
+.profile-name-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; }
+/* 운영자 계정에 찍는 빨간 도장 */
+.profile-role { display: inline-flex; align-items: center; padding: 2px 10px; border: 2px solid var(--stamp-red); border-radius: 6px; color: var(--stamp-red); font-size: 14px; font-weight: 700; letter-spacing: .12em; opacity: .9; transform: rotate(-6deg); }
 .profile-text h2 { margin: 0; font-family: var(--font-display); font-size: clamp(36px, 5.2vw, 54px); font-weight: 700; line-height: 1.2; letter-spacing: -.03em; overflow-wrap: anywhere; text-wrap: balance; }
 .profile-bio { max-width: 52ch; margin: 14px 0 0; font-size: 17px; line-height: 1.8; white-space: pre-wrap; overflow-wrap: anywhere; text-wrap: pretty; }
 .profile-bio.is-empty { color: var(--ink-soft); font-size: 15px; }
@@ -75,6 +81,27 @@
 .profile-block #logout { margin-top: 6px; }
 .profile-posts { padding-top: 38px; }
 .profile-posts .community-post:first-child { padding-top: 6px; }
+
+/* 관리실: 받은 쪽지는 엽서에 쓴 그대로 손글씨로 보여 줌 */
+#admin-section > h2 { margin: 0; font-family: var(--font-display); font-size: clamp(36px, 5.2vw, 54px); line-height: 1.2; letter-spacing: -.03em; }
+.admin-lead { margin: 10px 0 0; }
+.admin-block { padding-top: 44px; }
+.admin-block h3 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+.admin-block .community-section-head { padding-bottom: 18px; }
+.inbox-card { padding: 24px 0 22px; border-bottom: 1px dashed var(--paper-rule); }
+.inbox-card:last-child { border-bottom: 0; }
+.inbox-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.inbox-from { margin: 0; font-size: 16px; }
+.inbox-new { flex: none; padding: 1px 9px; border: 2px solid var(--stamp-red); border-radius: 999px; color: var(--stamp-red); font-size: 12px; font-weight: 700; transform: rotate(-4deg); }
+.inbox-body { max-width: 62ch; margin: 8px 0 10px; font-family: var(--font-hand); font-size: 25px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.inbox-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 0; }
+.inbox-foot a.text-btn { text-decoration: none; overflow-wrap: anywhere; }
+.admin-report { padding: 20px 0; border-bottom: 1px dashed var(--paper-rule); }
+.admin-report:last-child { border-bottom: 0; }
+.admin-report .community-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; }
+.admin-report-target { margin: 6px 0 0; overflow-wrap: anywhere; }
+.admin-report-target a { font-weight: 600; text-underline-offset: 4px; }
+.admin-report-target span { color: var(--ink-soft); font-size: 14px; }
 
 #editor-section .community-meta { margin: 8px 0 28px; }
 #post-form { max-width: 720px; }

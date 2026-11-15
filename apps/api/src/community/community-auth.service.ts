@@ -7,6 +7,7 @@ import { Types } from 'mongoose';
 import type { ChangePasswordDto, LoginDto, RegisterDto } from './community.dto.js';
 import { CommunityMailService } from './community-mail.service.js';
 import { CommunitySession, CommunityToken, CommunityUser } from './community.schemas.js';
+import { permissionsOf, type Permission, type Role } from './community-roles.js';
 import { avatarUrl } from './community-storage.service.js';
 
 const SCRYPT_OPTIONS = { N: 1 << 14, r: 8, p: 5, maxmem: 64 * 1024 * 1024 };
@@ -16,10 +17,19 @@ const RESET_AGE_MS = 30 * 60 * 1000;
 const COOKIE_NAME = process.env.NODE_ENV === 'production' ? '__Host-community' : 'community_dev';
 const DUMMY_SALT = '75a01a8965ae6ecda2a65c3829c20abd';
 
-export type CommunityIdentity = { id: string; name: string; email: string; avatarUrl: string | null };
+export type CommunityIdentity = {
+  id: string; name: string; email: string; avatarUrl: string | null; role: Role; permissions: Permission[];
+};
 
-function identity(user: { _id: Types.ObjectId; email: string; name: string; avatar?: string | null }): CommunityIdentity {
-  return { id: String(user._id), email: user.email, name: user.name, avatarUrl: avatarUrl(user.avatar) };
+type IdentitySource = { _id: Types.ObjectId; email: string; name: string; avatar?: string | null; role?: Role | null };
+
+// 페이지는 permissions 로 버튼을 보이거나 숨기기만 하고, 실제 허용 여부는 서버가 요청마다 다시 확인함
+function identity(user: IdentitySource): CommunityIdentity {
+  const role = user.role ?? 'member';
+  return {
+    id: String(user._id), email: user.email, name: user.name, avatarUrl: avatarUrl(user.avatar),
+    role, permissions: permissionsOf(role),
+  };
 }
 
 function tokenHash(token: string): string {
@@ -185,7 +195,7 @@ export class CommunityAuthService {
     if (!token) return null;
     const session = await this.sessions.findOne({ tokenHash: tokenHash(token), expiresAt: { $gt: new Date() } }).lean();
     if (!session) return null;
-    const user = await this.users.findOne({ _id: session.userId, verifiedAt: { $ne: null } }, { name: 1, email: 1, avatar: 1 }).lean();
+    const user = await this.users.findOne({ _id: session.userId, verifiedAt: { $ne: null } }, { name: 1, email: 1, avatar: 1, role: 1 }).lean();
     return user ? identity(user) : null;
   }
 

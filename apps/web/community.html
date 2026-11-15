@@ -46,6 +46,7 @@
         <button class="tape tape-lg" id="write-open" type="button">글 쓰기</button>
         <button class="btn-line" id="auth-open" type="button">로그인 / 가입</button>
         <a class="btn-line community-me" id="me-link" href="community.html" hidden><span id="me-avatar"></span>내 페이지</a>
+        <a class="btn-line community-admin" id="admin-link" href="community.html?admin=1" hidden>관리실<span class="community-badge" id="admin-badge" hidden></span></a>
         <span class="community-user" id="user-label" aria-live="polite"></span>
       </div>
     </header>
@@ -96,7 +97,7 @@
         </div>
         <div class="profile-text">
           <p class="hand profile-hand" id="profile-hand"></p>
-          <h2 id="profile-name"></h2>
+          <div class="profile-name-row"><h2 id="profile-name"></h2><span class="profile-role" id="profile-role" hidden>운영자</span></div>
           <p class="profile-bio" id="profile-bio"></p>
           <p class="community-meta profile-stats" id="profile-stats"></p>
           <p class="form-status" id="avatar-status" role="status" aria-live="polite"></p>
@@ -133,6 +134,23 @@
         <div id="profile-post-list" aria-live="polite"></div>
         <button class="btn-line community-more" id="profile-posts-more" type="button" hidden>글 더 보기</button>
       </section>
+    </section>
+
+    <section class="sheet community-sheet" id="admin-section" hidden aria-labelledby="admin-title">
+      <a class="community-back" href="community.html">← 모든 글</a>
+      <p class="hand profile-hand">운영자에게만 보이는 곳</p>
+      <h2 id="admin-title">관리실</h2>
+      <p class="community-meta admin-lead" id="admin-lead">홈 엽서로 받은 쪽지와 피드 신고를 봅니다.</p>
+      <section class="admin-block" id="inbox-block" aria-labelledby="inbox-title">
+        <div class="community-section-head"><h3 id="inbox-title">쪽지함</h3><span class="community-meta" id="inbox-meta"></span></div>
+        <div id="inbox-list" aria-live="polite"></div>
+        <button class="btn-line community-more" id="inbox-more" type="button" hidden>쪽지 더 보기</button>
+      </section>
+      <section class="admin-block" id="reports-block" aria-labelledby="reports-title">
+        <div class="community-section-head"><h3 id="reports-title">신고</h3><span class="community-meta" id="reports-meta"></span></div>
+        <div id="admin-report-list" aria-live="polite"></div>
+      </section>
+      <p class="form-status" id="admin-status" role="status" aria-live="polite"></p>
     </section>
 
     <section class="sheet community-sheet" id="editor-section" hidden aria-labelledby="editor-title">

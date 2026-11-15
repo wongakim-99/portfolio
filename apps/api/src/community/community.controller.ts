@@ -1,12 +1,17 @@
 import {
-  Body, Controller, Delete, Get, HttpCode, NotFoundException, Post, Patch, Put, Query, Req, Res,
+  Body, Controller, Delete, Get, Header, HttpCode, NotFoundException, Post, Patch, Put, Query, Req, Res,
   UnsupportedMediaTypeException, UseGuards,
 } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
 import { AdminTokenGuard } from '../messages/admin-token.guard.js';
+import { MessagesService } from '../messages/messages.service.js';
 import { CommunityAuthService } from './community-auth.service.js';
-import { ChangePasswordDto, EmailDto, LoginDto, ProfileDto, RegisterDto, ReportDto, ResetPasswordDto, TokenDto, WriteCommentDto, WritePostDto } from './community.dto.js';
+import {
+  ChangePasswordDto, EmailDto, LoginDto, ProfileDto, RegisterDto, ReportDto, ResetPasswordDto, RoleDto, TokenDto,
+  WriteCommentDto, WritePostDto,
+} from './community.dto.js';
+import { RequirePermission } from './community-permission.guard.js';
 import { CommunityPostsService } from './community-posts.service.js';
 import { CommunityProfileService } from './community-profile.service.js';
 import { AVATAR_FILE, CommunityStorageService } from './community-storage.service.js';
@@ -24,6 +29,7 @@ export class CommunityController {
     private readonly posts: CommunityPostsService,
     private readonly profiles: CommunityProfileService,
     private readonly storage: CommunityStorageService,
+    private readonly messages: MessagesService,
   ) {}
 
   @Get('auth/me')
@@ -227,23 +233,74 @@ export class CommunityController {
     await this.posts.report(dto, await this.auth.require(req));
   }
 
-  @Get('admin/reports')
+  // 아래 관리 API 는 관리자 역할로 로그인한 세션이나 서버의 ADMIN_TOKEN 으로 씀 (community-permission.guard.ts)
+  @Put('admin/users/role')
   @UseGuards(AdminTokenGuard)
+  async setRole(@Body() dto: RoleDto, @Req() req: Request) {
+    jsonOnly(req);
+    return { user: await this.profiles.setRole(dto) };
+  }
+
+  @Get('admin/summary')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermission('messages:read')
+  async adminSummary() {
+    const [unreadMessages, reports] = await Promise.all([this.messages.unreadCount(), this.posts.reportCount()]);
+    return { unreadMessages, reports };
+  }
+
+  @Get('admin/messages')
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermission('messages:read')
+  async inbox(@Query('before') before?: string) {
+    return { ...(await this.messages.inbox(before)), unread: await this.messages.unreadCount() };
+  }
+
+  @Post('admin/messages/read')
+  @HttpCode(204)
+  @RequirePermission('messages:read')
+  async markMessagesRead(@Req() req: Request) {
+    this.auth.assertSameOrigin(req);
+    await this.messages.markAllRead();
+  }
+
+  @Delete('admin/messages/:id')
+  @HttpCode(204)
+  @RequirePermission('messages:delete')
+  async removeMessage(@Req() req: Request) {
+    this.auth.assertSameOrigin(req);
+    await this.messages.remove(req.params.id as string);
+  }
+
+  @Get('admin/reports')
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermission('reports:read')
   async reportsForAdmin() {
     return { reports: await this.posts.reportsForAdmin() };
   }
 
+  @Delete('admin/reports/:id')
+  @HttpCode(204)
+  @RequirePermission('reports:dismiss')
+  async dismissReport(@Req() req: Request) {
+    this.auth.assertSameOrigin(req);
+    await this.posts.dismissReport(req.params.id as string);
+  }
+
   @Delete('admin/posts/:id')
   @HttpCode(204)
-  @UseGuards(AdminTokenGuard)
+  @RequirePermission('content:moderate')
   async adminRemovePost(@Req() req: Request) {
+    this.auth.assertSameOrigin(req);
     await this.posts.remove(req.params.id as string);
   }
 
   @Delete('admin/comments/:id')
   @HttpCode(204)
-  @UseGuards(AdminTokenGuard)
+  @RequirePermission('content:moderate')
   async adminRemoveComment(@Req() req: Request) {
+    this.auth.assertSameOrigin(req);
     await this.posts.removeComment(req.params.id as string);
   }
 }

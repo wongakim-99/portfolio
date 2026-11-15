@@ -1,12 +1,15 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const params = new URLSearchParams(location.search);
 const dateText = (value) => new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(value));
+const dateTimeText = (value) => new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(value));
+const reasonText = { spam: '광고 / 스팸', abuse: '모욕 / 괴롭힘', other: '기타' };
 const draftKey = 'community-post-draft';
 let user = null;
 let openedPost = null;
 let openedProfile = null;
 let profileCursor = null;
 let uploadsEnabled = false;
+let inboxCursor = null;
 let editPostId = null;
 let postCursor = null;
 let commentCursor = null;
@@ -47,8 +50,11 @@ function button(text, onClick, className = 'text-btn') {
   return element;
 }
 
+// 버튼을 보이거나 숨기는 데만 씀. 실제 허용 여부는 서버가 요청마다 역할로 다시 확인함
+const can = (permission) => Boolean(user?.permissions?.includes(permission));
+
 function showSection(which) {
-  for (const id of ['feed-section', 'post-section', 'profile-section', 'editor-section']) {
+  for (const id of ['feed-section', 'post-section', 'profile-section', 'admin-section', 'editor-section']) {
     $(`#${id}`).hidden = id !== which;
   }
 }
@@ -107,6 +113,21 @@ function updateUser() {
     $('#me-avatar').replaceChildren(avatar(user));
     $('#account-email').textContent = user.email;
   }
+  $('#admin-link').hidden = !can('messages:read');
+  if (can('messages:read')) loadAdminSummary();
+}
+
+async function loadAdminSummary() {
+  try {
+    const { unreadMessages } = await request('/admin/summary');
+    setUnread(unreadMessages);
+  } catch { /* 배지만 못 보여 줄 뿐 다른 화면에는 영향 없음 */ }
+}
+function setUnread(count) {
+  const badge = $('#admin-badge');
+  badge.hidden = !count;
+  badge.textContent = count > 99 ? '99+' : String(count);
+  $('#admin-link').setAttribute('aria-label', count ? `관리실, 새 쪽지 ${count}개` : '관리실');
 }
 
 const lamp = $('#lamp');
@@ -255,7 +276,7 @@ $('#logout').addEventListener('click', async () => {
     await request('/auth/logout', { method: 'POST' });
     user = null;
     updateUser();
-    if (editPostId || params.has('write')) location.href = 'community.html';
+    if (editPostId || params.has('write') || params.has('admin')) location.href = 'community.html';
     else if (openedPost) renderPostActions(openedPost);
     else if (openedProfile) renderProfile();
   } catch (error) {
@@ -341,6 +362,15 @@ function renderPostActions(post) {
     );
   } else {
     actions.append(button('신고', () => beginReport('post', post.id)));
+    if (can('content:moderate')) {
+      actions.append(button('관리자 삭제', async () => {
+        if (!confirm('관리자 권한으로 이 글과 댓글을 삭제할까요? 되돌릴 수 없습니다.')) return;
+        try {
+          await request(`/admin/posts/${post.id}`, { method: 'DELETE' });
+          location.href = 'community.html';
+        } catch (error) { status('#comment-status', error.message, 'error'); }
+      }, 'text-btn text-btn-danger'));
+    }
   }
   $('#comment-form').hidden = !user;
   $('#comment-login').hidden = Boolean(user);
@@ -405,6 +435,17 @@ function commentRow(comment) {
     );
   } else {
     actions.append(button('신고', () => beginReport('comment', comment.id)));
+    if (can('content:moderate')) {
+      actions.append(button('관리자 삭제', async () => {
+        if (!confirm('관리자 권한으로 이 댓글을 삭제할까요?')) return;
+        try {
+          await request(`/admin/comments/${comment.id}`, { method: 'DELETE' });
+          article.remove();
+          openedPost.commentCount = Math.max(0, openedPost.commentCount - 1);
+          renderPostMeta(openedPost);
+        } catch (error) { status('#comment-status', error.message, 'error'); }
+      }, 'text-btn text-btn-danger'));
+    }
   }
   article.append(meta, body, actions);
   return article;
@@ -477,6 +518,7 @@ function renderProfile() {
   const mine = user?.id === profile.id;
   $('#profile-hand').textContent = mine ? '내 페이지' : `${profile.name}님의 페이지`;
   $('#profile-name').textContent = profile.name;
+  $('#profile-role').hidden = profile.role !== 'admin';
   $('#profile-photo').replaceChildren(avatar(profile));
   const bio = $('#profile-bio');
   bio.textContent = profile.bio || (mine ? '아직 소개가 없습니다. 아래 프로필 고치기에서 한 줄 남겨 보세요.' : '');
@@ -617,6 +659,150 @@ $('#avatar-remove').addEventListener('click', async () => {
   } catch (error) { status('#avatar-status', error.message, 'error'); }
 });
 
+function inboxCard(item) {
+  const article = document.createElement('article');
+  article.className = 'inbox-card';
+  const head = document.createElement('header');
+  head.className = 'inbox-head';
+  const from = document.createElement('p');
+  from.className = 'inbox-from';
+  const name = document.createElement('b');
+  name.textContent = item.name;
+  from.append(name);
+  if (!item.readAt) {
+    const fresh = document.createElement('span');
+    fresh.className = 'inbox-new';
+    fresh.textContent = '새 쪽지';
+    head.append(from, fresh);
+  } else {
+    head.append(from);
+  }
+  const body = document.createElement('p');
+  body.className = 'inbox-body';
+  body.textContent = item.message;
+  const foot = document.createElement('div');
+  foot.className = 'community-meta inbox-foot';
+  const when = document.createElement('span');
+  when.textContent = dateTimeText(item.createdAt);
+  foot.append(when);
+  if (item.email) {
+    const reply = document.createElement('a');
+    reply.className = 'text-btn';
+    reply.href = `mailto:${item.email}?subject=${encodeURIComponent('[김가원 포트폴리오] 쪽지 답장')}`;
+    reply.textContent = `${item.email}로 답장`;
+    foot.append(reply);
+  } else {
+    const none = document.createElement('span');
+    none.textContent = '답장 메일 없음';
+    foot.append(none);
+  }
+  if (can('messages:delete')) {
+    foot.append(button('삭제', async () => {
+      if (!confirm(`${item.name}님의 쪽지를 삭제할까요?`)) return;
+      try {
+        await request(`/admin/messages/${item.id}`, { method: 'DELETE' });
+        article.remove();
+        if (!$('#inbox-list').children.length) emptyLine($('#inbox-list'), '받은 쪽지가 없습니다.');
+      } catch (error) { status('#admin-status', error.message, 'error'); }
+    }));
+  }
+  article.append(head, body, foot);
+  return article;
+}
+
+function emptyLine(list, text) {
+  const empty = document.createElement('p');
+  empty.className = 'community-empty';
+  empty.textContent = text;
+  list.replaceChildren(empty);
+}
+
+async function loadInbox() {
+  const list = $('#inbox-list');
+  try {
+    const data = await request(`/admin/messages${inboxCursor ? `?before=${encodeURIComponent(inboxCursor)}` : ''}`);
+    if (!inboxCursor) {
+      list.replaceChildren();
+      $('#inbox-meta').textContent = data.unread ? `새 쪽지 ${data.unread}개` : '모두 읽음';
+      if (!data.messages.length) emptyLine(list, '받은 쪽지가 없습니다. 홈의 엽서로 쪽지가 오면 여기에 쌓입니다.');
+      // 지금 화면에는 '새 쪽지' 표시를 남겨 두고, 다음에 열 때부터는 읽은 것으로 봄
+      if (data.unread) request('/admin/messages/read', { method: 'POST' }).then(() => setUnread(0), () => {});
+    }
+    for (const item of data.messages) list.append(inboxCard(item));
+    inboxCursor = data.nextCursor;
+    $('#inbox-more').hidden = !inboxCursor;
+  } catch (error) { emptyLine(list, error.message); }
+}
+$('#inbox-more').addEventListener('click', loadInbox);
+
+function reportRow(report) {
+  const article = document.createElement('article');
+  article.className = 'admin-report';
+  const head = document.createElement('p');
+  head.className = 'community-meta';
+  metaLine(head, [reasonText[report.reason] ?? report.reason, report.targetType === 'post' ? '글' : '댓글', dateTimeText(report.createdAt)]);
+  const target = document.createElement('p');
+  target.className = 'admin-report-target';
+  if (report.target) {
+    const link = document.createElement('a');
+    link.href = `community.html?post=${encodeURIComponent(report.target.postId)}`;
+    link.textContent = report.target.text;
+    const by = document.createElement('span');
+    by.textContent = ` (${report.target.authorName})`;
+    target.append(link, by);
+  } else {
+    target.textContent = '이미 지워진 내용입니다.';
+  }
+  const actions = document.createElement('div');
+  actions.className = 'community-inline-actions';
+  const run = async (path, done) => {
+    try {
+      await request(path, { method: 'DELETE' });
+      done();
+    } catch (error) { status('#admin-status', error.message, 'error'); }
+  };
+  if (report.target && can('content:moderate')) {
+    const kind = report.targetType === 'post' ? '글' : '댓글';
+    actions.append(button(`${kind} 삭제`, () => {
+      if (!confirm(`신고된 ${kind}을 삭제할까요? 되돌릴 수 없습니다.`)) return;
+      run(`/admin/${report.targetType}s/${report.targetId}`, () => { status('#admin-status', `${kind}을 삭제했습니다.`, 'ok'); loadReports(); });
+    }, 'text-btn text-btn-danger'));
+  }
+  if (can('reports:dismiss')) {
+    actions.append(button('신고 닫기', () => run(`/admin/reports/${report.id}`, () => {
+      article.remove();
+      if (!$('#admin-report-list').children.length) emptyLine($('#admin-report-list'), '처리할 신고가 없습니다.');
+    })));
+  }
+  article.append(head, target, actions);
+  return article;
+}
+
+async function loadReports() {
+  const list = $('#admin-report-list');
+  try {
+    const { reports } = await request('/admin/reports');
+    $('#reports-meta').textContent = reports.length ? `${reports.length}건` : '';
+    if (!reports.length) return emptyLine(list, '처리할 신고가 없습니다.');
+    list.replaceChildren(...reports.map(reportRow));
+  } catch (error) { emptyLine(list, error.message); }
+}
+
+async function showAdmin() {
+  showSection('admin-section');
+  document.title = '관리실 | 김가원 피드';
+  if (!user) return openAuth(location.href);
+  if (!can('messages:read') && !can('reports:read')) {
+    $('#admin-lead').textContent = '관리자 권한이 있는 계정만 볼 수 있습니다.';
+    $('#inbox-block').hidden = true;
+    $('#reports-block').hidden = true;
+    return;
+  }
+  $('#inbox-block').hidden = !can('messages:read');
+  $('#reports-block').hidden = !can('reports:read');
+  await Promise.all([can('messages:read') && loadInbox(), can('reports:read') && loadReports()]);
+}
+
 function readDraft() {
   try { return JSON.parse(localStorage.getItem(draftKey)) ?? null; } catch { return null; }
 }
@@ -696,6 +882,7 @@ $('#post-form').addEventListener('submit', async (event) => {
   if (resetToken) $('#reset-dialog').showModal();
   if (params.has('post')) await showPost(params.get('post'));
   else if (params.has('user')) await showProfile(params.get('user'));
+  else if (params.has('admin')) await showAdmin();
   else if (params.has('edit')) await showEditor(params.get('edit'));
   else if (params.has('write')) await showEditor();
   else { showSection('feed-section'); await loadPosts(); }

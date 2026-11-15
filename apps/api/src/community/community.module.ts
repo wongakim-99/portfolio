@@ -1,9 +1,11 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { AdminTokenGuard } from '../messages/admin-token.guard.js';
+import { MessagesModule } from '../messages/messages.module.js';
 import { CommunityAuthService } from './community-auth.service.js';
 import { CommunityController } from './community.controller.js';
 import { CommunityMailService } from './community-mail.service.js';
+import { PermissionGuard } from './community-permission.guard.js';
 import { CommunityPostsService } from './community-posts.service.js';
 import { CommunityProfileService } from './community-profile.service.js';
 import { CommunityStorageService } from './community-storage.service.js';
@@ -14,7 +16,7 @@ import {
 } from './community.schemas.js';
 
 @Module({
-  imports: [MongooseModule.forFeature([
+  imports: [MessagesModule, MongooseModule.forFeature([
     { name: CommunityUser.name, schema: CommunityUserSchema },
     { name: CommunitySession.name, schema: CommunitySessionSchema },
     { name: CommunityToken.name, schema: CommunityTokenSchema },
@@ -25,7 +27,7 @@ import {
   controllers: [CommunityController],
   providers: [
     CommunityAuthService, CommunityPostsService, CommunityProfileService,
-    CommunityMailService, CommunityStorageService, AdminTokenGuard,
+    CommunityMailService, CommunityStorageService, AdminTokenGuard, PermissionGuard,
   ],
 })
 export class CommunityModule {}

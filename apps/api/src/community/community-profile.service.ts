@@ -3,7 +3,7 @@ import { InjectModel } from '@nestjs/mongoose';
 import { randomBytes } from 'node:crypto';
 import type { Model } from 'mongoose';
 import { Types } from 'mongoose';
-import type { ProfileDto } from './community.dto.js';
+import type { ProfileDto, RoleDto } from './community.dto.js';
 import { CommunityComment, CommunityPost, CommunityUser } from './community.schemas.js';
 import type { CommunityIdentity } from './community-auth.service.js';
 import { avatarUrl, CommunityStorageService } from './community-storage.service.js';
@@ -26,7 +26,7 @@ export class CommunityProfileService {
   ) {}
 
   async profile(id: string) {
-    const user = await this.users.findOne({ _id: userId(id), verifiedAt: { $ne: null } }, { name: 1, bio: 1, avatar: 1, createdAt: 1 }).lean();
+    const user = await this.users.findOne({ _id: userId(id), verifiedAt: { $ne: null } }, { name: 1, bio: 1, avatar: 1, role: 1, createdAt: 1 }).lean();
     if (!user) throw new NotFoundException('사용자를 찾을 수 없습니다.');
     const [postCount, commentCount] = await Promise.all([
       this.posts.countDocuments({ authorId: user._id }),
@@ -34,7 +34,7 @@ export class CommunityProfileService {
     ]);
     return {
       id: String(user._id), name: user.name, bio: user.bio ?? '', avatarUrl: avatarUrl(user.avatar),
-      createdAt: user.createdAt, postCount, commentCount,
+      role: user.role ?? 'member', createdAt: user.createdAt, postCount, commentCount,
     };
   }
 
@@ -49,6 +49,16 @@ export class CommunityProfileService {
       ]);
     }
     return this.profile(identity.id);
+  }
+
+  // 역할 지정은 서버의 ADMIN_TOKEN 으로만 함. 페이지에서 스스로 관리자가 되는 길은 없음
+  async setRole(dto: RoleDto) {
+    const user = await this.users.findOneAndUpdate(
+      { email: dto.email, verifiedAt: { $ne: null } }, { $set: { role: dto.role } },
+      { projection: { name: 1, email: 1, role: 1 }, returnDocument: 'after' },
+    ).lean();
+    if (!user) throw new NotFoundException('이메일 확인을 마친 회원을 찾을 수 없습니다.');
+    return { id: String(user._id), name: user.name, email: user.email, role: user.role };
   }
 
   async setAvatar(identity: CommunityIdentity, body: unknown) {
