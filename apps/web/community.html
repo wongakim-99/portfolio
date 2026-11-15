@@ -31,6 +31,11 @@
       <a href="portfolio.html">포트폴리오</a>
       <a href="community.html" aria-current="page">피드</a>
     </nav>
+    <div class="topbar-account" aria-label="계정">
+      <button class="account-pill" id="auth-open" type="button">로그인</button>
+      <a class="account-pill" id="admin-link" href="community.html?admin=1" hidden>관리실<span class="community-badge" id="admin-badge" hidden></span></a>
+      <a class="account-pill account-me" id="me-link" href="community.html" hidden><span id="me-avatar"></span><span class="account-me-text">내 페이지</span></a>
+    </div>
     <button class="lamp" id="lamp" type="button" aria-pressed="true">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path class="lamp-shade" d="M9 4h10l5 9H4z"/><path class="lamp-arm" d="M14 13v8l-5 6m5-6 6 6M6 28h16"/><circle class="lamp-bulb" cx="14" cy="15" r="2.2"/></svg>
       <span class="lamp-text" id="lamp-text">스탠드 끄기</span>
@@ -44,10 +49,6 @@
       <p>긴 글을 읽고 이야기를 이어 가는 공간입니다. 글과 댓글은 로그인한 뒤 남길 수 있어요.</p>
       <div class="community-toolbar">
         <button class="tape tape-lg" id="write-open" type="button">글 쓰기</button>
-        <button class="btn-line" id="auth-open" type="button">로그인 / 가입</button>
-        <a class="btn-line community-me" id="me-link" href="community.html" hidden><span id="me-avatar"></span>내 페이지</a>
-        <a class="btn-line community-admin" id="admin-link" href="community.html?admin=1" hidden>관리실<span class="community-badge" id="admin-badge" hidden></span></a>
-        <span class="community-user" id="user-label" aria-live="polite"></span>
       </div>
     </header>
 

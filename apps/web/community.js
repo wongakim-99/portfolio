@@ -105,11 +105,11 @@ function metaLine(element, items) {
 function updateUser() {
   $('#auth-open').hidden = Boolean(user);
   $('#me-link').hidden = !user;
-  $('#user-label').textContent = user ? `${user.name}님` : '';
   $('#comment-form').hidden = !user;
   $('#comment-login').hidden = Boolean(user);
   if (user) {
     $('#me-link').href = `community.html?user=${encodeURIComponent(user.id)}`;
+    $('#me-link').setAttribute('aria-label', `내 페이지 (${user.name})`);
     $('#me-avatar').replaceChildren(avatar(user));
     $('#account-email').textContent = user.email;
   }
@@ -516,6 +516,8 @@ $('#comment-form').addEventListener('submit', async (event) => {
 function renderProfile() {
   const profile = openedProfile;
   const mine = user?.id === profile.id;
+  if (mine) $('#me-link').setAttribute('aria-current', 'page');
+  else $('#me-link').removeAttribute('aria-current');
   $('#profile-hand').textContent = mine ? '내 페이지' : `${profile.name}님의 페이지`;
   $('#profile-name').textContent = profile.name;
   $('#profile-role').hidden = profile.role !== 'admin';
@@ -1033,6 +1035,7 @@ const topology = (() => {
 async function showAdmin() {
   showSection('admin-section');
   document.title = '관리실 | 김가원 피드';
+  $('#admin-link').setAttribute('aria-current', 'page');
   if (!user) return openAuth(location.href);
   if (!can('messages:read') && !can('reports:read')) {
     $('#admin-lead').textContent = '관리자 권한이 있는 계정만 볼 수 있습니다.';
