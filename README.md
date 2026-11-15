@@ -35,7 +35,7 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 
 - 글은 누구나 읽을 수 있고, 이메일 확인을 마친 회원만 글과 댓글을 작성, 수정, 삭제할 수 있음
 - 가입 확인 링크는 1시간, 비밀번호 재설정 링크는 30분 동안 한 번만 사용함. 링크 토큰과 세션 토큰은 해시만 MongoDB에 저장함
-- 비밀번호는 scrypt로 해시하고, 로그인 세션은 30일 만료 HttpOnly, Secure, SameSite=Strict 쿠키로 유지함. 로컬 HTTP 개발에서는 Secure 대신 별도 개발 쿠키를 사용함
+- 비밀번호는 10자 이상이고 scrypt로 해시하며, 로그인 세션은 30일 만료 HttpOnly, Secure, SameSite=Strict 쿠키로 유지함. 로컬 HTTP 개발에서는 Secure 대신 별도 개발 쿠키를 사용함
 - 게시글 본문은 줄바꿈을 살린 일반 텍스트다. 브라우저에서는 사용자 글을 `textContent`로 표시함
 - 프로필 사진은 브라우저에서 가운데 기준 정사각형 512px 이하로 다시 그려 올림. 이때 촬영 위치 같은 사진 속 정보(EXIF)가 빠짐
 - API 는 파일 내용으로 JPG, PNG, WebP 인지와 가로세로 2048px 이하인지를 다시 확인하고 MinIO 버킷 `community-media` 의 `avatars/` 에 저장함. 1MB 를 넘으면 413

@@ -263,6 +263,8 @@ describe('community', () => {
       .send({ email: 'reader@example.com', password: 'correct horse battery staple' }).expect(200);
     const currentCookie = (first.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
     await request(server).post('/api/community/auth/password').set('Cookie', currentCookie)
+      .send({ currentPassword: 'correct horse battery staple', newPassword: 'nine char' }).expect(400);
+    await request(server).post('/api/community/auth/password').set('Cookie', currentCookie)
       .send({ currentPassword: 'correct horse battery staple', newPassword: 'another long password 2026' }).expect(204);
     expect((await request(server).get('/api/community/auth/me').set('Cookie', oldCookie).expect(200)).body.user).toBeNull();
     await request(server).post('/api/community/auth/login')
@@ -294,8 +296,11 @@ describe('community', () => {
     const server = app.getHttpServer();
     // 앞선 테스트가 기본 주소의 요청 한도를 써 버려서 다른 주소로 보냄
     const ip = '203.0.113.120, 172.18.0.1';
+    // 비밀번호는 10자부터 받음
     await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
-      .send({ email: 'photo@example.com', name: '사진주인', password: 'correct horse battery staple' }).expect(202);
+      .send({ email: 'short@example.com', name: '짧은비번', password: 'nine char' }).expect(400);
+    await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+      .send({ email: 'photo@example.com', name: '사진주인', password: 'ten chars!' }).expect(202);
     const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === 'photo@example.com')!.token;
     const verified = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
     const cookie = (verified.headers['set-cookie'] as unknown as string[])[0].split(';')[0];

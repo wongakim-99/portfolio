@@ -4,6 +4,9 @@ import { ROLES, type Role } from './community-roles.js';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const oneLine = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value);
+// 새 비밀번호 길이. 페이지의 minlength 와 안내 문구(community.html)도 같은 값을 씀
+const PASSWORD_MIN = 10;
+const PASSWORD_MAX = 128;
 
 export class RegisterDto {
   @Transform(({ value }) => (typeof value === 'string' ? value.trim().toLowerCase() : value))
@@ -17,7 +20,7 @@ export class RegisterDto {
   name: string;
 
   @IsString()
-  @Length(12, 128)
+  @Length(PASSWORD_MIN, PASSWORD_MAX)
   password: string;
 }
 
@@ -38,7 +41,7 @@ export class ChangePasswordDto {
   currentPassword: string;
 
   @IsString()
-  @Length(12, 128)
+  @Length(PASSWORD_MIN, PASSWORD_MAX)
   newPassword: string;
 }
 
@@ -57,7 +60,7 @@ export class TokenDto {
 
 export class ResetPasswordDto extends TokenDto {
   @IsString()
-  @Length(12, 128)
+  @Length(PASSWORD_MIN, PASSWORD_MAX)
   newPassword: string;
 }
 

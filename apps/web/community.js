@@ -105,6 +105,7 @@ function metaLine(element, items) {
 function updateUser() {
   $('#auth-open').hidden = Boolean(user);
   $('#me-link').hidden = !user;
+  $('#topbar-logout').hidden = !user;
   $('#comment-form').hidden = !user;
   $('#comment-login').hidden = Boolean(user);
   if (user) {
@@ -271,7 +272,8 @@ $('#password-form').addEventListener('submit', async (event) => {
     submit.disabled = false;
   }
 });
-$('#logout').addEventListener('click', async () => {
+// 상단 로그아웃과 내 페이지 계정 칸의 로그아웃이 같이 씀
+async function logout(showError) {
   try {
     await request('/auth/logout', { method: 'POST' });
     user = null;
@@ -280,9 +282,11 @@ $('#logout').addEventListener('click', async () => {
     else if (openedPost) renderPostActions(openedPost);
     else if (openedProfile) renderProfile();
   } catch (error) {
-    status('#account-status', error.message, 'error');
+    showError(error.message);
   }
-});
+}
+$('#logout').addEventListener('click', () => logout((message) => status('#account-status', message, 'error')));
+$('#topbar-logout').addEventListener('click', () => logout((message) => alert(message)));
 
 $('#write-open').addEventListener('click', () => {
   if (!user) openAuth('community.html?write=1');

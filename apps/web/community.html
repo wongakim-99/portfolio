@@ -35,6 +35,10 @@
       <button class="account-pill" id="auth-open" type="button">로그인</button>
       <a class="account-pill" id="admin-link" href="community.html?admin=1" hidden>관리실<span class="community-badge" id="admin-badge" hidden></span></a>
       <a class="account-pill account-me" id="me-link" href="community.html" hidden><span id="me-avatar"></span><span class="account-me-text">내 페이지</span></a>
+      <button class="account-pill account-logout" id="topbar-logout" type="button" hidden>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M9 16l-4-4 4-4M5 12h10"/></svg>
+        <span class="account-logout-text">로그아웃</span>
+      </button>
     </div>
     <button class="lamp" id="lamp" type="button" aria-pressed="true">
       <svg viewBox="0 0 32 32" aria-hidden="true"><path class="lamp-shade" d="M9 4h10l5 9H4z"/><path class="lamp-arm" d="M14 13v8l-5 6m5-6 6 6M6 28h16"/><circle class="lamp-bulb" cx="14" cy="15" r="2.2"/></svg>
@@ -122,7 +126,7 @@
           <p class="community-meta">로그인 이메일 <b id="account-email"></b><br>이메일은 나에게만 보입니다.</p>
           <form id="password-form" class="community-form">
             <label for="current-password">현재 비밀번호</label><input id="current-password" name="currentPassword" type="password" required autocomplete="current-password">
-            <label for="new-password">새 비밀번호 <small>12자 이상</small></label><input id="new-password" name="newPassword" type="password" required minlength="12" maxlength="128" autocomplete="new-password">
+            <label for="new-password">새 비밀번호 <small>10자 이상</small></label><input id="new-password" name="newPassword" type="password" required minlength="10" maxlength="128" autocomplete="new-password">
             <button class="tape" type="submit">비밀번호 변경</button>
           </form>
           <p class="form-status" id="account-status" role="status" aria-live="polite"></p>
@@ -204,7 +208,7 @@
     <form id="register-form" class="community-form" hidden>
       <label for="register-email">이메일</label><input id="register-email" type="email" name="email" required maxlength="120" autocomplete="email">
       <label for="register-name">표시 이름</label><input id="register-name" name="name" required minlength="2" maxlength="30" autocomplete="nickname">
-      <label for="register-password">비밀번호 <small>12자 이상</small></label><input id="register-password" type="password" name="password" required minlength="12" maxlength="128" autocomplete="new-password">
+      <label for="register-password">비밀번호 <small>10자 이상</small></label><input id="register-password" type="password" name="password" required minlength="10" maxlength="128" autocomplete="new-password">
       <button class="tape" type="submit">계정 만들기</button>
     </form>
     <form id="reset-request-form" class="community-form" hidden>
@@ -223,7 +227,7 @@
   <dialog class="community-dialog" id="reset-dialog" aria-labelledby="reset-title">
     <div class="community-dialog-head"><h2 id="reset-title">새 비밀번호</h2><button class="text-btn" id="reset-close" type="button">닫기</button></div>
     <form id="reset-form" class="community-form">
-      <label for="reset-password">새 비밀번호 <small>12자 이상</small></label><input id="reset-password" type="password" name="newPassword" required minlength="12" maxlength="128" autocomplete="new-password">
+      <label for="reset-password">새 비밀번호 <small>10자 이상</small></label><input id="reset-password" type="password" name="newPassword" required minlength="10" maxlength="128" autocomplete="new-password">
       <button class="tape" type="submit">비밀번호 바꾸기</button>
     </form>
     <p class="form-status" id="reset-status" role="status" aria-live="polite"></p>
