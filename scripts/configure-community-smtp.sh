@@ -19,17 +19,8 @@ if [[ ! "$mail_address" =~ ^[a-z0-9._-]+@naver\.com$ || ! "$app_password" =~ ^[A
   exit 1
 fi
 
-# -w without an argument prompts on stdin twice, so the secret never appears in process arguments.
-printf '%s\n%s\n' "$app_password" "$app_password" |
-  security add-generic-password -a "$mail_address" -s gawon-portfolio-community-smtp \
-    -l '포트폴리오 피드 네이버 SMTP' -U -w >/dev/null
-if ! { security find-generic-password -a "$mail_address" -s gawon-portfolio-community-smtp -w;
-       printf '%s\n' "$app_password"; } |
-    python3 -c 'import hmac,sys; a=sys.stdin.read().splitlines(); sys.exit(0 if len(a)==2 and hmac.compare_digest(*a) else 1)'; then
-  echo '키체인 저장값을 확인하지 못했습니다. 홈서버 설정은 변경하지 않았습니다.' >&2
-  exit 1
-fi
-echo 'Mac 키체인에 비밀번호를 저장했습니다.'
+printf '%s' "$app_password" |
+  swift "$(dirname "$0")/store-community-smtp-password.swift" "$mail_address"
 
 remote_code=$(cat <<'PY'
 import os
