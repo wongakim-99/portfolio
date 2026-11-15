@@ -9,11 +9,12 @@ export type Permission =
   | 'messages:delete'
   | 'reports:read' // 피드 신고 보기
   | 'reports:dismiss'
-  | 'content:moderate'; // 남의 글과 댓글 삭제 (수정은 못 함)
+  | 'content:moderate' // 남의 글과 댓글 삭제 (수정은 못 함)
+  | 'server:read'; // 관리실의 실시간 서버 토폴로지
 
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   member: [],
-  admin: ['messages:read', 'messages:delete', 'reports:read', 'reports:dismiss', 'content:moderate'],
+  admin: ['messages:read', 'messages:delete', 'reports:read', 'reports:dismiss', 'content:moderate', 'server:read'],
 };
 
 export function permissionsOf(role?: string | null): Permission[] {

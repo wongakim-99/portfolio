@@ -788,6 +788,248 @@ async function loadReports() {
   } catch (error) { emptyLine(list, error.message); }
 }
 
+// 관리실 '지금 서버'. 실제 요청, DB 명령, 사진 저장소 작업을 2초마다 받아 일어난 간격 그대로 점으로 흘려보냄
+// 페이지 요청은 방문자에서 api 까지 들어갔다가 응답 색으로 돌아오고, DB 와 저장소 작업은 api 에서 오감
+const topology = (() => {
+  const SVG = 'http://www.w3.org/2000/svg';
+  const LAYOUTS = {
+    wide: {
+      view: [960, 300], box: [124, 58], host: [330, 22, 612, 256], hostLabel: 'top',
+      at: { visitors: [70, 150], funnel: [245, 150], web: [425, 150], api: [605, 150], mongo: [845, 84], minio: [845, 216] },
+    },
+    tall: {
+      view: [360, 630], box: [140, 54], host: [14, 214, 332, 404], hostLabel: 'bottom',
+      at: { visitors: [180, 44], funnel: [180, 140], web: [180, 262], api: [180, 380], mongo: [95, 548], minio: [265, 548] },
+    },
+  };
+  const NODES = [
+    ['visitors', '방문자'], ['funnel', 'Funnel'], ['web', 'web (Caddy)'],
+    ['api', 'api (NestJS)'], ['mongo', 'mongo'], ['minio', 'minio'],
+  ];
+  const EDGES = [['visitors', 'funnel', 'http'], ['funnel', 'web', 'http'], ['web', 'api', 'http'], ['api', 'mongo', 'db'], ['api', 'minio', 'storage']];
+  const ROUTES = { http: ['visitors', 'funnel', 'web', 'api'], db: ['api', 'mongo'], storage: ['api', 'minio'] };
+  const LAG_MS = 2200;
+  const clock = new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' });
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const packets = new Set();
+  const pulses = new Map();
+  const recent = [];
+  let stage = null;
+  let svg = null;
+  let packetLayer = null;
+  let layout = null;
+  let last = null;
+  let cursor = null;
+  let skew = 0;
+  let timer = null;
+  let frame = null;
+  let running = false;
+
+  const node = (name, attrs = {}, parent = null) => {
+    const element = document.createElementNS(SVG, name);
+    for (const [key, value] of Object.entries(attrs)) element.setAttribute(key, value);
+    parent?.append(element);
+    return element;
+  };
+  const duration = (seconds) => {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    return days ? `${days}일 ${hours}시간` : hours ? `${hours}시간 ${minutes}분` : `${minutes}분`;
+  };
+
+  function build() {
+    const next = LAYOUTS[stage.clientWidth < 640 ? 'tall' : 'wide'];
+    if (svg && next === layout) return;
+    layout = next;
+    for (const packet of packets) packet.dot.remove();
+    packets.clear();
+    svg = node('svg', {
+      viewBox: `0 0 ${layout.view.join(' ')}`, class: 'topology-svg', role: 'img',
+      'aria-label': '서버 구성도. 방문자가 Tailscale Funnel, Caddy, NestJS 를 거쳐 MongoDB 와 MinIO 로 이어짐',
+    });
+    const [hx, hy, hw, hh] = layout.host;
+    node('rect', { x: hx, y: hy, width: hw, height: hh, rx: 14, class: 'topology-host-box' }, svg);
+    const labelY = layout.hostLabel === 'top' ? hy + 20 : hy + hh - 12;
+    node('text', { x: hx + 14, y: labelY, class: 'topology-host-label' }, svg).textContent = 'gawon-dev 노트북 / Docker';
+    const edges = node('g', {}, svg);
+    packetLayer = node('g', {}, svg);
+    const boxes = node('g', {}, svg);
+    for (const [from, to, kind] of EDGES) {
+      const [x1, y1] = layout.at[from];
+      const [x2, y2] = layout.at[to];
+      node('line', { x1, y1, x2, y2, class: 'topology-edge' }, edges);
+      // 선의 한쪽 옆에 분당 횟수를 적음. 세로선이면 오른쪽, 가로선이면 위
+      const length = Math.hypot(x2 - x1, y2 - y1);
+      const [nx, ny] = [(y2 - y1) / length, -(x2 - x1) / length];
+      node('text', {
+        x: (x1 + x2) / 2 + nx * 12, y: (y1 + y2) / 2 + ny * 12 + 4, class: 'topology-rate', 'data-rate': kind,
+        'text-anchor': nx > 0.5 ? 'start' : nx < -0.5 ? 'end' : 'middle',
+      }, edges);
+    }
+    const [width, height] = layout.box;
+    for (const [key, title] of NODES) {
+      const [cx, cy] = layout.at[key];
+      const group = node('g', { class: `topology-node${key === 'visitors' ? ' is-outside' : ''}`, 'data-node': key, transform: `translate(${cx} ${cy})` }, boxes);
+      const body = node('g', { class: 'topology-node-body' }, group);
+      node('rect', { x: -width / 2, y: -height / 2, width, height, rx: 9 }, body);
+      node('text', { x: -width / 2 + 12, y: -4, class: 'topology-title' }, body).textContent = title;
+      node('text', { x: -width / 2 + 12, y: 15, class: 'topology-stat', 'data-stat': key }, body);
+      node('circle', { cx: width / 2 - 12, cy: -height / 2 + 12, r: 4.5, class: 'topology-led', 'data-led': key, 'data-state': 'unknown' }, body);
+    }
+    stage.replaceChildren(svg);
+    if (last) render(last);
+  }
+
+  function pulse(key) {
+    const group = svg?.querySelector(`[data-node="${key}"]`);
+    if (!group) return;
+    group.classList.add('is-hit');
+    clearTimeout(pulses.get(key));
+    pulses.set(key, setTimeout(() => group.classList.remove('is-hit'), 220));
+  }
+
+  function launch(event) {
+    const route = ROUTES[event.kind];
+    if (!svg || !route) return;
+    if (reduced.matches) return pulse(route.at(-1));
+    if (packets.size > 80) return;
+    const dot = node('circle', { r: event.kind === 'http' ? 5 : 4, class: `topology-packet is-${event.kind}` }, packetLayer);
+    const response = event.status >= 500 ? 'is-error' : event.status >= 400 ? 'is-warn' : event.kind === 'http' ? 'is-ok' : '';
+    packets.add({
+      dot, response, path: [...route, ...route.slice(0, -1).reverse()], turn: route.length - 1,
+      hop: event.kind === 'http' ? 380 : 280, start: performance.now(), reached: -1,
+    });
+    frame ??= requestAnimationFrame(tick);
+  }
+
+  function tick(now) {
+    for (const packet of packets) {
+      const progress = (now - packet.start) / packet.hop;
+      const index = Math.floor(progress);
+      if (index >= packet.path.length - 1) {
+        packet.dot.remove();
+        packets.delete(packet);
+        pulse(packet.path.at(-1));
+        continue;
+      }
+      if (index !== packet.reached) {
+        packet.reached = index;
+        pulse(packet.path[index]);
+        if (index === packet.turn && packet.response) packet.dot.classList.add(packet.response);
+      }
+      const [x1, y1] = layout.at[packet.path[index]];
+      const [x2, y2] = layout.at[packet.path[index + 1]];
+      const t = progress - index;
+      const eased = t < 0.5 ? 2 * t * t : 1 - (-2 * t + 2) ** 2 / 2;
+      packet.dot.setAttribute('cx', x1 + (x2 - x1) * eased);
+      packet.dot.setAttribute('cy', y1 + (y2 - y1) * eased);
+    }
+    frame = packets.size ? requestAnimationFrame(tick) : null;
+  }
+
+  // 서버에서 일어난 시각에 LAG_MS 를 더한 때에 재생해서, 2초마다 받아도 실제 간격대로 흘러감
+  function replay(events) {
+    events.slice(-80).forEach((event, index) => {
+      const wait = Math.max(index * 35, event.at + skew + LAG_MS - Date.now());
+      setTimeout(() => launch(event), Math.min(wait, 4000));
+    });
+  }
+
+  function remember(events) {
+    for (const event of events) if (event.kind === 'http') recent.unshift(event);
+    recent.splice(12);
+    $('#topology-log').replaceChildren(...recent.map((event) => {
+      const item = document.createElement('li');
+      item.className = event.status >= 500 ? 'is-error' : event.status >= 400 ? 'is-warn' : '';
+      for (const text of [clock.format(event.at), event.label, String(event.status), `${event.ms}ms`]) {
+        const span = document.createElement('span');
+        span.textContent = text;
+        item.append(span);
+      }
+      return item;
+    }));
+    if (!recent.length) {
+      const item = document.createElement('li');
+      item.textContent = '아직 들어온 요청이 없습니다.';
+      $('#topology-log').append(item);
+    }
+  }
+
+  function render(data) {
+    last = data;
+    const { nodes, rates } = data;
+    const set = (key, text, state) => {
+      svg.querySelector(`[data-stat="${key}"]`).textContent = text;
+      svg.querySelector(`[data-led="${key}"]`).dataset.state = state;
+    };
+    const ms = (value) => (value === null ? '' : `, ${value}ms`);
+    set('visitors', `5분 안 ${data.visitors}명`, data.visitors ? 'ok' : 'idle');
+    set('funnel', 'Tailscale :443', 'ok');
+    set('web', nodes.web.proxied ? '리버스 프록시' : '로컬 개발', 'ok');
+    set('api', `${rates.http}/분${ms(nodes.api.httpMs)}`, 'ok');
+    set('mongo', nodes.mongo.up ? `${rates.db}/분${ms(nodes.mongo.ms)}` : '연결 끊김', nodes.mongo.up ? (nodes.mongo.ms > 200 ? 'warn' : 'ok') : 'down');
+    set('minio', !nodes.minio ? '설정 안 됨' : nodes.minio.up ? `${rates.storage}/분, ${nodes.minio.ms}ms` : '응답 없음',
+      !nodes.minio ? 'idle' : nodes.minio.up ? 'ok' : 'down');
+    for (const label of svg.querySelectorAll('[data-rate]')) label.textContent = `${rates[label.dataset.rate]}/분`;
+
+    const { host } = data;
+    const battery = host.battery
+      ? `${host.battery.percent}% ${host.battery.charging ? '충전 중' : host.battery.pluggedIn ? '전원 연결' : '배터리 사용'}` : '없음';
+    const rows = [
+      ['CPU 온도', host.cpuTemp === null ? '센서 없음' : `${host.cpuTemp}°C`],
+      ['부하 (1분)', `${host.load} / ${host.cores}코어`],
+      ['메모리', `${host.memoryUsedPercent}%`],
+      ['배터리', battery],
+      ['노트북 가동', duration(host.uptime)],
+      ['api 가동', `${duration(nodes.api.uptime)}, ${nodes.api.memoryMb}MB`],
+      ['배포 버전', host.release?.commit ?? '로컬'],
+    ];
+    $('#topology-host').replaceChildren(...rows.map(([term, value]) => {
+      const row = document.createElement('div');
+      const dt = document.createElement('dt');
+      const dd = document.createElement('dd');
+      dt.textContent = term;
+      dd.textContent = value;
+      row.append(dt, dd);
+      return row;
+    }));
+  }
+
+  async function poll() {
+    timer = null;
+    try {
+      const data = await request(`/admin/topology${cursor === null ? '' : `?since=${cursor}`}`);
+      skew = Date.now() - data.now;
+      if (cursor !== null) replay(data.events);
+      remember(data.events);
+      cursor = data.cursor;
+      render(data);
+      $('#topology-meta').textContent = `2초마다 갱신, ${clock.format(Date.now())}`;
+    } catch (error) {
+      $('#topology-meta').textContent = error.status === 403 ? '이 계정에는 권한이 없습니다.' : '서버에 닿지 않습니다. 다시 시도하는 중';
+      for (const led of svg?.querySelectorAll('[data-led]') ?? []) led.dataset.state = 'down';
+    } finally {
+      if (running && !document.hidden) timer = setTimeout(poll, 2000);
+    }
+  }
+
+  return {
+    start() {
+      if (running) return;
+      running = true;
+      stage = $('#topology-stage');
+      build();
+      new ResizeObserver(() => build()).observe(stage);
+      // 다른 탭을 보는 동안에는 묻지 않고, 돌아오면 바로 다시 받음
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { clearTimeout(timer); timer = null; } else if (!timer) poll();
+      });
+      poll();
+    },
+  };
+})();
+
 async function showAdmin() {
   showSection('admin-section');
   document.title = '관리실 | 김가원 피드';
@@ -800,6 +1042,8 @@ async function showAdmin() {
   }
   $('#inbox-block').hidden = !can('messages:read');
   $('#reports-block').hidden = !can('reports:read');
+  $('#topology-block').hidden = !can('server:read');
+  if (can('server:read')) topology.start();
   await Promise.all([can('messages:read') && loadInbox(), can('reports:read') && loadReports()]);
 }
 

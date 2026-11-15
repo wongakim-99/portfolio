@@ -32,6 +32,7 @@ const fakeStorage = {
     return Readable.from([body]);
   },
   async remove(key: string) { storedFiles.delete(key); },
+  health() { return null; },
 };
 
 // 머리만 갖춘 사진. API 는 파일 앞부분으로 형식과 가로세로 크기만 확인함
@@ -412,6 +413,33 @@ describe('community', () => {
 
     await assign({ email: 'owner@example.com', role: 'member' }).expect(200);
     await request(server).get('/api/community/admin/messages').set('Cookie', owner.cookie).expect(403);
+  });
+
+  it('관리실 토폴로지: 요청과 DB 명령을 순서대로 모으고, 자기 자신의 새로고침은 세지 않음', async () => {
+    const server = app.getHttpServer();
+    const topology = (since?: number) => request(server)
+      .get(`/api/community/admin/topology${since === undefined ? '' : `?since=${since}`}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`);
+    await request(server).get('/api/community/admin/topology').expect(401);
+    const first = await topology().expect(200);
+    expect(first.headers['cache-control']).toContain('no-store');
+    expect(first.body.nodes).toMatchObject({ api: { up: true }, mongo: { up: true }, minio: null });
+    expect(first.body.host).toHaveProperty('memoryUsedPercent');
+
+    await request(server).get('/api/community/posts').expect(200);
+    await request(server).get('/api/community/posts/000000000000000000000000').expect(404);
+    await request(server).get('/api/wp-login.php').expect(404);
+    const next = await topology(first.body.cursor).expect(200);
+    const events = next.body.events as { seq: number; kind: string; label: string; status: number }[];
+    expect(events.every((event) => event.seq > first.body.cursor)).toBe(true);
+    expect(events).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'http', label: 'GET /api/community/posts', status: 200 }),
+      expect.objectContaining({ kind: 'http', label: 'GET /api/community/posts/:id', status: 404 }),
+      expect.objectContaining({ kind: 'http', label: 'GET (없는 경로)', status: 404 }),
+      expect.objectContaining({ kind: 'db', label: 'find' }),
+    ]));
+    expect(events.some((event) => event.label.includes('topology'))).toBe(false);
+    expect(next.body.rates.http).toBeGreaterThanOrEqual(2);
   });
 });
 

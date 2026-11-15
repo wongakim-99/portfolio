@@ -140,7 +140,22 @@
       <a class="community-back" href="community.html">← 모든 글</a>
       <p class="hand profile-hand">운영자에게만 보이는 곳</p>
       <h2 id="admin-title">관리실</h2>
-      <p class="community-meta admin-lead" id="admin-lead">홈 엽서로 받은 쪽지와 피드 신고를 봅니다.</p>
+      <p class="community-meta admin-lead" id="admin-lead">지금 서버 상태와 홈 엽서로 받은 쪽지, 피드 신고를 봅니다.</p>
+      <section class="admin-block" id="topology-block" aria-labelledby="topology-title" hidden>
+        <div class="community-section-head"><h3 id="topology-title">지금 서버</h3><span class="community-meta" id="topology-meta">연결하는 중</span></div>
+        <div class="topology-stage" id="topology-stage"></div>
+        <ul class="topology-legend" aria-label="점 색깔">
+          <li><i class="is-http"></i>페이지 요청</li><li><i class="is-ok"></i>정상 응답</li><li><i class="is-warn"></i>4xx 응답</li>
+          <li><i class="is-error"></i>5xx 응답</li><li><i class="is-db"></i>DB 명령</li><li><i class="is-storage"></i>사진 저장소</li>
+        </ul>
+        <div class="topology-panels">
+          <dl class="topology-host" id="topology-host"></dl>
+          <div class="topology-log-wrap">
+            <p class="topology-log-title">최근 요청</p>
+            <ol class="topology-log" id="topology-log"></ol>
+          </div>
+        </div>
+      </section>
       <section class="admin-block" id="inbox-block" aria-labelledby="inbox-title">
         <div class="community-section-head"><h3 id="inbox-title">쪽지함</h3><span class="community-meta" id="inbox-meta"></span></div>
         <div id="inbox-list" aria-live="polite"></div>

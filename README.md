@@ -70,11 +70,13 @@ COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 | 역할 | 권한 |
 |---|---|
 | `member` (기본) | 없음. 글, 댓글, 신고, 내 페이지 같은 일반 기능만 씀 |
-| `admin` | `messages:read`, `messages:delete` (홈 엽서 쪽지), `reports:read`, `reports:dismiss` (신고), `content:moderate` (남의 글과 댓글 삭제) |
+| `admin` | `messages:read`, `messages:delete` (홈 엽서 쪽지), `reports:read`, `reports:dismiss` (신고), `content:moderate` (남의 글과 댓글 삭제), `server:read` (지금 서버 구성도) |
 
 - 내 글과 댓글만 고치고 지우는 규칙은 역할이 아니라 글쓴이가 누구인지로 따진다. 관리자도 남의 글 내용은 고칠 수 없고 삭제만 할 수 있다
 - 관리자로 로그인하면 피드 위에 `관리실` 버튼과 새 쪽지 수가 보이고, `/community.html?admin=1` 에서 쪽지함과 신고를 처리한다. 쪽지함을 열면 그때까지 온 쪽지는 읽은 것으로 바뀐다
 - 관리자 계정의 회원 페이지에는 `운영자` 도장이 찍힌다
+- 관리실 맨 위 `지금 서버` 는 방문자 → Tailscale Funnel → web(Caddy) → api(NestJS) → mongo, minio 구성도다. 2초마다 `/api/community/admin/topology` 를 불러, 실제 요청과 DB 명령, 사진 저장소 작업을 일어난 간격 그대로 점으로 흘려보낸다. 요청은 파란 점으로 api 까지 갔다가 응답 상태 색(정상 초록, 4xx 노랑, 5xx 빨강)으로 돌아오고, 칸마다 상태 불빛과 분당 횟수, 노트북 온도와 배터리, 최근 요청 12건이 같이 바뀐다
+- 이 기록은 API 메모리에 최근 400건만 두고 재시작하면 비운다 (`apps/api/src/telemetry`). 경로는 `:id` 같은 라우트 모양으로만, 방문자는 salt 섞은 해시로만 센다. 배포 헬스체크와 관리실 자신의 새로고침은 세지 않는다. 정적 페이지는 Caddy 가 바로 내보내므로 API 요청만 보인다
 - 페이지는 권한 목록으로 버튼만 보이거나 숨기고, 실제 허용 여부는 서버의 `PermissionGuard` 가 확인한다
 
 역할 지정은 서버의 `ADMIN_TOKEN` 으로만 한다. 페이지에서 스스로 관리자가 되는 길은 없다. 이메일 확인을 마친 회원만 지정할 수 있다.
@@ -200,7 +202,7 @@ npm run dev        # PDF 생성 후 메모리 Mongo + API watch, http://127.0.0.
                    # MINIO_ENDPOINT, MINIO_ACCESS_KEY, MINIO_SECRET_KEY 를 함께 주면 사진 올리기도 켜짐 (없으면 꺼진 채로 뜸)
 npm run typecheck
 npm run build      # API 빌드 + 포트폴리오 PDF 생성
-npm test           # API e2e 20건(메모리 Mongo, MinIO 는 메모리 가짜) + PDF 생성기 6건
+npm test           # API e2e 21건(메모리 Mongo, MinIO 는 메모리 가짜) + PDF 생성기 6건
 ```
 
 ## 배포 흐름

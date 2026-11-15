@@ -15,6 +15,7 @@ import { RequirePermission } from './community-permission.guard.js';
 import { CommunityPostsService } from './community-posts.service.js';
 import { CommunityProfileService } from './community-profile.service.js';
 import { AVATAR_FILE, CommunityStorageService } from './community-storage.service.js';
+import { CommunityTopologyService } from './community-topology.service.js';
 
 const AVATAR_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' } as const;
 
@@ -30,6 +31,7 @@ export class CommunityController {
     private readonly profiles: CommunityProfileService,
     private readonly storage: CommunityStorageService,
     private readonly messages: MessagesService,
+    private readonly topology: CommunityTopologyService,
   ) {}
 
   @Get('auth/me')
@@ -248,6 +250,14 @@ export class CommunityController {
   async adminSummary() {
     const [unreadMessages, reports] = await Promise.all([this.messages.unreadCount(), this.posts.reportCount()]);
     return { unreadMessages, reports };
+  }
+
+  @Get('admin/topology')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermission('server:read')
+  serverTopology(@Req() req: Request, @Query('since') since?: string) {
+    return this.topology.snapshot(req, since);
   }
 
   @Get('admin/messages')
