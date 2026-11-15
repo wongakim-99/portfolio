@@ -3,15 +3,25 @@
 set -euo pipefail
 set +x
 
-if [[ ! -t 0 ]]; then
-  echo '터미널에서 직접 실행해 주세요.' >&2
-  exit 1
+from_keychain=false
+if [[ ${1:-} == --from-keychain ]]; then
+  from_keychain=true
+  mail_address=${2:-}
+  if [[ -z "$mail_address" ]]; then
+    echo '키체인에서 가져올 네이버 메일 주소가 필요합니다.' >&2
+    exit 1
+  fi
+  app_password=$(security find-generic-password -a "$mail_address" -s gawon-portfolio-community-smtp -w)
+else
+  if [[ ! -t 0 ]]; then
+    echo '터미널에서 직접 실행해 주세요.' >&2
+    exit 1
+  fi
+  read -r -p '네이버 메일 주소: ' mail_address </dev/tty
+  read -r -s -p '새 애플리케이션 비밀번호 (화면에 표시되지 않음): ' app_password </dev/tty
+  printf '\n' >/dev/tty
 fi
-
-read -r -p '네이버 메일 주소: ' mail_address </dev/tty
-read -r -s -p '새 애플리케이션 비밀번호 (화면에 표시되지 않음): ' app_password </dev/tty
 trap 'unset app_password' EXIT
-printf '\n' >/dev/tty
 mail_address=$(printf '%s' "$mail_address" | tr '[:upper:]' '[:lower:]')
 app_password=${app_password// /}
 if [[ ! "$mail_address" =~ ^[a-z0-9._-]+@naver\.com$ || ! "$app_password" =~ ^[A-Za-z0-9]{8,64}$ ]]; then
@@ -19,8 +29,10 @@ if [[ ! "$mail_address" =~ ^[a-z0-9._-]+@naver\.com$ || ! "$app_password" =~ ^[A
   exit 1
 fi
 
-printf '%s' "$app_password" |
-  swift "$(dirname "$0")/store-community-smtp-password.swift" "$mail_address"
+if ! $from_keychain; then
+  printf '%s' "$app_password" |
+    swift "$(dirname "$0")/store-community-smtp-password.swift" "$mail_address"
+fi
 
 remote_code=$(cat <<'PY'
 import os

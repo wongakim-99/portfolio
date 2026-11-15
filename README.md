@@ -42,6 +42,7 @@ bash scripts/configure-community-smtp.sh
 ```
 
 나중에 비밀번호를 확인하려면 Mac의 **키체인 접근** 앱에서 `포트폴리오 피드 네이버 SMTP`를 검색하고 `암호 보기`를 선택한다. 저장된 값은 저장소나 채팅에 기록되지 않는다.
+홈서버 설정만 다시 동기화할 때는 `bash scripts/configure-community-smtp.sh --from-keychain <네이버 메일 주소>`를 사용한다.
 
 스크립트는 홈서버의 `~/.config/portfolio/api.docker.env`에 아래 값을 설정한다.
 
