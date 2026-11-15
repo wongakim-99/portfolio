@@ -8,7 +8,7 @@
 ## 구조
 
 ```
-apps/web/        정적 페이지 (index.html, style.css, app.js). 빌드 없음
+apps/web/        정적 페이지 (홈, 포트폴리오, 피드). 별도 프런트엔드 빌드 없음
 apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지, 서버 상태, 하이파이브)
 scripts/         포트폴리오 PDF 생성기와 테스트, PDF 용 글꼴(IBM Plex Sans KR, OFL)
 deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회성 서버 설정
@@ -17,14 +17,18 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 
 ## 페이지
 
-책상을 위에서 내려다본 구도. 스티커 붙은 홈서버 노트북, 출력한 포트폴리오 한 장, 배포 영수증, 엽서로 구성함.
+상단의 홈, 포트폴리오, 피드 탭으로 페이지를 이동한다. 각 페이지는 책상을 위에서 내려다본 디자인을 공유한다.
+
+- `/` 홈: 스티커 붙은 홈서버 노트북, 페이지 안내, 배포 영수증과 엽서
+- `/portfolio.html`: 소개, 경력, 프로젝트, 기술, 이력을 담은 종이 포트폴리오. 목차는 이 페이지 안에서만 이동
+- `/community.html`: 긴 글과 댓글을 읽고, 이메일 확인을 마친 계정으로 작성하는 피드
+- 옛 `/#about`, `/#projects` 등의 링크는 해당 포트폴리오 섹션으로 이동
 
 - 노트북 스티커는 끌어서 옮길 수 있음. 위치는 방문자 브라우저에만 저장
 - 노트북 LED 와 영수증은 `/api/server` 를 10초마다 불러 실제 가동 시간, CPU 온도, 배터리, 배포 커밋을 보여 줌
 - 오른쪽 위 스탠드 버튼으로 밝은 화면과 어두운 화면 전환
 - 하이파이브 버튼: 연타를 모아 보내고, 한 사람이 하루 50번까지 셈
 - `` ` `` 키를 누르면 숨은 터미널이 열림 (`help`, `neofetch`, `cat about`, `curl /api/health`, `pdf` 등)
-- `community.html` 에서 긴 글과 댓글을 읽고, 이메일 확인을 마친 계정으로 작성할 수 있음
 
 ## 피드 계정과 운영
 
@@ -64,8 +68,8 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
 
 ## 포트폴리오 PDF
 
-- `npm run build` 가 `apps/web/index.html` 을 읽어 `apps/web/gawon-portfolio.pdf` 를 만듦 (git 에는 안 올림)
-- 페이지의 `data-pdf="..."` 표시가 PDF 에 들어갈 내용을 가리킴. 내용은 index.html 한곳만 고치면 됨
+- `npm run build` 가 `apps/web/portfolio.html` 을 읽어 `apps/web/gawon-portfolio.pdf` 를 만듦 (git 에는 안 올림)
+- 페이지의 `data-pdf="..."` 표시가 PDF 에 들어갈 내용을 가리킴. 내용은 portfolio.html 한곳만 고치면 됨
 - 표시를 지우거나 구조를 바꿔서 내용을 못 찾으면 생성이 실패하고, 배포도 멈춤
 - `npm test` 가 금지 문자(가운뎃점, em dash 등)와 PDF 내용 추출을 검사함
 - 로컬에서 바로 보려면 `npm run pdf`

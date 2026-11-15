@@ -2,6 +2,10 @@
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const legacyPortfolioHashes = new Set(['sheet', 'about', 'work', 'projects', 'skills', 'history']);
+if (legacyPortfolioHashes.has(location.hash.slice(1))) {
+  location.replace(`portfolio.html${location.hash}`);
+}
 
 const api = {
   async get(path) {
@@ -386,10 +390,24 @@ function write(text, tone = '') {
 }
 
 const SECTIONS = ['about', 'work', 'projects', 'skills', 'history', 'server', 'note'];
+const PORTFOLIO_SECTIONS = new Set(['about', 'work', 'projects', 'skills', 'history']);
 const textOf = (el) => el.textContent.replace(/\s+/g, ' ').trim();
+let portfolioDocument;
 
-function catSection(name) {
-  const section = $(`#${name}`);
+async function catSection(name) {
+  let section = $(`#${name}`);
+  if (!section && PORTFOLIO_SECTIONS.has(name)) {
+    try {
+      if (!portfolioDocument) {
+        const response = await fetch('portfolio.html');
+        if (!response.ok) throw new Error(String(response.status));
+        portfolioDocument = new DOMParser().parseFromString(await response.text(), 'text/html');
+      }
+      section = $(`#${name}`, portfolioDocument);
+    } catch {
+      return '포트폴리오 내용을 불러오지 못했어요. 포트폴리오 탭에서 확인해 주세요.';
+    }
+  }
   if (!section) return `cat: ${name}: 그런 파일이 없어요`;
   if (name === 'about') {
     return $$('[data-pdf="about-item"]', section)
@@ -465,7 +483,8 @@ const COMMANDS = {
     if (!name || name === '~') return '이미 홈이에요.';
     if (!SECTIONS.includes(name)) return `cd: ${name}: 그런 곳이 없어요`;
     closeTerm();
-    $(`#${name}`).scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
+    if (PORTFOLIO_SECTIONS.has(name)) location.href = `portfolio.html#${name}`;
+    else $(`#${name}`).scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth' });
     return '';
   },
   neofetch,

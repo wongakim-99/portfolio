@@ -1,5 +1,3 @@
-.topnav [aria-current="page"] { color: var(--ink); text-decoration: underline; text-decoration-color: var(--pen); text-underline-offset: 6px; }
-
 .community-main { padding-bottom: clamp(64px, 8vw, 110px); }
 .community-header { max-width: 920px; margin: 0 auto; padding: clamp(52px, 8vw, 100px) clamp(4px, 2vw, 16px) clamp(54px, 7vw, 90px); }
 .community-hand { margin: 0 0 -8px; color: var(--pen); font-size: clamp(25px, 3vw, 34px); transform: rotate(-2deg); transform-origin: left; }

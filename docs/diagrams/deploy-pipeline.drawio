@@ -25,7 +25,7 @@
         <mxCell id="c9" value="&lt;b&gt;3. typecheck&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="404" width="420" height="44" as="geometry" />
         </mxCell>
-        <mxCell id="c10" value="&lt;b&gt;4. build&lt;/b&gt;&lt;br&gt;API 빌드 + index.html 로 포트폴리오 PDF 생성" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
+        <mxCell id="c10" value="&lt;b&gt;4. build&lt;/b&gt;&lt;br&gt;API 빌드 + portfolio.html 로 포트폴리오 PDF 생성" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="472" width="420" height="58" as="geometry" />
         </mxCell>
         <mxCell id="c11" value="&lt;b&gt;5. test&lt;/b&gt;&lt;br&gt;API e2e 15건 (메모리 Mongo) + PDF 생성기 7건" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">

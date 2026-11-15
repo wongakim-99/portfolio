@@ -1,4 +1,4 @@
-// apps/web/index.html 의 data-pdf 표시를 읽어 포트폴리오 PDF 를 만듦
+// apps/web/portfolio.html 의 data-pdf 표시를 읽어 포트폴리오 PDF 를 만듦
 // 내용은 페이지 한곳에서만 고치면 되도록 HTML 을 원본으로 씀
 // 배포 때 홈서버 runner 가 실행하므로 브라우저 없이 pdfkit 으로 직접 그림
 import { createWriteStream } from 'node:fs';
@@ -10,7 +10,7 @@ import { parse } from 'node-html-parser';
 import PDFDocument from 'pdfkit';
 
 const ROOT = new URL('../', import.meta.url);
-export const HTML_PATH = fileURLToPath(new URL('apps/web/index.html', ROOT));
+export const HTML_PATH = fileURLToPath(new URL('apps/web/portfolio.html', ROOT));
 export const PDF_PATH = fileURLToPath(new URL('apps/web/gawon-portfolio.pdf', ROOT));
 const FONTS = {
   regular: fileURLToPath(new URL('scripts/fonts/IBMPlexSansKR-Regular.woff', ROOT)),
@@ -31,7 +31,7 @@ const textOf = (el) => (el ? clean(el.text) : '');
 
 function required(value, what) {
   if (!value || (Array.isArray(value) && value.length === 0)) {
-    throw new Error(`index.html 에서 ${what} 을(를) 찾지 못함. data-pdf 표시를 확인할 것`);
+    throw new Error(`portfolio.html 에서 ${what} 을(를) 찾지 못함. data-pdf 표시를 확인할 것`);
   }
   return value;
 }

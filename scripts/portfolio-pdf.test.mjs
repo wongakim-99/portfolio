@@ -1,4 +1,4 @@
-// PDF 생성기가 index.html 구조 변경으로 조용히 깨지지 않는지 확인함
+// PDF 생성기가 portfolio.html 구조 변경으로 조용히 깨지지 않는지 확인함
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
@@ -17,7 +17,7 @@ before(async () => {
   data = extractPortfolio(html);
 });
 
-describe('index.html 에서 내용 꺼내기', () => {
+describe('portfolio.html 에서 내용 꺼내기', () => {
   it('머리와 섹션이 모두 채워짐', () => {
     assert.equal(data.name, '김가원');
     assert.match(data.email, /@/);
