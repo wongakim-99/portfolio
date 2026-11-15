@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Run locally after creating a NAVER application password. The secret travels only over SSH stdin.
+# Run locally after creating a NAVER application password. Save it in Mac Keychain and send it over SSH stdin.
 set -euo pipefail
 set +x
 
@@ -12,6 +12,24 @@ read -r -p '네이버 메일 주소: ' mail_address </dev/tty
 read -r -s -p '새 애플리케이션 비밀번호 (화면에 표시되지 않음): ' app_password </dev/tty
 trap 'unset app_password' EXIT
 printf '\n' >/dev/tty
+mail_address=$(printf '%s' "$mail_address" | tr '[:upper:]' '[:lower:]')
+app_password=${app_password// /}
+if [[ ! "$mail_address" =~ ^[a-z0-9._-]+@naver\.com$ || ! "$app_password" =~ ^[A-Za-z0-9]{8,64}$ ]]; then
+  echo '네이버 메일 주소 또는 애플리케이션 비밀번호 형식을 확인해 주세요.' >&2
+  exit 1
+fi
+
+# -w without an argument prompts on stdin twice, so the secret never appears in process arguments.
+printf '%s\n%s\n' "$app_password" "$app_password" |
+  security add-generic-password -a "$mail_address" -s gawon-portfolio-community-smtp \
+    -l '포트폴리오 피드 네이버 SMTP' -U -w >/dev/null
+if ! { security find-generic-password -a "$mail_address" -s gawon-portfolio-community-smtp -w;
+       printf '%s\n' "$app_password"; } |
+    python3 -c 'import hmac,sys; a=sys.stdin.read().splitlines(); sys.exit(0 if len(a)==2 and hmac.compare_digest(*a) else 1)'; then
+  echo '키체인 저장값을 확인하지 못했습니다. 홈서버 설정은 변경하지 않았습니다.' >&2
+  exit 1
+fi
+echo 'Mac 키체인에 비밀번호를 저장했습니다.'
 
 remote_code=$(cat <<'PY'
 import os
