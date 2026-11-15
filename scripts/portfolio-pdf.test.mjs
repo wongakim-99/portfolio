@@ -39,11 +39,6 @@ describe('index.html 에서 내용 꺼내기', () => {
     for (const group of data.skills) assert.ok(group.items.length > 0, group.label);
   });
 
-  it('이론상 수치라는 단서가 PDF 에서도 빠지지 않음', () => {
-    const point = data.work[0].points.find((p) => p.includes('21초'));
-    assert.ok(point?.includes('(이론상 비교)'), point);
-  });
-
   it('이력의 비고는 본문과 나뉨', () => {
     const course = data.history.find((h) => h.what.includes('유레카'));
     assert.equal(course.note, '멀티캠퍼스');

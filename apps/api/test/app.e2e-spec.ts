@@ -8,15 +8,23 @@ import path from 'node:path';
 import request from 'supertest';
 import type { App } from 'supertest/types.js';
 import { readRelease } from '../src/server/server.service.js';
+import { CommunityMailService } from '../src/community/community-mail.service.js';
 import { configureApp } from '../src/setup.js';
 
 const ADMIN_TOKEN = 'test-admin-token-0123456789abcdef';
 let mongo: MongoMemoryServer;
+const sentMail: { kind: 'verify' | 'reset'; to: string; token: string }[] = [];
+const fakeMail = {
+  ready: true,
+  async sendVerify(to: string, _name: string, token: string) { sentMail.push({ kind: 'verify' as const, to, token }); },
+  async sendReset(to: string, _name: string, token: string) { sentMail.push({ kind: 'reset' as const, to, token }); },
+};
 
 // ConfigModule.forRoot 가 import 시점에 env 를 읽으므로 env 를 먼저 채우고 동적 import 함
 async function createApp(): Promise<INestApplication<App>> {
   const { AppModule } = await import('../src/app.module.js');
-  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
+    .overrideProvider(CommunityMailService).useValue(fakeMail).compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
   await app.init();
@@ -142,6 +150,108 @@ describe('messages 검증과 제한', () => {
       await request(server).post('/api/messages').send({ name: 'a', message: `hello ${i} there` }).expect(201);
     }
     await request(server).post('/api/messages').send({ name: 'a', message: 'one more time' }).expect(429);
+  });
+});
+
+describe('community', () => {
+  let app: INestApplication<App>;
+  beforeAll(async () => (app = await createApp()));
+  afterAll(async () => app.close());
+
+  it('가입, 로그인, 글과 댓글 작성에서 권한 및 신고를 확인', async () => {
+    const server = app.getHttpServer();
+    const register = (email: string, name: string) => request(server)
+      .post('/api/community/auth/register')
+      .send({ email, name, password: 'correct horse battery staple' });
+    await register('writer@example.com', '글쓴이').expect(202);
+    await register('reader@example.com', '독자').expect(202);
+    await request(server).post('/api/community/auth/login')
+      .send({ email: 'writer@example.com', password: 'correct horse battery staple' }).expect(403);
+    const verifyA = sentMail.find((mail) => mail.kind === 'verify' && mail.to === 'writer@example.com')!;
+    const verifyB = sentMail.find((mail) => mail.kind === 'verify' && mail.to === 'reader@example.com')!;
+    const a = await request(server).post('/api/community/auth/verify').send({ token: verifyA.token }).expect(200);
+    const b = await request(server).post('/api/community/auth/verify').send({ token: verifyB.token }).expect(200);
+    await request(server).post('/api/community/auth/verify').send({ token: verifyA.token }).expect(400);
+    const cookieA = (a.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    const cookieB = (b.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    expect(a.headers['set-cookie'][0]).toContain('HttpOnly');
+    expect(a.headers['set-cookie'][0]).toContain('SameSite=Strict');
+    expect((await request(server).get('/api/community/auth/me').expect(200)).body.user).toBeNull();
+    expect((await request(server).get('/api/community/auth/me').set('Cookie', cookieA).expect(200)).body.user.name).toBe('글쓴이');
+
+    await request(server).post('/api/community/posts').send({ title: '첫 번째 글', body: '본문은 스무 글자보다 길어야 합니다. 첫 게시글입니다.' }).expect(401);
+    await request(server).post('/api/community/posts').set('Cookie', cookieA)
+      .set('Origin', 'https://evil.example')
+      .send({ title: '외부 요청', body: '이 요청은 다른 사이트에서 보낸 내용입니다.' }).expect(403);
+
+    const created = await request(server).post('/api/community/posts').set('Cookie', cookieA)
+      .send({ title: '첫 번째 글', body: '본문은 스무 글자보다 길어야 합니다. 첫 게시글입니다.' }).expect(201);
+    const postId = created.body.post.id;
+    expect((await request(server).get('/api/community/posts').expect(200)).body.posts[0].title).toBe('첫 번째 글');
+    await request(server).patch(`/api/community/posts/${postId}`).set('Cookie', cookieB)
+      .send({ title: '수정한 제목', body: '다른 사람의 게시글은 수정할 수 없어야 합니다.' }).expect(403);
+
+    const comment = await request(server).post(`/api/community/posts/${postId}/comments`).set('Cookie', cookieB)
+      .send({ body: '잘 읽었습니다. 좋은 글이네요.' }).expect(201);
+    const commentId = comment.body.comment.id;
+    expect((await request(server).get(`/api/community/posts/${postId}/comments`).expect(200)).body.comments[0].body).toContain('좋은 글');
+    await request(server).patch(`/api/community/comments/${commentId}`).set('Cookie', cookieA)
+      .send({ body: '다른 사람 댓글 수정' }).expect(403);
+
+    await request(server).post('/api/community/reports').set('Cookie', cookieA)
+      .send({ targetType: 'comment', targetId: commentId, reason: 'spam' }).expect(204);
+    await request(server).post('/api/community/reports').set('Cookie', cookieA)
+      .send({ targetType: 'comment', targetId: commentId, reason: 'spam' }).expect(409);
+    await request(server).get('/api/community/admin/reports').expect(401);
+    const reports = await request(server).get('/api/community/admin/reports')
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`).expect(200);
+    expect(reports.body.reports[0]).toMatchObject({ targetType: 'comment', targetId: commentId, reason: 'spam' });
+
+    await request(server).delete(`/api/community/admin/comments/${commentId}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`).expect(204);
+    expect((await request(server).get(`/api/community/posts/${postId}`).expect(200)).body.commentCount).toBe(0);
+    const afterModeration = await request(server).get('/api/community/admin/reports')
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`).expect(200);
+    expect(afterModeration.body.reports).toEqual([]);
+    await request(server).delete(`/api/community/posts/${postId}`).set('Cookie', cookieB).expect(403);
+    await request(server).delete(`/api/community/posts/${postId}`).set('Cookie', cookieA).expect(204);
+    await request(server).get(`/api/community/posts/${postId}`).expect(404);
+  });
+
+  it('비밀번호 변경은 기존 다른 세션을 해제', async () => {
+    const server = app.getHttpServer();
+    const second = await request(server).post('/api/community/auth/login')
+      .send({ email: 'reader@example.com', password: 'correct horse battery staple' }).expect(200);
+    const oldCookie = (second.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    const first = await request(server).post('/api/community/auth/login')
+      .send({ email: 'reader@example.com', password: 'correct horse battery staple' }).expect(200);
+    const currentCookie = (first.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    await request(server).post('/api/community/auth/password').set('Cookie', currentCookie)
+      .send({ currentPassword: 'correct horse battery staple', newPassword: 'another long password 2026' }).expect(204);
+    expect((await request(server).get('/api/community/auth/me').set('Cookie', oldCookie).expect(200)).body.user).toBeNull();
+    await request(server).post('/api/community/auth/login')
+      .send({ email: 'reader@example.com', password: 'correct horse battery staple' }).expect(401);
+    await request(server).post('/api/community/auth/login')
+      .send({ email: 'reader@example.com', password: 'another long password 2026' }).expect(200);
+  });
+
+  it('비밀번호 재설정 링크는 한 번만 사용하고 모든 세션을 해제', async () => {
+    const server = app.getHttpServer();
+    const login = await request(server).post('/api/community/auth/login')
+      .set('X-Forwarded-For', '203.0.113.99, 172.18.0.1')
+      .send({ email: 'writer@example.com', password: 'correct horse battery staple' }).expect(200);
+    const cookie = (login.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    await request(server).post('/api/community/auth/reset-request')
+      .send({ email: 'writer@example.com' }).expect(202);
+    const token = sentMail.findLast((mail) => mail.kind === 'reset' && mail.to === 'writer@example.com')!.token;
+    await request(server).post('/api/community/auth/reset')
+      .send({ token, newPassword: 'new verified password 2026' }).expect(204);
+    await request(server).post('/api/community/auth/reset')
+      .send({ token, newPassword: 'another reset password' }).expect(400);
+    expect((await request(server).get('/api/community/auth/me').set('Cookie', cookie).expect(200)).body.user).toBeNull();
+    await request(server).post('/api/community/auth/login')
+      .set('X-Forwarded-For', '203.0.113.99, 172.18.0.1')
+      .send({ email: 'writer@example.com', password: 'new verified password 2026' }).expect(200);
   });
 });
 

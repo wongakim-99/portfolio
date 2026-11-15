@@ -94,10 +94,12 @@ for (const el of stickers) {
 
 let drag = null;
 let topLayer = 10;
+const resetAnimations = new WeakMap();
 lid.addEventListener('pointerdown', (event) => {
   const el = event.target.closest('.sticker');
   if (!el || event.button !== 0) return;
   event.preventDefault();
+  resetAnimations.get(el)?.finish();
   const box = lid.getBoundingClientRect();
   drag = {
     el,
@@ -133,9 +135,30 @@ lid.addEventListener('pointerup', drop);
 lid.addEventListener('pointercancel', drop);
 
 $('#sticker-reset').addEventListener('click', () => {
+  const previous = stickers.map((el) => el.getBoundingClientRect());
   for (const el of stickers) {
+    resetAnimations.get(el)?.cancel();
     place(el, defaults.get(el.dataset.sticker));
     el.style.zIndex = '';
+  }
+  if (!reduceMotion) {
+    const next = stickers.map((el) => el.getBoundingClientRect());
+    stickers.forEach((el, index) => {
+      const dx = previous[index].left - next[index].left;
+      const dy = previous[index].top - next[index].top;
+      if (Math.hypot(dx, dy) < 2) return;
+      const rotation = el.style.getPropertyValue('--r');
+      const animation = el.animate([
+        { transform: `translate(${dx}px, ${dy}px) rotate(${rotation})` },
+        { transform: `translate(0, 0) rotate(${rotation})` },
+      ], { duration: 420, delay: index * 18, easing: 'cubic-bezier(.16, 1, .3, 1)' });
+      resetAnimations.set(el, animation);
+      const clear = () => {
+        if (resetAnimations.get(el) === animation) resetAnimations.delete(el);
+      };
+      animation.addEventListener('finish', clear, { once: true });
+      animation.addEventListener('cancel', clear, { once: true });
+    });
   }
   store.set('stickers', null);
 });

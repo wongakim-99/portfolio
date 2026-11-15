@@ -1,0 +1,515 @@
+const $ = (selector, root = document) => root.querySelector(selector);
+const params = new URLSearchParams(location.search);
+const dateText = (value) => new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(value));
+const draftKey = 'community-post-draft';
+let user = null;
+let openedPost = null;
+let editPostId = null;
+let postCursor = null;
+let commentCursor = null;
+let reportTarget = null;
+let loginNext = null;
+let resetToken = null;
+
+async function request(path, { method = 'GET', body } = {}) {
+  const response = await fetch(`/api/community${path}`, {
+    method,
+    credentials: 'same-origin',
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  if (response.status === 204) return null;
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const message = Array.isArray(data.message) ? data.message.join(' ') : data.message;
+    const error = new Error(message || '요청을 처리하지 못했습니다. 잠시 뒤에 다시 시도해 주세요.');
+    error.status = response.status;
+    throw error;
+  }
+  return data;
+}
+
+function status(selector, message, state = '') {
+  const element = $(selector);
+  element.textContent = message;
+  element.dataset.state = state;
+}
+
+function button(text, onClick, className = 'text-btn') {
+  const element = document.createElement('button');
+  element.type = 'button';
+  element.className = className;
+  element.textContent = text;
+  element.addEventListener('click', onClick);
+  return element;
+}
+
+function showSection(which) {
+  for (const id of ['feed-section', 'post-section', 'editor-section']) {
+    $(`#${id}`).hidden = id !== which;
+  }
+}
+
+function updateUser() {
+  $('#auth-open').hidden = Boolean(user);
+  $('#account-open').hidden = !user;
+  $('#user-label').textContent = user ? `${user.name}님` : '';
+  $('#comment-form').hidden = !user;
+  $('#comment-login').hidden = Boolean(user);
+  if (user) $('#account-email').textContent = user.email;
+}
+
+const lamp = $('#lamp');
+const darkQuery = matchMedia('(prefers-color-scheme: dark)');
+const isDark = () => document.documentElement.dataset.theme
+  ? document.documentElement.dataset.theme === 'dark' : darkQuery.matches;
+function syncLamp() {
+  const dark = isDark();
+  lamp.setAttribute('aria-pressed', String(!dark));
+  $('#lamp-text').textContent = dark ? '스탠드 켜기' : '스탠드 끄기';
+}
+lamp.addEventListener('click', () => {
+  const dark = !isDark();
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  try { localStorage.setItem('lamp', JSON.stringify(dark ? 'off' : 'on')); } catch {}
+  syncLamp();
+});
+darkQuery.addEventListener('change', syncLamp);
+syncLamp();
+
+function openAuth(next = null) {
+  loginNext = next;
+  $('#auth-dialog').showModal();
+  authTab('login');
+}
+function closeAuth() { $('#auth-dialog').close(); }
+$('#auth-open').addEventListener('click', () => openAuth());
+$('#auth-close').addEventListener('click', closeAuth);
+$('#comment-login-button').addEventListener('click', () => openAuth());
+$('#auth-dialog').addEventListener('click', (event) => {
+  if (event.target === $('#auth-dialog')) closeAuth();
+});
+
+function authTab(which) {
+  const login = which === 'login';
+  $('#login-form').hidden = !login;
+  $('#register-form').hidden = which !== 'register';
+  $('#reset-request-form').hidden = which !== 'forgot';
+  $('#login-tab').setAttribute('aria-selected', String(login));
+  $('#register-tab').setAttribute('aria-selected', String(which === 'register'));
+  $('#auth-title').textContent = login ? '피드 로그인' : which === 'register' ? '피드 가입' : '비밀번호 찾기';
+  $('#resend-open').hidden = true;
+  status('#auth-status', '');
+  $(login ? '#login-email' : which === 'register' ? '#register-email' : '#reset-request-email').focus();
+}
+$('#login-tab').addEventListener('click', () => authTab('login'));
+$('#register-tab').addEventListener('click', () => {
+  if (!$('#register-tab').disabled) authTab('register');
+});
+$('#forgot-open').addEventListener('click', () => {
+  $('#reset-request-email').value = $('#login-email').value;
+  authTab('forgot');
+});
+$('#resend-open').addEventListener('click', async () => {
+  const form = $('#login-form');
+  if (!form.reportValidity()) return;
+  try {
+    await request('/auth/resend', { method: 'POST', body: Object.fromEntries(new FormData(form)) });
+    status('#auth-status', '가입한 주소라면 확인 메일을 다시 보냈습니다.', 'ok');
+  } catch (error) { status('#auth-status', error.message, 'error'); }
+});
+
+for (const [formId, route] of [['login-form', '/auth/login'], ['register-form', '/auth/register']]) {
+  $(`#${formId}`).addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    if (!form.reportValidity()) return;
+    const submit = $('button[type="submit"]', form);
+    submit.disabled = true;
+    status('#auth-status', route.endsWith('register') ? '계정을 만드는 중입니다.' : '로그인하는 중입니다.');
+    try {
+      const result = await request(route, { method: 'POST', body: Object.fromEntries(new FormData(form)) });
+      if (route.endsWith('register')) {
+        status('#auth-status', '가입할 수 있는 주소라면 확인 메일을 보냈습니다. 메일의 링크를 열어 가입을 완료해 주세요.', 'ok');
+        form.reset();
+        return;
+      }
+      const signedIn = result.user;
+      user = signedIn;
+      updateUser();
+      closeAuth();
+      form.reset();
+      if (loginNext) location.href = loginNext;
+      else if (openedPost) {
+        renderPostActions(openedPost);
+        loadComments(openedPost.id, true);
+      }
+    } catch (error) {
+      status('#auth-status', error.message, 'error');
+      $('#resend-open').hidden = error.status !== 403;
+    } finally {
+      submit.disabled = false;
+    }
+  });
+}
+
+$('#account-open').addEventListener('click', () => { status('#account-status', ''); $('#account-dialog').showModal(); });
+$('#account-close').addEventListener('click', () => $('#account-dialog').close());
+$('#account-dialog').addEventListener('click', (event) => {
+  if (event.target === $('#account-dialog')) $('#account-dialog').close();
+});
+
+$('#reset-request-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const submit = $('button[type="submit"]', form);
+  submit.disabled = true;
+  try {
+    await request('/auth/reset-request', { method: 'POST', body: Object.fromEntries(new FormData(form)) });
+    status('#auth-status', '등록된 주소라면 비밀번호 재설정 링크를 보냈습니다.', 'ok');
+  } catch (error) { status('#auth-status', error.message, 'error'); }
+  finally { submit.disabled = false; }
+});
+
+$('#verification-close').addEventListener('click', () => $('#verification-dialog').close());
+$('#reset-close').addEventListener('click', () => $('#reset-dialog').close());
+$('#reset-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity() || !resetToken) return;
+  const submit = $('button[type="submit"]', form);
+  submit.disabled = true;
+  try {
+    await request('/auth/reset', { method: 'POST', body: { token: resetToken, newPassword: $('#reset-password').value } });
+    resetToken = null;
+    user = null;
+    updateUser();
+    form.reset();
+    status('#reset-status', '비밀번호를 바꿨습니다. 새 비밀번호로 로그인해 주세요.', 'ok');
+  } catch (error) { status('#reset-status', error.message, 'error'); }
+  finally { submit.disabled = false; }
+});
+$('#password-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const submit = $('button[type="submit"]', form);
+  submit.disabled = true;
+  try {
+    await request('/auth/password', { method: 'POST', body: Object.fromEntries(new FormData(form)) });
+    form.reset();
+    status('#account-status', '비밀번호를 변경했습니다. 다른 기기의 로그인은 해제됩니다.', 'ok');
+  } catch (error) {
+    status('#account-status', error.message, 'error');
+  } finally {
+    submit.disabled = false;
+  }
+});
+$('#logout').addEventListener('click', async () => {
+  try {
+    await request('/auth/logout', { method: 'POST' });
+    user = null;
+    updateUser();
+    $('#account-dialog').close();
+    if (editPostId || params.has('write')) location.href = 'community.html';
+    else if (openedPost) renderPostActions(openedPost);
+  } catch (error) {
+    status('#account-status', error.message, 'error');
+  }
+});
+
+$('#write-open').addEventListener('click', () => {
+  if (!user) openAuth('community.html?write=1');
+  else location.href = 'community.html?write=1';
+});
+
+function postRow(post) {
+  const article = document.createElement('article');
+  article.className = 'community-post';
+  const link = document.createElement('a');
+  link.href = `community.html?post=${encodeURIComponent(post.id)}`;
+  link.textContent = post.title;
+  const excerpt = document.createElement('p');
+  excerpt.textContent = post.excerpt.length >= 220 ? `${post.excerpt}…` : post.excerpt;
+  const meta = document.createElement('div');
+  meta.className = 'community-meta';
+  for (const item of [post.authorName, dateText(post.createdAt), `댓글 ${post.commentCount}`]) {
+    const span = document.createElement('span');
+    span.textContent = item;
+    meta.append(span);
+  }
+  article.append(link, excerpt, meta);
+  return article;
+}
+
+async function loadPosts() {
+  const list = $('#post-list');
+  try {
+    const query = postCursor ? `?before=${encodeURIComponent(postCursor)}` : '';
+    const data = await request(`/posts${query}`);
+    if (!postCursor) list.replaceChildren();
+    if (!data.posts.length && !postCursor) {
+      const empty = document.createElement('p');
+      empty.className = 'community-empty';
+      empty.textContent = '아직 글이 없습니다. 첫 글을 남겨 주세요.';
+      list.append(empty);
+    }
+    for (const post of data.posts) list.append(postRow(post));
+    postCursor = data.nextCursor;
+    $('#posts-more').hidden = !postCursor;
+  } catch {
+    if (!postCursor) list.replaceChildren();
+    const message = document.createElement('p');
+    message.className = 'community-empty';
+    message.textContent = '지금은 글을 불러오지 못합니다. 잠시 뒤에 다시 시도해 주세요.';
+    list.append(message, button('다시 시도', () => { postCursor = null; loadPosts(); }));
+  }
+}
+$('#posts-more').addEventListener('click', loadPosts);
+
+function beginReport(targetType, targetId) {
+  if (!user) return openAuth();
+  reportTarget = { targetType, targetId };
+  status('#report-status', '');
+  $('#report-dialog').showModal();
+}
+$('#report-close').addEventListener('click', () => $('#report-dialog').close());
+$('#report-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  try {
+    await request('/reports', { method: 'POST', body: { ...reportTarget, reason: $('#report-reason').value } });
+    status('#report-status', '신고를 접수했습니다.', 'ok');
+  } catch (error) {
+    status('#report-status', error.message, 'error');
+  }
+});
+
+function renderPostActions(post) {
+  const actions = $('#post-actions');
+  actions.replaceChildren();
+  if (user?.id === post.authorId) {
+    actions.append(
+      button('수정', () => { location.href = `community.html?edit=${encodeURIComponent(post.id)}`; }),
+      button('삭제', async () => {
+        if (!confirm('이 글과 댓글을 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.')) return;
+        try {
+          await request(`/posts/${post.id}`, { method: 'DELETE' });
+          location.href = 'community.html';
+        } catch (error) { status('#comment-status', error.message, 'error'); }
+      }),
+    );
+  } else {
+    actions.append(button('신고', () => beginReport('post', post.id)));
+  }
+  $('#comment-form').hidden = !user;
+  $('#comment-login').hidden = Boolean(user);
+}
+
+function renderPostMeta(post) {
+  $('#post-meta').textContent = `${post.authorName} / ${dateText(post.createdAt)} / 댓글 ${post.commentCount}`;
+}
+
+function commentRow(comment) {
+  const article = document.createElement('article');
+  article.className = 'community-comment';
+  const meta = document.createElement('p');
+  meta.className = 'community-meta';
+  meta.textContent = `${comment.authorName} / ${dateText(comment.createdAt)}`;
+  const body = document.createElement('p');
+  body.textContent = comment.body;
+  const actions = document.createElement('div');
+  actions.className = 'community-inline-actions';
+  if (user?.id === comment.authorId) {
+    actions.append(
+      button('수정', () => {
+        const form = document.createElement('form');
+        form.className = 'community-form';
+        const input = document.createElement('textarea');
+        input.value = comment.body;
+        input.required = true;
+        input.minLength = 2;
+        input.maxLength = 2000;
+        const controls = document.createElement('div');
+        controls.className = 'community-inline-actions';
+        const save = document.createElement('button');
+        save.type = 'submit';
+        save.className = 'tape';
+        save.textContent = '저장';
+        controls.append(save, button('취소', () => form.replaceWith(body)));
+        form.append(input, controls);
+        form.addEventListener('submit', async (event) => {
+          event.preventDefault();
+          if (!form.reportValidity()) return;
+          save.disabled = true;
+          try {
+            await request(`/comments/${comment.id}`, { method: 'PATCH', body: { body: input.value } });
+            comment.body = input.value.trim();
+            body.textContent = comment.body;
+            form.replaceWith(body);
+          } catch (error) { status('#comment-status', error.message, 'error'); }
+          finally { save.disabled = false; }
+        });
+        body.replaceWith(form);
+        input.focus();
+      }),
+      button('삭제', async () => {
+        if (!confirm('이 댓글을 삭제할까요?')) return;
+        try {
+          await request(`/comments/${comment.id}`, { method: 'DELETE' });
+          article.remove();
+          openedPost.commentCount = Math.max(0, openedPost.commentCount - 1);
+          renderPostMeta(openedPost);
+        } catch (error) { status('#comment-status', error.message, 'error'); }
+      }),
+    );
+  } else {
+    actions.append(button('신고', () => beginReport('comment', comment.id)));
+  }
+  article.append(meta, body, actions);
+  return article;
+}
+
+async function loadComments(postId, reset = false) {
+  if (reset) commentCursor = null;
+  const list = $('#comment-list');
+  try {
+    const query = commentCursor ? `?after=${encodeURIComponent(commentCursor)}` : '';
+    const data = await request(`/posts/${postId}/comments${query}`);
+    if (reset) list.replaceChildren();
+    if (!data.comments.length && !commentCursor) {
+      const empty = document.createElement('p');
+      empty.className = 'community-empty';
+      empty.textContent = '아직 댓글이 없습니다.';
+      list.append(empty);
+    }
+    for (const comment of data.comments) list.append(commentRow(comment));
+    commentCursor = data.nextCursor;
+    $('#comments-more').hidden = !commentCursor;
+  } catch {
+    status('#comment-status', '댓글을 불러오지 못했습니다. 다시 시도해 주세요.', 'error');
+  }
+}
+$('#comments-more').addEventListener('click', () => loadComments(openedPost.id));
+
+async function showPost(id) {
+  showSection('post-section');
+  try {
+    const post = await request(`/posts/${encodeURIComponent(id)}`);
+    openedPost = post;
+    $('#post-title').textContent = post.title;
+    renderPostMeta(post);
+    $('#post-body').textContent = post.body;
+    document.title = `${post.title} | 김가원 피드`;
+    renderPostActions(post);
+    await loadComments(post.id, true);
+  } catch {
+    $('#post-title').textContent = '글을 찾을 수 없습니다';
+    $('#post-body').textContent = '삭제되었거나 지금은 읽을 수 없는 글입니다.';
+    $('#comment-form').hidden = true;
+    $('#comment-login').hidden = true;
+  }
+}
+
+$('#comment-body').addEventListener('input', () => {
+  $('#comment-count').textContent = `${$('#comment-body').value.length.toLocaleString('ko-KR')} / 2,000`;
+});
+$('#comment-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity() || !openedPost) return;
+  const submit = $('button[type="submit"]', form);
+  submit.disabled = true;
+  try {
+    await request(`/posts/${openedPost.id}/comments`, { method: 'POST', body: { body: $('#comment-body').value } });
+    openedPost.commentCount += 1;
+    renderPostMeta(openedPost);
+    form.reset();
+    $('#comment-count').textContent = '0 / 2,000';
+    status('#comment-status', '댓글을 등록했습니다.', 'ok');
+    await loadComments(openedPost.id, true);
+  } catch (error) { status('#comment-status', error.message, 'error'); }
+  finally { submit.disabled = false; }
+});
+
+function readDraft() {
+  try { return JSON.parse(localStorage.getItem(draftKey)) ?? null; } catch { return null; }
+}
+function saveDraft() {
+  if (editPostId) return;
+  try { localStorage.setItem(draftKey, JSON.stringify({ title: $('#editor-heading').value, body: $('#editor-body').value })); } catch {}
+}
+for (const field of ['editor-heading', 'editor-body']) $(`#${field}`).addEventListener('input', saveDraft);
+$('#editor-body').addEventListener('input', () => {
+  $('#editor-count').textContent = `${$('#editor-body').value.length.toLocaleString('ko-KR')} / 20,000`;
+});
+
+async function showEditor(id = null) {
+  showSection('editor-section');
+  if (!user) return openAuth(location.href);
+  if (id) {
+    try {
+      const post = await request(`/posts/${encodeURIComponent(id)}`);
+      if (post.authorId !== user.id) return location.replace(`community.html?post=${encodeURIComponent(id)}`);
+      editPostId = id;
+      $('#editor-title').textContent = '글 수정하기';
+      $('#editor-heading').value = post.title;
+      $('#editor-body').value = post.body;
+      $('#post-form button[type="submit"]').textContent = '수정 저장';
+      $('#editor-count').textContent = `${post.body.length.toLocaleString('ko-KR')} / 20,000`;
+    } catch { status('#editor-status', '글을 불러오지 못했습니다.', 'error'); }
+  } else {
+    const draft = readDraft();
+    if (draft) {
+      $('#editor-heading').value = draft.title ?? '';
+      $('#editor-body').value = draft.body ?? '';
+      $('#editor-count').textContent = `${$('#editor-body').value.length.toLocaleString('ko-KR')} / 20,000`;
+    }
+  }
+}
+
+$('#post-form').addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const form = event.currentTarget;
+  if (!form.reportValidity()) return;
+  const submit = $('button[type="submit"]', form);
+  submit.disabled = true;
+  status('#editor-status', editPostId ? '수정하는 중입니다.' : '글을 올리는 중입니다.');
+  try {
+    const path = editPostId ? `/posts/${editPostId}` : '/posts';
+    const method = editPostId ? 'PATCH' : 'POST';
+    const { post } = await request(path, { method, body: { title: $('#editor-heading').value, body: $('#editor-body').value } });
+    if (!editPostId) try { localStorage.removeItem(draftKey); } catch {}
+    location.href = `community.html?post=${encodeURIComponent(post.id)}`;
+  } catch (error) { status('#editor-status', error.message, 'error'); }
+  finally { submit.disabled = false; }
+});
+
+(async () => {
+  try {
+    const config = await request('/auth/config');
+    $('#register-tab').disabled = !config.registrationEnabled;
+    $('#signup-note').hidden = config.registrationEnabled;
+  } catch {
+    $('#register-tab').disabled = true;
+    $('#signup-note').hidden = false;
+  }
+  const mailLink = new URLSearchParams(location.hash.slice(1));
+  const verifyToken = mailLink.get('verify');
+  resetToken = mailLink.get('reset');
+  if (verifyToken || resetToken) history.replaceState(null, '', location.pathname + location.search);
+  if (verifyToken) {
+    $('#verification-dialog').showModal();
+    try {
+      user = (await request('/auth/verify', { method: 'POST', body: { token: verifyToken } })).user;
+      status('#verification-status', '이메일 확인을 마쳤습니다. 이제 글과 댓글을 남길 수 있어요.', 'ok');
+    } catch (error) { status('#verification-status', error.message, 'error'); }
+  }
+  if (!user) try { user = (await request('/auth/me')).user; } catch { user = null; }
+  updateUser();
+  if (resetToken) $('#reset-dialog').showModal();
+  if (params.has('post')) await showPost(params.get('post'));
+  else if (params.has('edit')) await showEditor(params.get('edit'));
+  else if (params.has('write')) await showEditor();
+  else { showSection('feed-section'); await loadPosts(); }
+})();

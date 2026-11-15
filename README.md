@@ -24,13 +24,41 @@ deploy/          배포 스크립트, Caddyfile, systemd 사용자 유닛, 1회�
 - 오른쪽 위 스탠드 버튼으로 밝은 화면과 어두운 화면 전환
 - 하이파이브 버튼: 연타를 모아 보내고, 한 사람이 하루 50번까지 셈
 - `` ` `` 키를 누르면 숨은 터미널이 열림 (`help`, `neofetch`, `cat about`, `curl /api/health`, `pdf` 등)
+- `community.html` 에서 긴 글과 댓글을 읽고, 이메일 확인을 마친 계정으로 작성할 수 있음
+
+## 피드 계정과 운영
+
+- 글은 누구나 읽을 수 있고, 이메일 확인을 마친 회원만 글과 댓글을 작성, 수정, 삭제할 수 있음
+- 가입 확인 링크는 1시간, 비밀번호 재설정 링크는 30분 동안 한 번만 사용함. 링크 토큰과 세션 토큰은 해시만 MongoDB에 저장함
+- 비밀번호는 scrypt로 해시하고, 로그인 세션은 30일 만료 HttpOnly, Secure, SameSite=Strict 쿠키로 유지함. 로컬 HTTP 개발에서는 Secure 대신 별도 개발 쿠키를 사용함
+- 게시글 본문은 줄바꿈을 살린 일반 텍스트다. 브라우저에서는 사용자 글을 `textContent`로 표시함
+- 가입, 로그인, 글쓰기, 댓글, 신고에는 요청 제한이 적용됨. 신고 내역은 아래 관리자 API로 확인하고 글과 댓글을 삭제할 수 있음
+- 기존 MongoDB 백업은 `portfolio` 데이터베이스 전체를 덤프하므로 피드 컬렉션도 포함됨
+
+메일을 설정하기 전에는 가입 탭이 비활성화되고 가입 API도 503으로 응답한다. 홈서버의 `~/.config/portfolio/api.docker.env`에 아래 값을 추가한다. 이 파일은 git에 넣지 않고 권한 600을 유지한다.
+
+```dotenv
+COMMUNITY_SMTP_USER=<네이버 이메일 주소>
+COMMUNITY_SMTP_PASSWORD=<네이버 애플리케이션 비밀번호>
+COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
+```
+
+기본 SMTP 서버는 `smtp.naver.com:465`(SSL)이다. 다른 서버를 쓸 때만 `COMMUNITY_SMTP_HOST`와 `COMMUNITY_SMTP_PORT`를 추가한다. 네이버 메일 환경설정에서 POP3/SMTP 또는 IMAP/SMTP 사용을 켜고, 네이버ID의 2단계 인증 관리에서 별도 애플리케이션 비밀번호를 만든다. 기존에 발급한 애플리케이션 비밀번호의 값은 네이버에서 다시 볼 수 없다.
+
+운영자 신고 확인과 삭제는 기존 `ADMIN_TOKEN`을 사용한다. 토큰을 브라우저에 저장하거나 공개 페이지에 넣지 않는다.
+
+```bash
+curl -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/reports
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/posts/<글_ID>
+curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api/community/admin/comments/<댓글_ID>
+```
 
 ## 포트폴리오 PDF
 
 - `npm run build` 가 `apps/web/index.html` 을 읽어 `apps/web/gawon-portfolio.pdf` 를 만듦 (git 에는 안 올림)
 - 페이지의 `data-pdf="..."` 표시가 PDF 에 들어갈 내용을 가리킴. 내용은 index.html 한곳만 고치면 됨
 - 표시를 지우거나 구조를 바꿔서 내용을 못 찾으면 생성이 실패하고, 배포도 멈춤
-- `npm test` 가 금지 문자(가운뎃점, em dash 등)와 '(이론상 비교)' 단서 누락도 검사함
+- `npm test` 가 금지 문자(가운뎃점, em dash 등)와 PDF 내용 추출을 검사함
 - 로컬에서 바로 보려면 `npm run pdf`
 
 ## 다이어그램
@@ -90,7 +118,7 @@ docker compose -f deploy/docker-compose.yml logs -f api  # API 로그
 - tailnet 밖에서는 SSH 터널로: `ssh -L 4100:127.0.0.1:4100 homeserver` 후 `http://127.0.0.1:4100`
 - 할 수 있는 것: 컨테이너 상태와 시작, 중지, 로그, 서버 CPU, 메모리, 디스크, Docker 정리, 웹 터미널(`docker` 명령), 감사 로그
 - 백업: 대상 `portfolio` 를 매일 04:00 에 덤프, 14일 보관. 읽기 전용 계정(`portfolio-backup`)으로 내부 망(`portfolio_data`)에 붙어서 뜸. 파일은 서버 `~/backups/mongodb/portfolio/`
-- 첫 관리자 비밀번호: 서버에서 `grep ADMIN_PASSWORD ~/.config/gawon-control/panel.env`
+- 관리자 비밀번호 변경: 관리 패널의 `권한 관리 → 사용자 목록 → 본인 계정의 열쇠 아이콘 → 변경`
 
 새 서비스(예: gawon-log 블로그)를 올릴 때도 같은 방식으로 함: 자기 저장소에 compose 를 두고, 포트는 `127.0.0.1` 로만 열고, DB 는 내부 망에 둠. 패널은 서버의 모든 컨테이너를 자동으로 보여 줌.
 
@@ -147,6 +175,6 @@ docker 그룹은 사실상 root 권한이라 runner 를 거치는 이 저장소�
 
 ## 공개 전 확인할 것
 
-- 소개 문장(회사에서, 학교에서, 집에서)은 본인 말투로 다시 쓰기 (`apps/web/index.html` 의 TODO 주석)
+- 경력과 프로젝트 문구는 최신 이력서 및 공개 가능 범위와 주기적으로 대조하기
 - 회사 항목은 보안서약서 기준(`~/.claude/skills/resume/security.md`)으로 한 번 더 확인
 - 완성되면 `<meta name="robots" content="noindex">` 삭제
