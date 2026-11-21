@@ -51,14 +51,14 @@ export const OPEN_PROBLEMS: readonly Problem[] = [
 // 맨 앞 둘은 대표 난제라 어느 글에서든 한 번은 나오게 함. 첫 문제와 같으면 건너뜀 (problemSequence)
 export const EASIER_PROBLEMS: readonly Problem[] = [
   {
-    id: 'p-vs-np',
-    ask: '그럼 P = NP 만 증명해 주세요.',
-    note: '리만 가설보다는 쉽다는 소문이 있습니다. 소문은 소문입니다.',
+    id: 'riemann',
+    ask: '그럼 리만 가설만 증명해 주세요.',
+    note: '자명하지 않은 영점이 모두 실수부 1/2 위에 있다는 것만 보이시면 됩니다. 처음 10조 개는 이미 누가 확인해 뒀습니다.',
   },
   {
-    id: 'riemann',
-    ask: '그것도 어려우시면 리만 가설은 어떠세요?',
-    note: '자명하지 않은 영점이 모두 실수부 1/2 위에 있다는 것만 보이시면 됩니다. 처음 10조 개는 이미 누가 확인해 뒀습니다.',
+    id: 'p-vs-np',
+    ask: '그것도 어려우시면 P = NP 는 어떠세요?',
+    note: '리만 가설보다는 쉽다는 소문이 있습니다. 소문은 소문입니다.',
   },
   {
     id: 'goldbach',
@@ -74,16 +74,6 @@ export const EASIER_PROBLEMS: readonly Problem[] = [
     id: 'collatz',
     ask: '짝수면 반으로 나누고 홀수면 3을 곱해 1을 더하기를 되풀이하면, 어떤 자연수든 결국 1이 된다는 것만 증명해 주세요.',
     note: '초등학생도 이해하는 문제입니다. 에르되시는 수학이 아직 이런 문제를 다룰 준비가 안 됐다고 했습니다.',
-  },
-  {
-    id: 'one-plus-one',
-    ask: '그럼 1 + 1 = 2 를 공리부터 증명해 주세요.',
-    note: '드디어 풀린 문제입니다. 러셀과 화이트헤드는 수백 쪽 만에 해냈습니다.',
-  },
-  {
-    id: 'center-a-div',
-    ask: '검색하지 않고 CSS 로 div 하나를 가로세로 가운데에 놓아 주세요.',
-    note: '거의 다 왔습니다. 많은 개발자가 여기서 무너졌습니다.',
   },
   {
     id: 'naming',

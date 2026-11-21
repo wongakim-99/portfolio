@@ -21,6 +21,8 @@ describe('잠긴 글의 증명 문제', () => {
       expect(sequence.filter((id) => id === 'p-vs-np')).toHaveLength(1);
       expect(sequence.filter((id) => id === 'riemann')).toHaveLength(1);
       expect(sequence.at(-1)).toBe('naming');
+      // 둘 다 더 쉬운 문제로 나오면 리만 가설이 먼저
+      if (!['riemann', 'p-vs-np'].includes(sequence[0]!)) expect(sequence.slice(1, 3)).toEqual(['riemann', 'p-vs-np']);
     }
   });
 
