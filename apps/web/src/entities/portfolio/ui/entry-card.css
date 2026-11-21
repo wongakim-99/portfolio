@@ -1,0 +1,52 @@
+/* 경력과 프로젝트 한 칸. 제목과 기간, 하는 일, 내용, 기술, 코드 링크, 수상 도장 */
+.entry { position: relative; }
+.entry + .entry { margin-top: 40px; padding-top: 36px; border-top: 1px dashed var(--paper-rule); }
+.entry-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 16px; }
+.entry h3 { margin: 0; font-size: 21px; font-weight: 700; line-height: 1.4; letter-spacing: -.01em; text-wrap: balance; }
+.period { font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.period.is-live { padding: 0 8px; background: var(--marker); color: var(--ink); }
+.role { margin: 4px 0 10px; font-size: 14.5px; color: var(--ink-soft); }
+.desc { margin: 0 0 8px; }
+.points { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.points li { position: relative; padding-left: 20px; }
+.points li::before { content: ""; position: absolute; left: 2px; top: .85em; width: 9px; height: 2px; border-radius: 2px; background: var(--ink-soft); }
+.pen { font-family: var(--font-hand); font-size: 1.3em; line-height: 1; color: var(--pen); white-space: nowrap; }
+
+.stack { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 0; margin: 16px 0 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-soft); }
+.stack::before { content: "TECH"; margin-right: 10px; padding: 0 6px; border: 1px solid currentColor; border-radius: 3px; font-size: 10.5px; letter-spacing: .1em; }
+.stack li + li::before { content: "/"; margin: 0 8px; opacity: .5; }
+
+.code-link { display: inline-block; margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--pen); text-decoration: none; }
+.code-link::after { content: " \2197"; }
+.code-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+
+/* 수상 도장 */
+.stamp {
+  position: absolute;
+  right: -6px;
+  top: 30px;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 100px;
+  aspect-ratio: 1;
+  padding: 14px;
+  border: 3px double var(--stamp-red);
+  border-radius: 50%;
+  color: var(--stamp-red);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.3;
+  text-align: center;
+  transform: rotate(-14deg);
+  opacity: .88;
+  mix-blend-mode: multiply;
+}
+:root[data-theme="dark"] .stamp { mix-blend-mode: normal; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .stamp { mix-blend-mode: normal; } }
+.entry:has(.stamp) :is(.role, .desc) { padding-right: 116px; }
+
+@media (max-width: 720px) {
+  .stamp { position: static; display: inline-grid; width: auto; aspect-ratio: auto; margin-bottom: 10px; padding: 4px 12px; border-radius: 6px; transform: rotate(-2deg); }
+  .entry:has(.stamp) :is(.role, .desc) { padding-right: 0; }
+}

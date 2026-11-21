@@ -3,8 +3,9 @@ FROM node:24-alpine AS build
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
+# API 워크스페이스의 의존성만 받음 (페이지의 Next 는 apps/web/Dockerfile 이 따로 받음)
 # 설치 스크립트는 막음. 테스트용 메모리 Mongo 바이너리 다운로드 같은 건 이미지에 필요 없음
-RUN npm ci --ignore-scripts --no-audit --no-fund
+RUN npm ci -w apps/api --ignore-scripts --no-audit --no-fund
 COPY apps/api apps/api
 RUN npm run build -w apps/api
 
@@ -13,7 +14,7 @@ ENV NODE_ENV=production HOST=0.0.0.0 PORT=3000
 WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
-RUN npm ci --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
+RUN npm ci -w apps/api --omit=dev --ignore-scripts --no-audit --no-fund && npm cache clean --force
 COPY --from=build /app/apps/api/dist apps/api/dist
 # 페이지 영수증의 '버전, 배포 시각' 으로 보임
 ARG RELEASE_COMMIT=""

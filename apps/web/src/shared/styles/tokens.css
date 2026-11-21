@@ -1,0 +1,115 @@
+/* 책상을 위에서 내려다본 구도: 위에는 스티커 붙은 홈서버 노트북, 가운데는 출력한 포트폴리오 한 장,
+   아래에는 배포 영수증과 엽서. 굵은 장식은 노트북 뚜껑에만 몰고 종이 위는 읽기 좋게 조용히 둠 */
+:root {
+  --desk: #d5dbe0;
+  --desk-grain: #c3cad1;
+  --paper: #fcfcfa;
+  --paper-rule: #e2e5e7;
+  --ink: #15181c;
+  --ink-soft: #59616a;
+  --pen: #2340c2;
+  --marker: #ffe55c;
+  --led: #27c35f;
+  --led-warn: #e0a020;
+  --lid: #bcc3ca;
+  --lid-shine: #d9dee2;
+  --lid-edge: #9fa8b1;
+  --hinge: #8a939c;
+  --tape: #17191c;
+  --tape-text: #f3f4f5;
+  --receipt: #fffef8;
+  --receipt-ink: #2b2a27;
+  --sticky-1: #ffe36e;
+  --sticky-2: #b6efd2;
+  --sticky-3: #bdd6ff;
+  --sticky-4: #ffc8dc;
+  --sticky-ink: #1d1e20;
+  --stamp-red: #d6352b;
+  --st-white: #ffffff;
+  --st-black: #17191c;
+  --st-red: #e0234e;
+  --st-green: #6db33f;
+  --st-orange: #e95420;
+  --st-mongo: #013a33;
+  --st-mongo-text: #00ed64;
+  --st-gold: #e8b931;
+  --st-blue: #2b62d9;
+  --term-bg: #0e1116;
+  --term-bar: #1b2028;
+  --term-fg: #d6dde6;
+  --term-dim: #7f8a97;
+  --term-accent: #7ee2a0;
+  --shadow-soft: 0 1px 2px rgb(15 20 25 / .08), 0 10px 28px rgb(15 20 25 / .12);
+  --shadow-sticker: 0 1px 1px rgb(15 20 25 / .25), 0 3px 8px rgb(15 20 25 / .18);
+
+  --font-display: "IBM Plex Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --font-sticker: "Bagel Fat One", "IBM Plex Sans KR", sans-serif;
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", "IBM Plex Sans KR", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-hand: "Nanum Pen Script", "Apple SD Gothic Neo", cursive;
+
+  --gutter: clamp(16px, 4vw, 40px);
+  --page: 1160px;
+  color-scheme: light;
+}
+
+/* 스탠드를 끈 밤 책상. 종이와 스티커는 그대로 두고 주변만 어둡게 */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --desk: #111417;
+    --desk-grain: #1c2025;
+    --paper: #1b1f23;
+    --paper-rule: #2d3339;
+    --ink: #e7eaed;
+    --ink-soft: #9ca5ae;
+    --pen: #93a9ff;
+    --marker: #5a4f12;
+    --lid: #3a4047;
+    --lid-shine: #4a5159;
+    --lid-edge: #2a2f35;
+    --hinge: #22272c;
+    --tape: #eceef0;
+    --tape-text: #121417;
+    --receipt: #dcd9cf;
+    --sticky-1: #d8c35c;
+    --sticky-2: #92c6ac;
+    --sticky-3: #9db4dc;
+    --sticky-4: #d4a6b8;
+    --stamp-red: #ff6b5f;
+    --shadow-soft: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px rgb(0 0 0 / .5);
+    --shadow-sticker: 0 1px 1px rgb(0 0 0 / .5), 0 3px 8px rgb(0 0 0 / .4);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --desk: #111417;
+  --desk-grain: #1c2025;
+  --paper: #1b1f23;
+  --paper-rule: #2d3339;
+  --ink: #e7eaed;
+  --ink-soft: #9ca5ae;
+  --pen: #93a9ff;
+  --marker: #5a4f12;
+  --lid: #3a4047;
+  --lid-shine: #4a5159;
+  --lid-edge: #2a2f35;
+  --hinge: #22272c;
+  --tape: #eceef0;
+  --tape-text: #121417;
+  --receipt: #dcd9cf;
+  --sticky-1: #d8c35c;
+  --sticky-2: #92c6ac;
+  --sticky-3: #9db4dc;
+  --sticky-4: #d4a6b8;
+  --stamp-red: #ff6b5f;
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px rgb(0 0 0 / .5);
+  --shadow-sticker: 0 1px 1px rgb(0 0 0 / .5), 0 3px 8px rgb(0 0 0 / .4);
+  color-scheme: dark;
+}
+
+/* 관리실 '지금 서버' 구성도의 점 색. DB 명령은 보라, 사진 저장소는 청록 */
+:root { --pkt-db: #7c3aed; --pkt-storage: #0d9488; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --pkt-db: #a78bfa; --pkt-storage: #2dd4bf; }
+}
+:root[data-theme="dark"] { --pkt-db: #a78bfa; --pkt-storage: #2dd4bf; }

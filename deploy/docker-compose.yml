@@ -1,5 +1,5 @@
 # 포트폴리오 운영 구성. deploy.sh 가 RELEASE(커밋 태그)와 PORTFOLIO_CONFIG(설정 폴더)를 넣어 실행함
-# 호스트에 열리는 포트는 127.0.0.1:8090 하나뿐이고, Tailscale Funnel 이 이 포트를 가리킴
+# 호스트에 열리는 포트는 proxy 의 127.0.0.1:8090 하나뿐이고, Tailscale Funnel 이 이 포트를 가리킴
 name: portfolio
 
 x-logging: &logging
@@ -9,16 +9,31 @@ x-logging: &logging
     max-file: "5"
 
 services:
-  web:
-    image: portfolio-web:${RELEASE:?RELEASE 가 필요함}
+  # 앞단 리버스 프록시(Caddy). 바깥에서 들어오는 길은 이 컨테이너 하나뿐
+  proxy:
+    image: portfolio-proxy:${RELEASE:?RELEASE 가 필요함}
     restart: unless-stopped
     ports:
       # Docker 로 연 포트는 UFW 를 거치지 않으므로 반드시 127.0.0.1 로 묶음
       - 127.0.0.1:8090:8090
     depends_on:
+      web:
+        condition: service_healthy
       api:
         condition: service_healthy
     networks: [edge]
+    security_opt: [no-new-privileges:true]
+    logging: *logging
+
+  # 페이지(Next.js standalone 서버). 브라우저에서 부르는 /api 는 proxy 가 api 로 바로 보냄
+  web:
+    image: portfolio-web:${RELEASE:?RELEASE 가 필요함}
+    restart: unless-stopped
+    networks: [edge]
+    read_only: true
+    # Next 가 실행 중에 쓰는 캐시 폴더만 메모리에 둠
+    tmpfs: [/tmp, /app/apps/web/.next/cache]
+    cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     logging: *logging
 

@@ -1,0 +1,23 @@
+/* 오른쪽 위 스탠드. 끄면 어두운 화면 */
+.lamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 4px 10px 4px 6px;
+  border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent);
+  border-radius: 999px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: background-color .22s ease, border-color .22s ease, transform .18s cubic-bezier(.16, 1, .3, 1);
+}
+.lamp:hover { background-color: color-mix(in srgb, var(--marker) 12%, transparent); border-color: var(--ink); }
+.lamp:active { transform: translateY(2px); }
+.lamp svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; transition: transform .25s cubic-bezier(.16, 1, .3, 1); }
+.lamp:active svg { transform: rotate(-8deg); }
+.lamp .lamp-shade { fill: var(--ink); }
+.lamp .lamp-bulb { fill: var(--marker); stroke: none; filter: drop-shadow(0 0 4px var(--marker)); transition: fill .25s ease, filter .25s ease; }
+.lamp[aria-pressed="false"] .lamp-bulb { fill: transparent; stroke: currentColor; stroke-width: 1; filter: none; }

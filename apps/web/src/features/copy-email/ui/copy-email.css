@@ -1,0 +1,13 @@
+/* 메일 주소 옆 복사 버튼 */
+.copy {
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent);
+  border-radius: 4px;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 12px;
+  line-height: 22px;
+  cursor: pointer;
+}
+.copy:hover { color: var(--ink); border-color: var(--ink); }

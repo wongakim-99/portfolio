@@ -1,0 +1,7 @@
+/* 관리실: 지금 서버, 쪽지함, 신고를 한 장에 */
+/* 피드 종이의 기본 제목(.community-sheet > h2)보다 크게 */
+.community-sheet.admin-sheet > h2 { margin: 0; font-family: var(--font-display); font-size: clamp(36px, 5.2vw, 54px); line-height: 1.2; letter-spacing: -.03em; }
+.admin-lead { margin: 10px 0 0; }
+.admin-block { padding-top: 44px; }
+.admin-block h3 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
+.admin-block .community-section-head { padding-bottom: 18px; }

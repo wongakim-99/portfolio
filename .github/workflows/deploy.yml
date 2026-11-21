@@ -13,8 +13,8 @@ jobs:
   deploy:
     # 홈서버에 설치한 self-hosted runner 에서 실행 (저장소는 private 유지)
     runs-on: [self-hosted, homeserver]
-    # 첫 배포는 Docker 기본 이미지(node, caddy, mongo)를 받느라 오래 걸림
-    timeout-minutes: 25
+    # 첫 배포는 Docker 기본 이미지(node, caddy, mongo)를 받느라 오래 걸림. 페이지(Next.js) 빌드가 늘어서 여유를 둠
+    timeout-minutes: 30
     env:
       # e2e 테스트의 메모리 Mongo 를 서버에 설치된 mongod 로 띄움 (바이너리 다운로드 생략)
       MONGOMS_SYSTEM_BINARY: /usr/bin/mongod
@@ -23,6 +23,8 @@ jobs:
       - run: node -v && npm -v
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
+      # 페이지의 FSD 레이어 경계(app > views > widgets > features > entities > shared)도 여기서 검사함
+      - run: npm run lint
       - run: npm run build
       - run: npm test
       - run: bash deploy/deploy.sh

@@ -1,0 +1,93 @@
+/* 쪽지 엽서. 왼쪽에 줄 친 메시지 칸, 오른쪽에 우표와 받는 사람, 보내면 소인이 찍힘 */
+.postcard {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  background: var(--paper);
+  box-shadow: var(--shadow-soft);
+  transform: rotate(-.8deg);
+}
+.pc-message { display: block; min-width: 0; padding: 22px 22px 24px 26px; border-right: 1px solid var(--paper-rule); }
+.pc-message textarea {
+  display: block;
+  width: 100%;
+  min-height: 236px;
+  padding: 0;
+  border: 0;
+  resize: vertical;
+  background: repeating-linear-gradient(transparent 0 31px, var(--paper-rule) 31px 32px);
+  background-attachment: local;
+  color: var(--ink);
+  font-family: var(--font-hand);
+  font-size: 25px;
+  line-height: 32px;
+}
+.pc-message textarea::placeholder { color: color-mix(in srgb, var(--ink-soft) 70%, transparent); }
+.pc-message textarea:focus { outline: none; }
+.pc-message:focus-within { box-shadow: inset 0 0 0 2px var(--pen); }
+.pc-side { position: relative; display: flex; flex-direction: column; gap: 14px; min-width: 0; padding: 22px 24px 24px; }
+.pc-stamp {
+  align-self: flex-end;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  width: 72px;
+  height: 81px;
+  padding: 4px;
+  background: var(--sticky-3);
+  color: var(--sticky-ink);
+  /* 우표 톱니: 가운데는 꽉 채우고 테두리에만 반원 구멍. 크기는 구멍 간격(9px)의 배수 */
+  -webkit-mask: linear-gradient(#000 0 0) content-box, radial-gradient(circle 3.2px, #0000 96%, #000) -4.5px -4.5px / 9px 9px;
+  mask: linear-gradient(#000 0 0) content-box, radial-gradient(circle 3.2px, #0000 96%, #000) -4.5px -4.5px / 9px 9px;
+}
+.pc-stamp-lid { margin-top: 8px; width: 44px; height: 28px; border-radius: 4px; background: linear-gradient(150deg, var(--lid-shine), var(--lid)); box-shadow: inset -6px -5px 0 -3px var(--led); }
+.pc-stamp small { font-size: 10px; font-weight: 600; }
+.pc-postmark {
+  position: absolute;
+  right: 54px;
+  top: 30px;
+  display: grid;
+  place-items: center;
+  width: 86px;
+  aspect-ratio: 1;
+  border: 2px solid var(--stamp-red);
+  border-radius: 50%;
+  color: var(--stamp-red);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.1;
+  text-align: center;
+  opacity: 0;
+  transform: rotate(-18deg) scale(1.6);
+  pointer-events: none;
+}
+.pc-postmark small { font-family: var(--font-mono); font-size: 10px; font-weight: 500; }
+.postcard.is-sent .pc-postmark { opacity: .9; transform: rotate(-18deg) scale(1); transition: transform .25s cubic-bezier(.2, 1.6, .4, 1), opacity .1s; }
+.pc-to { margin: 0; font-size: 14px; color: var(--ink-soft); }
+.pc-to b { margin-left: 6px; font-family: var(--font-hand); font-size: 26px; font-weight: 400; color: var(--ink); }
+.pc-field { display: grid; gap: 2px; font-size: 13px; font-weight: 600; color: var(--ink-soft); }
+.pc-field em { font-style: normal; font-weight: 400; }
+.pc-field input {
+  width: 100%;
+  padding: 2px 0 4px;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--ink) 35%, transparent);
+  background: none;
+  color: var(--ink);
+  font-family: var(--font-hand);
+  font-size: 24px;
+  line-height: 1.2;
+}
+.pc-field input:focus { outline: none; border-bottom: 2px solid var(--pen); }
+.pc-side .tape { align-self: flex-start; margin-top: auto; }
+.pc-side .tape:disabled { opacity: .6; cursor: default; transform: none; }
+.hp { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+
+@media (max-width: 720px) {
+  .postcard { grid-template-columns: minmax(0, 1fr); transform: none; }
+  .pc-message { border-right: 0; border-bottom: 1px solid var(--paper-rule); }
+  .pc-message textarea { min-height: 190px; }
+  .pc-stamp { position: absolute; right: 18px; top: 18px; }
+  .pc-postmark { right: 40px; top: 24px; }
+  .pc-to { padding-right: 90px; }
+}

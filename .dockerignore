@@ -1,7 +1,9 @@
-# 이미지에 들어가지 않아도 되는 것. apps/web/gawon-portfolio.pdf 는 빼면 안 됨
+# 이미지에 들어가지 않아도 되는 것. apps/web/public/gawon-portfolio.pdf 는 빼면 안 됨
 .git
 .github
 **/node_modules
+**/.next
+**/next-env.d.ts
 **/dist
 **/*.tsbuildinfo
 apps/api/test

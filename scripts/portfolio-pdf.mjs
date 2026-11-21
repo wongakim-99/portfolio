@@ -1,17 +1,16 @@
-// apps/web/portfolio.html 의 data-pdf 표시를 읽어 포트폴리오 PDF 를 만듦
-// 내용은 페이지 한곳에서만 고치면 되도록 HTML 을 원본으로 씀
+// apps/web 의 포트폴리오 내용(entities/portfolio/model/content.ts)으로 포트폴리오 PDF 를 만듦
+// 페이지와 PDF 가 같은 파일을 읽으므로 내용은 content.ts 한곳에서만 고치면 됨. Node 24 가 .ts 를 바로 불러옴
 // 배포 때 홈서버 runner 가 실행하므로 브라우저 없이 pdfkit 으로 직접 그림
-import { createWriteStream } from 'node:fs';
-import { readFileSync } from 'node:fs';
-import { readFile } from 'node:fs/promises';
+import { createWriteStream, mkdirSync, readFileSync } from 'node:fs';
+import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { inflateSync } from 'node:zlib';
-import { parse } from 'node-html-parser';
 import PDFDocument from 'pdfkit';
+import { portfolio } from '../apps/web/src/entities/portfolio/model/content.ts';
 
 const ROOT = new URL('../', import.meta.url);
-export const HTML_PATH = fileURLToPath(new URL('apps/web/portfolio.html', ROOT));
-export const PDF_PATH = fileURLToPath(new URL('apps/web/gawon-portfolio.pdf', ROOT));
+// Next 가 public 폴더의 파일을 /gawon-portfolio.pdf 로 내보냄 (apps/web/src/entities/portfolio/model/pdf.ts)
+export const PDF_PATH = fileURLToPath(new URL('apps/web/public/gawon-portfolio.pdf', ROOT));
 const FONTS = {
   regular: fileURLToPath(new URL('scripts/fonts/IBMPlexSansKR-Regular.woff', ROOT)),
   semibold: fileURLToPath(new URL('scripts/fonts/IBMPlexSansKR-SemiBold.woff', ROOT)),
@@ -24,66 +23,52 @@ const MARGIN = { top: 52, bottom: 60, left: 56, right: 56 };
 const NO_LIGATURES = { liga: false, clig: false, dlig: false };
 const opts = (options = {}) => ({ features: NO_LIGATURES, ...options });
 
-/* HTML 에서 내용 꺼내기 */
+/* 내용 꺼내기 */
 
-const clean = (text) => text.replace(/\s+/g, ' ').trim();
-const textOf = (el) => (el ? clean(el.text) : '');
+const clean = (text) => (text ?? '').replace(/\s+/g, ' ').trim();
+// 형광펜(mark)과 손글씨 메모(pen)를 섞은 줄은 글자만 이어 붙임
+const plain = (rich) =>
+  clean(typeof rich === 'string' ? rich : rich.map((part) => (typeof part === 'string' ? part : (part.mark ?? part.pen))).join(''));
 
 function required(value, what) {
   if (!value || (Array.isArray(value) && value.length === 0)) {
-    throw new Error(`portfolio.html 에서 ${what} 을(를) 찾지 못함. data-pdf 표시를 확인할 것`);
+    throw new Error(`포트폴리오 내용에서 ${what} 이(가) 비어 있음. apps/web/src/entities/portfolio/model/content.ts 를 확인할 것`);
   }
   return value;
 }
 
-function entry(el) {
-  const pick = (key) => el.querySelector(`[data-pdf="${key}"]`);
+function entry(item) {
   return {
-    title: required(textOf(pick('title')), 'title'),
-    period: required(textOf(pick('period')), 'period'),
-    award: textOf(pick('award')),
-    role: textOf(pick('role')),
-    desc: textOf(pick('desc')),
-    points: pick('points')?.querySelectorAll('li').map(textOf) ?? [],
-    stack: pick('stack')?.querySelectorAll('li').map(textOf) ?? [],
-    link: pick('link')?.getAttribute('href') ?? '',
+    title: required(clean(item.title), 'title'),
+    period: required(clean(item.period), 'period'),
+    award: clean(item.award),
+    role: clean(item.role),
+    desc: clean(item.desc),
+    points: item.points.map(plain),
+    stack: item.stack.map(clean),
+    link: item.link ?? '',
   };
 }
 
-export function extractPortfolio(html) {
-  const root = parse(html);
-  const one = (key) => root.querySelector(`[data-pdf="${key}"]`);
-  const all = (key, base = root) => base.querySelectorAll(`[data-pdf="${key}"]`);
-
-  const history = all('when').map((when) => {
-    const li = when.parentNode;
-    const what = li.querySelector('[data-pdf="what"]');
-    const note = what?.querySelector('[data-pdf="note"]');
-    const noteText = textOf(note);
-    note?.remove();
-    return { when: textOf(when), what: textOf(what), note: noteText };
-  });
-
+/** content.ts 의 내용을 PDF 에 그릴 모양으로 바꿈. 빠진 내용이 있으면 조용히 넘어가지 않고 실패함 */
+export function toPdfData(content = portfolio) {
   return {
-    name: required(textOf(one('name')), 'name'),
-    lead: required(textOf(one('lead')), 'lead'),
-    email: required(textOf(one('email')), 'email'),
-    github: required(one('github')?.getAttribute('href'), 'github'),
-    site: root.querySelector('meta[property="og:url"]')?.getAttribute('content') ?? '',
-    about: required(
-      all('about-item').map((item) => ({ label: textOf(item.querySelector('[data-pdf="label"]')), text: textOf(item.querySelector('[data-pdf="text"]')) })),
-      'about',
-    ),
-    work: required(all('work').map(entry), 'work'),
-    projects: required(all('project').map(entry), 'project'),
+    name: required(clean(content.name), 'name'),
+    lead: required(clean(content.lead), 'lead'),
+    email: required(clean(content.email), 'email'),
+    github: required(content.github, 'github'),
+    site: content.siteUrl ? `${content.siteUrl.replace(/\/$/, '')}/portfolio` : '',
+    about: required(content.about.map((item) => ({ label: clean(item.label), text: clean(item.text) })), 'about'),
+    work: required(content.work.map(entry), 'work'),
+    projects: required(content.projects.map(entry), 'projects'),
     skills: required(
-      all('skill-group').map((group) => ({
-        label: textOf(group.querySelector('[data-pdf="label"]')),
-        items: group.querySelectorAll('[data-pdf="items"] li').map(textOf),
-      })),
+      content.skills.map((group) => ({ label: clean(group.label), items: group.items.map(clean) })),
       'skills',
     ),
-    history: required(history, 'history'),
+    history: required(
+      content.history.map((item) => ({ when: clean(item.when), what: clean(item.what), note: clean(item.note) })),
+      'history',
+    ),
   };
 }
 
@@ -258,6 +243,8 @@ export function renderPdf(data, outPath, { generatedAt = new Date() } = {}) {
     },
   });
   for (const [name, file] of Object.entries(FONTS)) doc.registerFont(name, woffToSfnt(readFileSync(file)));
+  // apps/web/public 에는 이 파일만 들어가서 새로 받은 저장소에는 폴더가 없을 수 있음
+  mkdirSync(path.dirname(outPath), { recursive: true });
   const stream = createWriteStream(outPath);
   doc.pipe(stream);
 
@@ -325,7 +312,6 @@ export function renderPdf(data, outPath, { generatedAt = new Date() } = {}) {
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const data = extractPortfolio(await readFile(HTML_PATH, 'utf8'));
-  const { pages } = await renderPdf(data, PDF_PATH);
+  const { pages } = await renderPdf(toPdfData(), PDF_PATH);
   console.log(`[pdf] ${PDF_PATH} (${pages}쪽)`);
 }

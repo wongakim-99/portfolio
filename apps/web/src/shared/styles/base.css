@@ -1,0 +1,120 @@
+/* 모든 페이지가 같이 쓰는 바탕: 책상 상판, 글자, 라벨 테이프 버튼, 형광펜, 상태 문구
+   페이지 조각별 스타일은 각 슬라이스의 ui 폴더에 같이 둠 */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+
+body {
+  margin: 0;
+  padding-inline: var(--gutter);
+  background-color: var(--desk);
+  /* 책상 상판의 잔결 */
+  background-image: radial-gradient(var(--desk-grain) 1px, transparent 1.2px);
+  background-size: 22px 22px;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.75;
+  word-break: keep-all;
+  overflow-wrap: break-word;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color .4s ease, color .4s ease;
+}
+
+a { color: inherit; }
+img, svg { max-width: 100%; }
+:focus-visible { outline: 3px solid var(--pen); outline-offset: 3px; border-radius: 4px; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.skip { position: absolute; left: 16px; top: -60px; z-index: 50; padding: 8px 14px; background: var(--tape); color: var(--tape-text); }
+.skip:focus { top: 12px; }
+.mono { font-family: var(--font-mono); }
+.hand { font-family: var(--font-hand); font-weight: 400; }
+
+mark {
+  padding: 0 .15em;
+  margin: 0 -.05em;
+  color: inherit;
+  /* 형광펜은 글자보다 살짝 낮게, 끝이 고르지 않게 */
+  background: linear-gradient(100deg, transparent .2em, var(--marker) .3em, var(--marker) calc(100% - .4em), transparent calc(100% - .2em)) 0 75% / 100% 62% no-repeat;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* 라벨기로 뽑은 테이프. 버튼과 로고에 씀 */
+.tape {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 4px 14px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--tape);
+  color: var(--tape-text);
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-decoration: none;
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--tape-text) 25%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tape-text) 10%, transparent), 0 2px 0 color-mix(in srgb, var(--ink) 18%, transparent);
+  cursor: pointer;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+.tape:hover { transform: translateY(-1px) rotate(-.6deg); }
+.tape:active { transform: translateY(1px); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tape-text) 10%, transparent); }
+.tape-lg { min-height: 46px; padding: 6px 20px; font-size: 15px; }
+
+.btn-line {
+  display: inline-flex;
+  align-items: center;
+  min-height: 46px;
+  padding: 6px 18px;
+  border: 2px solid var(--ink);
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background-color .15s ease, color .15s ease;
+}
+.btn-line:hover { background: var(--ink); color: var(--desk); }
+
+.text-btn {
+  padding: 2px 0;
+  border: 0;
+  border-bottom: 1px dashed currentColor;
+  background: none;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.text-btn:hover { color: var(--ink); }
+.text-btn-danger, .text-btn-danger:hover { color: var(--stamp-red); }
+
+/* hidden 속성은 display 를 정한 요소에서도 반드시 숨김 */
+[hidden] { display: none !important; }
+
+/* 폼 아래 상태 문구 */
+.form-status { min-height: 1.7em; margin: 14px 0 0; font-size: 14px; color: var(--ink-soft); }
+.form-status[data-state="ok"] { color: var(--ink); font-weight: 600; }
+.form-status[data-state="error"] { color: var(--stamp-red); }
+
+kbd { display: inline-block; min-width: 1.6em; padding: 0 4px; border: 1px solid currentColor; border-radius: 4px; font-family: var(--font-mono); font-size: 12px; text-align: center; line-height: 1.4; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+
+/* 인쇄할 때는 종이 한 장만. 숨길 조각은 각 스타일 파일에서 정함 */
+@media print {
+  body { background: #fff; padding: 0; }
+}
+
+/* 없는 주소 (app/not-found.tsx) */
+.not-found { padding-block: clamp(56px, 9vw, 120px); }
+.not-found .hand { margin: 0; color: var(--pen); font-size: 28px; }
+.not-found h1 { margin: 0 0 8px; font-family: var(--font-display); font-size: clamp(30px, 4vw, 42px); letter-spacing: -.025em; }
+.not-found p:not(.hand) { margin: 0 0 24px; color: var(--ink-soft); }

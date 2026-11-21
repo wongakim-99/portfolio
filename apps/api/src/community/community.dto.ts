@@ -4,7 +4,7 @@ import { ROLES, type Role } from './community-roles.js';
 
 const trim = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim() : value);
 const oneLine = ({ value }: { value: unknown }) => (typeof value === 'string' ? value.trim().replace(/\s+/g, ' ') : value);
-// 새 비밀번호 길이. 페이지의 minlength 와 안내 문구(community.html)도 같은 값을 씀
+// 새 비밀번호 길이. 피드 페이지의 minLength 와 안내 문구(apps/web/src/features/auth, change-password)도 같은 값을 씀
 const PASSWORD_MIN = 10;
 const PASSWORD_MAX = 128;
 

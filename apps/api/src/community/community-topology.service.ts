@@ -6,7 +6,8 @@ import { ServerService } from '../server/server.service.js';
 import { TelemetryService } from '../telemetry/telemetry.service.js';
 import { CommunityStorageService } from './community-storage.service.js';
 
-// 관리실 '지금 서버' 구성도. 방문자 → Tailscale Funnel → web(Caddy) → api(NestJS) → mongo, minio
+// 관리실 '지금 서버' 구성도. 방문자 → Tailscale Funnel → proxy(Caddy) → api(NestJS) → mongo, minio
+// 페이지(web, Next.js)도 proxy 뒤에 있지만 API 를 거치지 않아서 구성도에는 API 로 가는 길만 그림
 // 페이지는 2초마다 cursor 뒤의 이벤트를 받아 실제 간격대로 점을 흘려보냄
 @Injectable()
 export class CommunityTopologyService {
@@ -32,8 +33,8 @@ export class CommunityTopologyService {
         storage: this.telemetry.perMinute('storage'),
       },
       nodes: {
-        // 이 요청이 Caddy 를 거쳐 왔으면 X-Forwarded-For 가 붙어 있음. 로컬 개발에서는 API 로 바로 들어옴
-        web: { up: true, proxied: Boolean(req.get('x-forwarded-for')) },
+        // 이 요청이 Caddy 를 거쳐 왔으면 X-Forwarded-For 가 붙어 있음
+        proxy: { up: true, proxied: Boolean(req.get('x-forwarded-for')) },
         api: { up: true, uptime: Math.round(process.uptime()), memoryMb: Math.round(memory.rss / 1024 / 1024), httpMs: this.telemetry.averageMs('http') },
         mongo: { up: this.connection.readyState === 1, ms: this.telemetry.averageMs('db') },
         minio: minio ? { up: minio.up, ms: minio.ms } : null,

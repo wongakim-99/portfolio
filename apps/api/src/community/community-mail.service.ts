@@ -28,12 +28,12 @@ export class CommunityMailService {
   }
 
   async sendVerify(to: string, name: string, token: string): Promise<void> {
-    const url = `${this.baseUrl}/community.html#verify=${token}`;
+    const url = `${this.baseUrl}/feed#verify=${token}`;
     await this.send(to, '[김가원 피드] 이메일 확인', `${name}님, 아래 주소를 열어 이메일을 확인해 주세요.\n\n${url}\n\n이 링크는 1시간 동안 한 번만 사용할 수 있습니다. 요청하지 않았다면 이 메일을 무시해 주세요.`);
   }
 
   async sendReset(to: string, name: string, token: string): Promise<void> {
-    const url = `${this.baseUrl}/community.html#reset=${token}`;
+    const url = `${this.baseUrl}/feed#reset=${token}`;
     await this.send(to, '[김가원 피드] 비밀번호 재설정', `${name}님, 아래 주소에서 새 비밀번호를 정해 주세요.\n\n${url}\n\n이 링크는 30분 동안 한 번만 사용할 수 있습니다. 요청하지 않았다면 이 메일을 무시해 주세요.`);
   }
 }

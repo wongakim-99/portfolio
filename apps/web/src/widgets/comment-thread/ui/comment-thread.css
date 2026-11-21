@@ -1,0 +1,13 @@
+/* 글 아래 댓글. 목록, 댓글 쓰기, 내 댓글 고치기 */
+.community-comments { border-top: 1px solid var(--paper-rule); padding-top: 40px; }
+.community-comments h3 { margin: 0 0 20px; font-size: 24px; letter-spacing: -.02em; }
+.community-comment { padding: 20px 0; border-top: 1px dashed var(--paper-rule); }
+.community-comment:first-child { border-top: 0; }
+.community-comment .community-meta { margin: 0 0 8px; }
+.community-comment p { max-width: 68ch; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.community-comment .community-inline-actions { margin-top: 7px; }
+.comment-form { max-width: 680px; margin-top: 32px; }
+
+@media print {
+  .community-comments { display: none !important; }
+}

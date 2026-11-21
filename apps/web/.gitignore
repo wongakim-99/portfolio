@@ -1,0 +1,4 @@
+.next/
+next-env.d.ts
+# scripts/portfolio-pdf.mjs 가 만드는 파일
+public/gawon-portfolio.pdf

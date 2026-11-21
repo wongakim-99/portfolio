@@ -1,0 +1,48 @@
+/* 피드 화면(/feed/*)이 같이 쓰는 종이, 목록 머리, 메타 줄, 폼, 대화상자. app/feed/layout.tsx 에서 불러옴 */
+.community-main { padding-bottom: clamp(64px, 8vw, 110px); }
+
+.community-sheet { min-height: 300px; }
+.community-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; padding-bottom: 24px; border-bottom: 1px solid var(--paper-rule); }
+.community-section-head h2, .community-sheet > h2 { margin: 0; font-family: var(--font-display); font-size: clamp(28px, 3.6vw, 36px); line-height: 1.25; letter-spacing: -.025em; }
+.community-meta { color: var(--ink-soft); font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
+.community-empty { margin: 24px 0; color: var(--ink-soft); font-size: 15px; }
+.community-more { margin-top: 24px; }
+.community-back { display: inline-block; margin: 0 0 34px; font-size: 14px; color: var(--ink-soft); text-underline-offset: 4px; }
+.community-back:hover { color: var(--pen); }
+.community-inline-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
+.community-inline-actions:empty { display: none; }
+/* 글 목록, 글 머리, 댓글의 메타 줄은 글쓴이 사진과 글자를 한 줄로 늘어놓음 */
+.community-post .community-meta, .community-article-head .community-meta, .community-comment .community-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 14px; }
+
+.community-form { display: grid; gap: 7px; }
+.community-form label { margin-top: 14px; font-size: 14px; font-weight: 700; }
+.community-form label:first-child { margin-top: 0; }
+.community-form small { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
+.community-form input, .community-form textarea, .community-form select { width: 100%; min-width: 0; padding: 11px 13px; border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; font-size: 16px; line-height: 1.6; }
+.community-form textarea { resize: vertical; }
+.community-form :is(input, textarea, select):focus { outline: 2px solid var(--pen); outline-offset: 2px; border-color: var(--pen); }
+.community-form .tape { justify-self: start; margin-top: 14px; }
+.community-form .tape:disabled { opacity: .6; cursor: wait; transform: none; }
+.community-form-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; color: var(--ink-soft); font-family: var(--font-mono); font-size: 12px; }
+.community-form-foot .tape { margin-top: 8px; }
+
+.community-dialog { width: min(440px, calc(100vw - 28px)); max-height: min(720px, calc(100vh - 28px)); padding: 26px; border: 0; border-radius: 10px; background: var(--paper); color: var(--ink); box-shadow: 0 30px 80px rgb(0 0 0 / .35); overflow-y: auto; }
+.community-dialog::backdrop { background: rgb(10 12 15 / .6); }
+.community-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.community-dialog-head h2 { margin: 0; font-family: var(--font-display); font-size: 26px; letter-spacing: -.02em; }
+.community-tabs { display: flex; gap: 16px; margin: 22px 0; border-bottom: 1px solid var(--paper-rule); }
+.community-tabs button { padding: 0 2px 9px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--ink-soft); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.community-tabs button[aria-selected="true"] { border-bottom-color: var(--pen); color: var(--ink); }
+.community-tabs button:disabled { opacity: .45; cursor: default; }
+.community-dialog .form-status { margin-top: 18px; }
+
+@media (max-width: 720px) {
+  /* 종이(shared/ui/sheet) 기본 여백보다 앞서도록 두 클래스로 지정 */
+  .sheet.community-sheet { padding: 40px 22px 50px; }
+  .community-dialog { padding: 22px; }
+}
+
+@media print {
+  .community-back, .community-inline-actions, .community-dialog { display: none !important; }
+  .community-sheet { box-shadow: none; }
+}

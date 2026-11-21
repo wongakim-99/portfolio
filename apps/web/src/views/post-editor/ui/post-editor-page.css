@@ -1,0 +1,4 @@
+/* 글쓰기, 글 수정 */
+.editor-sheet .community-meta { margin: 8px 0 28px; }
+.post-form { max-width: 720px; }
+.post-form textarea { min-height: 340px; }

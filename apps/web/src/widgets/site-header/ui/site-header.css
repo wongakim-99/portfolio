@@ -1,0 +1,37 @@
+/* 상단: 로고 테이프, 페이지 탭, (피드에서는 계정 칸), 스탠드 */
+.topbar {
+  max-width: var(--page);
+  margin: 0 auto;
+  padding-block: 18px 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 22px;
+}
+.brand { font-family: var(--font-mono); font-size: 13px; letter-spacing: .1em; min-height: 30px; transform: rotate(-1.5deg); }
+.topnav { display: flex; flex: 1 1 auto; gap: 6px; flex-wrap: wrap; min-width: 0; }
+.topnav a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 32px;
+  padding: 2px 12px;
+  border-radius: 4px 4px 0 0;
+  border-bottom: 2px solid transparent;
+  color: var(--ink-soft);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -.015em;
+  text-decoration: none;
+  transition: background-color .16s ease, color .16s ease;
+}
+.topnav a:hover { background: color-mix(in srgb, var(--paper) 55%, transparent); color: var(--ink); }
+.topnav a[aria-current="page"] { background: var(--paper); border-bottom-color: var(--pen); color: var(--ink); }
+
+@media (max-width: 720px) {
+  .topnav { order: 3; flex: 1 0 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+  .topnav a { white-space: nowrap; }
+}
+
+@media print {
+  .topbar { display: none !important; }
+}

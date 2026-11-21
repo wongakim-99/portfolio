@@ -1,0 +1,7 @@
+/* 관리실 신고 목록 */
+.admin-report { padding: 20px 0; border-bottom: 1px dashed var(--paper-rule); }
+.admin-report:last-child { border-bottom: 0; }
+.admin-report .community-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; }
+.admin-report-target { margin: 6px 0 0; overflow-wrap: anywhere; }
+.admin-report-target a { font-weight: 600; text-underline-offset: 4px; }
+.admin-report-target span { color: var(--ink-soft); font-size: 14px; }

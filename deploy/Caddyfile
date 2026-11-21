@@ -1,5 +1,5 @@
-# 홈서버 앞단 리버스 프록시. web 이미지(deploy/web.Dockerfile)에 들어감
-# 인터넷 → Tailscale Funnel(HTTPS) → 호스트 127.0.0.1:8090 → web 컨테이너(여기) → 정적 페이지 / api 컨테이너
+# 홈서버 앞단 리버스 프록시. proxy 이미지(deploy/proxy.Dockerfile)에 들어감
+# 인터넷 → Tailscale Funnel(HTTPS) → 호스트 127.0.0.1:8090 → proxy 컨테이너(여기) → web(Next.js) / api(NestJS) 컨테이너
 {
 	# HTTPS 는 Funnel 이 처리하므로 여기서는 HTTP 만 받음
 	auto_https off
@@ -30,10 +30,8 @@ http://:8090 {
 		reverse_proxy api:3000
 	}
 
+	# 페이지. 캐시 헤더는 Next 가 정함 (/_next/static 은 파일 이름에 해시가 붙어 오래 캐시, 페이지는 매번 재검증)
 	handle {
-		root * /srv
-		# 파일 이름에 버전이 없어서, 배포 직후 옛 CSS 와 새 HTML 이 섞이지 않게 매번 재검증함
-		header Cache-Control "no-cache"
-		file_server
+		reverse_proxy web:3001
 	}
 }

@@ -1,0 +1,5 @@
+/* 작은 프로필 사진. 사진이 없으면 포스트잇 색 위에 이름 첫 글자 */
+.avatar { display: inline-grid; flex: none; place-items: center; width: 24px; height: 24px; overflow: hidden; border-radius: 5px; background: var(--avatar-bg, var(--sticky-3)); color: var(--sticky-ink); font-family: var(--font-hand); font-size: 18px; line-height: 1; }
+.avatar img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.community-author { display: inline-flex; align-items: center; gap: 7px; color: var(--ink); font-weight: 600; text-decoration: none; }
+.community-author:hover span:last-child { color: var(--pen); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }

@@ -1,15 +1,16 @@
 #!/usr/bin/env bash
 # GitHub Actions self-hosted runner(홈서버)가 체크아웃한 저장소 루트에서 실행함
-# 1) 커밋 태그로 API 이미지와 웹(Caddy + 정적 페이지) 이미지를 만듦
+# 1) 커밋 태그로 API, 페이지(Next.js), 앞단 프록시(Caddy) 이미지를 만들고, 페이지 이미지가 혼자 뜨는지 먼저 확인
 # 2) docker compose 로 교체하고, Caddy 를 거쳐 새 커밋이 응답하는지까지 확인
-# 3) 실패하면 직전 태그로 되돌림. systemd 에서 처음 넘어오는 배포였다면 예전 서비스를 다시 켬
+# 3) 실패하면 직전 태그와 그때의 compose 파일로 되돌림
 set -euo pipefail
 
 CONFIG="$HOME/.config/portfolio"
 STATE="$HOME/portfolio/docker-release"
-PDF=apps/web/gawon-portfolio.pdf
+# 지금 돌고 있는 버전의 compose 파일. 되돌릴 때는 그 버전의 서비스 구성으로 띄워야 해서 따로 남겨 둠
+STATE_COMPOSE="$HOME/portfolio/docker-compose.release.yml"
+PDF=apps/web/public/gawon-portfolio.pdf
 PROXY_URL=http://127.0.0.1:8090
-LEGACY_UNITS=(portfolio-api.service caddy.service)
 
 SHA=$(git rev-parse --short HEAD)
 PREV=$(cat "$STATE" 2>/dev/null || true)
@@ -21,17 +22,20 @@ compose() {
   RELEASE="$release" docker compose -f deploy/docker-compose.yml "$@"
 }
 
+# 직전 버전으로 되돌릴 때는 그 버전을 띄웠던 compose 파일을 씀. 페이지가 Caddy 정적 파일이던 시절로는 자동으로 못 돌아감
+compose_previous() {
+  local release=$1
+  shift
+  if [[ ! -f "$STATE_COMPOSE" ]]; then
+    echo "[deploy] 직전 버전의 compose 파일($STATE_COMPOSE)이 없어 되돌릴 수 없음. README 의 '되돌리기' 참고" >&2
+    return 1
+  fi
+  RELEASE="$release" docker compose -p portfolio --project-directory deploy -f "$STATE_COMPOSE" "$@"
+}
+
 # 컨테이너 안에서 root 계정으로 mongo 도구를 실행함. 비밀번호는 컨테이너 환경변수에서 읽어 명령줄에 남기지 않음
 mongo_root() {
   compose "$SHA" exec -T mongo sh -c "$1"' -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin'
-}
-
-legacy_active() {
-  local unit
-  for unit in "${LEGACY_UNITS[@]}"; do
-    systemctl --user is-active --quiet "$unit" && return 0
-  done
-  return 1
 }
 
 # Caddy 를 거쳐 이번 커밋의 API 가 응답하고 페이지와 PDF 가 열리는지 확인
@@ -40,6 +44,8 @@ serving() {
   for _ in $(seq 1 15); do
     if curl -fsS "$PROXY_URL/api/server" 2>/dev/null | grep -q "\"commit\":\"$tag\"" \
       && curl -fsS -o /dev/null "$PROXY_URL/" \
+      && curl -fsS -o /dev/null "$PROXY_URL/portfolio" \
+      && curl -fsS -o /dev/null "$PROXY_URL/feed" \
       && curl -fsS -o /dev/null "$PROXY_URL/gawon-portfolio.pdf"; then
       return 0
     fi
@@ -63,8 +69,26 @@ docker build -q -f apps/api/Dockerfile \
   --build-arg RELEASE_COMMIT="$SHA" \
   --build-arg RELEASE_BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   -t "portfolio-api:$SHA" . >/dev/null
-docker build -q -f deploy/web.Dockerfile -t "portfolio-web:$SHA" . >/dev/null
+docker build -q -f apps/web/Dockerfile -t "portfolio-web:$SHA" . >/dev/null
+docker build -q -f deploy/proxy.Dockerfile -t "portfolio-proxy:$SHA" . >/dev/null
 compose "$SHA" config -q
+
+# 페이지 이미지를 운영과 같은 읽기 전용 설정으로 혼자 띄워 첫 화면이 열리는지 봄. 안 뜨면 지금 버전을 건드리지 않고 멈춤
+echo "[deploy] 페이지 이미지 확인"
+WEB_CHECK=$(docker run -d --rm --read-only --tmpfs /tmp --tmpfs /app/apps/web/.next/cache --cap-drop ALL "portfolio-web:$SHA")
+web_health=starting
+for _ in $(seq 1 30); do
+  web_health=$(docker inspect -f '{{.State.Health.Status}}' "$WEB_CHECK" 2>/dev/null || echo gone)
+  [[ "$web_health" == starting ]] || break
+  sleep 2
+done
+if [[ "$web_health" != healthy ]]; then
+  echo "[deploy] 페이지 이미지가 뜨지 않음 ($web_health), 로그:" >&2
+  docker logs --tail 40 "$WEB_CHECK" >&2 || true
+  docker rm -f "$WEB_CHECK" >/dev/null 2>&1 || true
+  exit 1
+fi
+docker rm -f "$WEB_CHECK" >/dev/null
 
 echo "[deploy] DB 준비"
 compose "$SHA" up -d --wait --wait-timeout 90 mongo
@@ -74,56 +98,24 @@ echo "[deploy] 사진 저장소 준비"
 compose "$SHA" up -d --wait --wait-timeout 90 minio
 compose "$SHA" exec -T minio sh -s < deploy/minio-ensure-bucket.sh
 
-MIGRATING=false
-if legacy_active; then
-  MIGRATING=true
-  echo "[deploy] systemd 에서 Docker 로 첫 전환. 예전 API 를 멈추고 호스트 MongoDB 데이터를 옮김"
-  systemctl --user stop portfolio-api.service
-  # 호스트 MongoDB 는 읽기만 하므로 실패해도 예전 서비스로 바로 되돌릴 수 있음
-  if ! (
-    set -a
-    # shellcheck disable=SC1091
-    . "$CONFIG/api.env"
-    set +a
-    tmp=$(mktemp -d)
-    trap 'rm -rf "$tmp"' EXIT
-    printf 'uri: "%s"\n' "$MONGODB_URI" > "$tmp/dump.yaml"
-    mongodump --config "$tmp/dump.yaml" --archive --quiet
-  ) | mongo_root 'mongorestore --quiet --archive --drop --nsInclude "portfolio.*"'; then
-    echo "[deploy] 데이터 옮기기 실패. 예전 API 를 다시 켬" >&2
-    systemctl --user start portfolio-api.service
-    exit 1
-  fi
-  systemctl --user stop caddy.service
-fi
-
 echo "[deploy] 컨테이너 교체"
 if ! compose "$SHA" up -d --wait --wait-timeout 90 --remove-orphans || ! serving "$SHA"; then
   echo "[deploy] 새 버전 확인 실패, 로그:" >&2
-  compose "$SHA" logs --tail 40 api web >&2 || true
+  compose "$SHA" logs --tail 40 api web proxy >&2 || true
   if [[ -n "$PREV" ]]; then
     echo "[deploy] 직전 버전으로 되돌림: $PREV" >&2
-    compose "$PREV" up -d --wait --wait-timeout 90 || true
-  elif $MIGRATING; then
-    echo "[deploy] 예전 systemd 서비스로 되돌림" >&2
-    compose "$SHA" stop web api || true
-    systemctl --user start "${LEGACY_UNITS[@]}"
+    compose_previous "$PREV" up -d --wait --wait-timeout 90 --remove-orphans || true
   fi
   exit 1
 fi
 
-if $MIGRATING; then
-  # 서비스 파일은 지우지 않고 꺼 두기만 함. 필요하면 systemctl --user enable --now 로 되살림
-  systemctl --user disable "${LEGACY_UNITS[@]}" >/dev/null 2>&1 || true
-  echo "[deploy] 예전 systemd 서비스 끔: ${LEGACY_UNITS[*]}"
-fi
-
 mkdir -p "$(dirname "$STATE")"
 echo "$SHA" > "$STATE"
+cp deploy/docker-compose.yml "$STATE_COMPOSE"
 echo "[deploy] 방문 수 확인: $(curl -fsS "$PROXY_URL/api/views")"
 
 # 최근 이미지 3개만 남기고 빌드 중간 산출물 정리
-for repo in portfolio-api portfolio-web; do
+for repo in portfolio-api portfolio-web portfolio-proxy; do
   docker image ls "$repo" --format '{{.Tag}}' | tail -n +4 | xargs -r -I{} docker image rm -f "$repo:{}" >/dev/null
 done
 docker image prune -f >/dev/null

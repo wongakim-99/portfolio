@@ -1,0 +1,37 @@
+/* 책상 위에 놓인 종이 한 장과 위쪽 집게. 포트폴리오와 피드가 같이 씀 */
+.sheet {
+  position: relative;
+  max-width: 920px;
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 72px) clamp(20px, 6vw, 72px) clamp(32px, 5vw, 60px);
+  background: var(--paper);
+  box-shadow: var(--shadow-soft);
+  transition: background-color .4s ease;
+}
+.clip {
+  position: absolute;
+  left: 50%;
+  top: -14px;
+  width: 92px;
+  height: 30px;
+  transform: translateX(-50%);
+  border-radius: 6px 6px 3px 3px;
+  background: linear-gradient(var(--st-black), color-mix(in srgb, var(--st-black) 80%, var(--lid-shine)));
+  box-shadow: 0 3px 6px rgb(15 20 25 / .3);
+}
+.clip::after {
+  content: "";
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  top: -12px;
+  height: 16px;
+  border: 3px solid var(--hinge);
+  border-bottom: 0;
+  border-radius: 8px 8px 0 0;
+}
+
+@media print {
+  .sheet { box-shadow: none; padding: 0; }
+  .clip { display: none !important; }
+}

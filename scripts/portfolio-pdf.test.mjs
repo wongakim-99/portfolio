@@ -1,28 +1,28 @@
-// PDF 생성기가 portfolio.html 구조 변경으로 조용히 깨지지 않는지 확인함
+// PDF 생성기가 포트폴리오 내용(apps/web/src/entities/portfolio/model/content.ts) 변경으로 조용히 깨지지 않는지 확인함
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, it } from 'node:test';
-import { parse } from 'node-html-parser';
-import { extractPortfolio, HTML_PATH, renderPdf } from './portfolio-pdf.mjs';
+import { fileURLToPath } from 'node:url';
+import { portfolio } from '../apps/web/src/entities/portfolio/model/content.ts';
+import { renderPdf, toPdfData } from './portfolio-pdf.mjs';
 
 // 이력서 문체 규칙: 가운뎃점, em dash, 수학 마이너스, 검은 사각형은 AI 티가 나서 쓰지 않음
 const FORBIDDEN = /[■·—−]/;
+const WEB_SRC = fileURLToPath(new URL('../apps/web/src/', import.meta.url));
 
-let html;
 let data;
-before(async () => {
-  html = await readFile(HTML_PATH, 'utf8');
-  data = extractPortfolio(html);
+before(() => {
+  data = toPdfData(portfolio);
 });
 
-describe('portfolio.html 에서 내용 꺼내기', () => {
+describe('포트폴리오 내용 꺼내기', () => {
   it('머리와 섹션이 모두 채워짐', () => {
     assert.equal(data.name, '김가원');
     assert.match(data.email, /@/);
     assert.match(data.github, /^https:\/\/github\.com\//);
-    assert.match(data.site, /^https:\/\//);
+    assert.match(data.site, /^https:\/\/.+\/portfolio$/);
     assert.equal(data.about.length, 3);
     assert.ok(data.work.length >= 1);
     assert.ok(data.projects.length >= 4);
@@ -39,18 +39,26 @@ describe('portfolio.html 에서 내용 꺼내기', () => {
     for (const group of data.skills) assert.ok(group.items.length > 0, group.label);
   });
 
+  it('형광펜과 손글씨 메모는 글자만 남음', () => {
+    const points = [...data.work, ...data.projects].flatMap((item) => item.points);
+    assert.ok(points.some((point) => point.includes('코사인 유사도 0.7 미만 문서는')));
+    assert.ok(points.some((point) => point.endsWith('확인 (2026.11 기록)')));
+  });
+
   it('이력의 비고는 본문과 나뉨', () => {
     const course = data.history.find((h) => h.what.includes('유레카'));
     assert.equal(course.note, '멀티캠퍼스');
     assert.ok(!course.what.includes('멀티캠퍼스'));
   });
 
-  it('페이지에 보이는 글자에 금지 문자가 없음', () => {
-    const root = parse(html);
-    root.querySelectorAll('script, style').forEach((el) => el.remove());
-    const visible = root.querySelector('body').text;
-    assert.doesNotMatch(visible, FORBIDDEN);
-    assert.doesNotMatch(JSON.stringify(data), FORBIDDEN);
+  it('페이지 코드와 내용에 금지 문자가 없음', async () => {
+    assert.doesNotMatch(JSON.stringify(portfolio), FORBIDDEN);
+    const files = (await readdir(WEB_SRC, { recursive: true })).filter((file) => /\.(tsx?|css)$/.test(file));
+    assert.ok(files.length > 20, `${files.length}개 파일만 찾음`);
+    for (const file of files) {
+      const text = await readFile(path.join(WEB_SRC, file), 'utf8');
+      assert.doesNotMatch(text, FORBIDDEN, file);
+    }
   });
 });
 
@@ -69,7 +77,8 @@ describe('PDF 만들기', () => {
     assert.ok(pdf.length > 10_000 && pdf.length < 500_000, `${pdf.length} bytes`);
   });
 
-  it('data-pdf 표시가 빠지면 조용히 넘어가지 않고 실패함', () => {
-    assert.throws(() => extractPortfolio('<html><body><h1>no marks</h1></body></html>'), /data-pdf/);
+  it('내용이 빠지면 조용히 넘어가지 않고 실패함', () => {
+    assert.throws(() => toPdfData({ ...portfolio, work: [] }), /work/);
+    assert.throws(() => toPdfData({ ...portfolio, name: '' }), /name/);
   });
 });

@@ -1,0 +1,9 @@
+/* 관리실 쪽지함. 받은 쪽지는 엽서에 쓴 그대로 손글씨로 보여 줌 */
+.inbox-card { padding: 24px 0 22px; border-bottom: 1px dashed var(--paper-rule); }
+.inbox-card:last-child { border-bottom: 0; }
+.inbox-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.inbox-from { margin: 0; font-size: 16px; }
+.inbox-new { flex: none; padding: 1px 9px; border: 2px solid var(--stamp-red); border-radius: 999px; color: var(--stamp-red); font-size: 12px; font-weight: 700; transform: rotate(-4deg); }
+.inbox-body { max-width: 62ch; margin: 8px 0 10px; font-family: var(--font-hand); font-size: 25px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.inbox-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 18px; margin: 0; }
+.inbox-foot a.text-btn { text-decoration: none; overflow-wrap: anywhere; }

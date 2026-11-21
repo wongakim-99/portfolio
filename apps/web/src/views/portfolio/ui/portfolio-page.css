@@ -1,0 +1,17 @@
+/* 포트폴리오 머리: 제목, 이름과 연락처, 이 페이지 목차 */
+.portfolio-main { padding-bottom: clamp(64px, 8vw, 110px); }
+.portfolio-intro { max-width: 920px; margin: 0 auto; padding: clamp(46px, 7vw, 84px) 0 40px; }
+.portfolio-intro h1 { margin: 0; font-family: var(--font-display); font-size: clamp(52px, 7vw, 82px); font-weight: 700; line-height: 1.14; letter-spacing: -.035em; }
+.portfolio-owner { margin: 4px 0 0; font-size: 20px; font-weight: 700; }
+.portfolio-lead { max-width: 42em; margin: 12px 0 0; font-size: clamp(16px, 1.7vw, 19px); line-height: 1.65; }
+.portfolio-contact { display: flex; flex-wrap: wrap; gap: 4px 22px; margin-top: 16px; font-family: var(--font-mono); font-size: 13px; }
+.portfolio-contact a { text-decoration: none; border-bottom: 1px solid color-mix(in srgb, var(--ink) 35%, transparent); }
+.portfolio-contact a:hover { border-bottom-color: var(--ink); }
+.portfolio-index { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: clamp(28px, 4vw, 48px); }
+.portfolio-index span { margin-right: 8px; color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+.portfolio-index a { padding: 5px 12px; border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); border-radius: 4px; color: var(--ink); font-size: 13px; font-weight: 600; text-decoration: none; }
+.portfolio-index a:hover { background: var(--paper); border-color: var(--pen); }
+
+@media print {
+  .portfolio-index { display: none !important; }
+}

@@ -10,7 +10,7 @@ RUNNER_VERSION=2.338.0
 RUNNER_SHA256=af4b794c1bc41d73d40535e3fe092a39f9679cd8d965954c2aca25a05ca41d32
 REPO_URL=https://github.com/wongakim-99/portfolio
 
-mkdir -p ~/.local/opt ~/.local/bin ~/.config/systemd/user ~/portfolio/site
+mkdir -p ~/.local/opt ~/.local/bin ~/.config/systemd/user ~/portfolio
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
@@ -43,4 +43,4 @@ systemctl --user daemon-reload
 systemctl --user enable --now github-runner.service
 
 echo "완료: node $(~/.local/node/bin/node -v), runner $(systemctl --user is-active github-runner)"
-echo "API, Caddy, MongoDB 는 Docker 컨테이너로 돎. deploy/docker-setup.sh 실행 후 첫 배포에서 뜸"
+echo "페이지(Next.js), API, Caddy, MongoDB, MinIO 는 Docker 컨테이너로 돎. deploy/docker-setup.sh 실행 후 첫 배포에서 뜸"
