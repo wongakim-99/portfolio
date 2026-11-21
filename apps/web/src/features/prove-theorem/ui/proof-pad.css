@@ -15,7 +15,10 @@
   background: var(--sticky-1);
   box-shadow: var(--shadow-sticker);
   transform: rotate(-.5deg);
+  transition: transform .2s ease;
 }
+/* 쓰려고 누르면 메모장을 똑바로 놓음. 기울어진 채로 쓰면 글자와 커서를 비스듬히 다시 그려서 입력이 덜 매끄러움 */
+.proof-pad:focus-within { transform: none; }
 .proof-pad::before { content: ""; position: absolute; inset: 0 0 auto; height: 18px; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--stamp-red) 80%, var(--sticky-1)); }
 /* 왼쪽 여백선은 글자와 같이 스크롤되지 않고 종이에 붙어 있음 */
 .proof-pad::after { content: ""; position: absolute; left: 46px; top: 18px; bottom: 0; width: 2px; background: color-mix(in srgb, var(--stamp-red) 45%, transparent); pointer-events: none; }
@@ -67,6 +70,7 @@
 @media (prefers-reduced-motion: reduce) {
   .proof-grading::after { animation: none; content: "..."; }
   .proof-score, .proof-pen { animation: none; }
+  .proof-pad { transition: none; }
 }
 
 @media (max-width: 720px) {

@@ -1,9 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { prefersReducedMotion } from '@shared/lib';
+import { keepPhrases, prefersReducedMotion, warmFont } from '@shared/lib';
 import { streamProofGrade } from '@entities/blog-post';
-import { EASIER_PROBLEMS, gradeProof, problemFor } from '../lib/problems';
+import { gradeProof, problemSequence } from '../lib/problems';
 import './proof-pad.css';
 
 // 빈 종이처럼 AI 에게 보내지 않는 채점, AI 를 못 써서 미리 적어 둔 채점평을 낼 때 기다리는 척하는 시간
@@ -14,19 +14,27 @@ const WAITING = ['답안지를 받는 중', 'Lean 4 에 넣어 보는 중', '심
 const WAITING_MS = 900;
 // 받은 채점평을 펜으로 쓰듯 한 글자씩. 받은 글자보다 많이 밀리면 몇 글자씩 따라잡음
 const PEN_MS = 30;
+// 메모장 손글씨 글꼴 (shared/styles/tokens.css 의 --font-hand 첫 글꼴)
+const HAND_FONT = 'Nanum Pen Script';
+
+/** 문제를 다 넘기고 항복할 때까지의 기록. 항복 문서에 적힘 */
+export interface ProofRecord {
+  attempts: number;
+  problems: number;
+}
 
 interface ProofPadProps {
   postId: string;
-  /** 더 쉬운 문제를 다 넘기고 나면 누르는 '그냥 부탁할게요'. 요청하기 칸으로 보냄 */
-  onGiveUp: () => void;
+  /** 마지막 문제까지 넘기고 누르는 '그냥 부탁할게요' */
+  onGiveUp: (record: ProofRecord) => void;
 }
 
 type Grade = { state: 'idle' } | { state: 'waiting' } | { state: 'graded'; verdict: string; done: boolean };
 
 /** 잠긴 글 대신 놓이는 문제지와 노란 메모장. AI 가 빨간 펜으로 채점평을 쓰지만 무엇을 써 내든 0점 */
 export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
-  // -1 은 글마다 정해진 첫 문제, 0부터는 '더 쉬운 문제'
-  const [level, setLevel] = useState(-1);
+  // 0 은 글마다 정해진 첫 문제, 1부터는 '더 쉬운 문제'
+  const [level, setLevel] = useState(0);
   const [proof, setProof] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [grade, setGrade] = useState<Grade>({ state: 'idle' });
@@ -56,8 +64,9 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
     return () => window.clearTimeout(id);
   }, [shown, verdict]);
 
-  const problem = level < 0 ? problemFor(postId) : (EASIER_PROBLEMS[level] ?? problemFor(postId));
-  const lastLevel = level >= EASIER_PROBLEMS.length - 1;
+  const sequence = problemSequence(postId);
+  const problem = sequence[Math.min(level, sequence.length - 1)]!;
+  const lastLevel = level >= sequence.length - 1;
   const writing = grade.state === 'graded' && (!grade.done || shown < verdict.length);
   const busy = grade.state === 'waiting' || writing;
 
@@ -83,26 +92,26 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
     }
     const controller = new AbortController();
     request.current = controller;
-    const started = performance.now();
+    // AI 를 못 쓰면(하루 한도, 서버 오류) 미리 적어 둔 채점평을 냄. 바로 튀어나오지 않게 제출하고 적어도 이만큼은 기다림
+    const settled = new Promise((resolve) => window.setTimeout(resolve, FALLBACK_MIN_MS));
     let written = '';
     void streamProofGrade(postId, { problem: problem.id, proof, attempt }, (text) => {
       written += text;
       setGrade({ state: 'graded', verdict: written, done: false });
-    }, controller.signal).then((received) => {
+    }, controller.signal).then(async (received) => {
       if (controller.signal.aborted) return;
       if (received) {
         setGrade({ state: 'graded', verdict: written, done: true });
         return;
       }
-      // AI 를 못 쓰면(하루 한도, 서버 오류) 미리 적어 둔 채점평. 바로 튀어나오지 않게 조금 기다림
-      const wait = Math.max(0, FALLBACK_MIN_MS - (performance.now() - started));
-      timer.current = window.setTimeout(() => setGrade({ state: 'graded', verdict: fallback, done: true }), wait);
+      await settled;
+      if (!controller.signal.aborted) setGrade({ state: 'graded', verdict: fallback, done: true });
     });
   }
 
   function easier() {
     if (lastLevel) {
-      onGiveUp();
+      onGiveUp({ attempts, problems: sequence.length });
       return;
     }
     stop();
@@ -113,17 +122,18 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
 
   return (
     <section className="proof" aria-labelledby="proof-ask">
-      <p className="hand proof-number">문제 {level + 2}.</p>
+      <p className="hand proof-number">문제 {level + 1}.</p>
       <h3 id="proof-ask" className="proof-ask">
-        {problem.ask}
+        {keepPhrases(problem.ask)}
       </h3>
-      <p className="proof-note">{problem.note}</p>
+      <p className="proof-note">{keepPhrases(problem.note)}</p>
 
       <form className="proof-form" onSubmit={submit}>
         <label className="sr" htmlFor="proof-pad">
           증명 메모장
         </label>
-        <div className="proof-pad">
+        {/* 메모장에 손을 올리거나 누르면 손글씨 글꼴 조각을 미리 받아, 쓰는 동안 글자가 다른 글꼴로 보였다 바뀌지 않게 함 */}
+        <div className="proof-pad" onPointerEnter={() => warmFont(HAND_FONT)} onFocus={() => warmFont(HAND_FONT)}>
           <textarea
             id="proof-pad"
             value={proof}
@@ -143,7 +153,7 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
           </button>
           {attempts > 0 && <span className="community-meta">제출 {attempts}번, 통과 0번</span>}
         </div>
-        <p className="proof-fineprint">빨간 펜은 AI 가 듭니다. 적어 낸 답안은 채점에만 쓰고 남기지 않습니다.</p>
+        <p className="proof-fineprint">적어 낸 답안은 채점에만 쓰고 남기지 않습니다.</p>
       </form>
 
       <div className="proof-grade" aria-live="polite" aria-busy={busy}>
@@ -154,7 +164,7 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
               0
             </span>
             <p className="hand proof-verdict">
-              {verdict.slice(0, shown)}
+              {keepPhrases(verdict.slice(0, shown))}
               {writing && <span className="proof-pen" aria-hidden="true" />}
             </p>
           </>

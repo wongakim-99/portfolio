@@ -9,7 +9,7 @@
 .blog-card-title a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
 .blog-card-title a:focus-visible { outline: none; }
 .blog-card-excerpt { display: -webkit-box; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: 15px; line-height: 1.75; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
-.blog-card-locked { margin: 0; color: var(--stamp-red); font-size: 22px; line-height: 1.35; transform: rotate(-1deg); transform-origin: left; }
+.blog-card-locked { margin: 0; color: var(--stamp-red); font-size: 22px; line-height: 1.35; text-wrap: balance; transform: rotate(-1deg); transform-origin: left; }
 .blog-card .blog-tags { position: relative; z-index: 1; }
 .blog-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: auto 0 0; padding-top: 14px; border-top: 1px solid var(--paper-rule); color: var(--ink-soft); font-size: 13px; }
 .blog-card-foot svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s ease; }

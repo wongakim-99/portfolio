@@ -1,9 +1,9 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { useState, type FormEvent, type Ref } from 'react';
+import { useId, useState, type FormEvent } from 'react';
 import { errorMessage } from '@shared/api';
-import { formatDate } from '@shared/lib';
+import { formatDate, keepPhrases } from '@shared/lib';
 import { FormStatus, NO_STATUS, type Status } from '@shared/ui';
 import { BLOG_LIMITS, requestBlogAccess, type AccessRequestState } from '@entities/blog-post';
 import { useSession } from '@entities/user';
@@ -14,12 +14,12 @@ interface RequestAccessProps {
   /** 이 글에 내가 이미 보낸 요청 */
   request: AccessRequestState | null;
   onRequested: (request: AccessRequestState) => void;
-  /** 문제지의 '그냥 부탁할게요' 가 이 칸으로 스크롤하고 초점을 옮김 */
-  ref?: Ref<HTMLElement>;
 }
 
-/** 잠긴 글 아래 '주인장에게 요청하기'. 허락은 계정에 붙으므로 로그인부터 */
-export function RequestAccess({ postId, request, onRequested, ref }: RequestAccessProps) {
+/** 잠긴 글 아래와 항복 문서 안의 '주인장에게 요청하기'. 허락은 계정에 붙으므로 로그인부터 */
+export function RequestAccess({ postId, request, onRequested }: RequestAccessProps) {
+  // 글 아래와 항복 문서에 같이 놓여도 id 가 겹치지 않게 함
+  const id = useId();
   const pathname = usePathname();
   const { user, requestLogin } = useSession();
   const [message, setMessage] = useState('');
@@ -48,7 +48,7 @@ export function RequestAccess({ postId, request, onRequested, ref }: RequestAcce
   if (!user) {
     body = (
       <>
-        <p>증명 대신 주인장에게 직접 부탁할 수도 있습니다. 누가 보는지 알아야 해서 로그인한 분만 요청할 수 있어요.</p>
+        <p>{keepPhrases('증명 대신 주인장에게 직접 부탁할 수도 있습니다. 누가 보는지 알아야 해서 로그인한 분만 요청할 수 있어요.')}</p>
         <button className="tape tape-lg" type="button" onClick={() => requestLogin(pathname)}>
           로그인하고 요청하기
         </button>
@@ -57,27 +57,26 @@ export function RequestAccess({ postId, request, onRequested, ref }: RequestAcce
   } else if (request?.status === 'pending') {
     body = (
       <p className="hand request-note">
-        {formatDate(request.createdAt)}에 요청을 보냈습니다. 주인장이 읽어 보고 정합니다. 심사 기간은 P = NP 증명보다는 짧습니다.
+        {keepPhrases(`${formatDate(request.createdAt)}에 요청을 보냈습니다. 주인장이 읽어 보고 정합니다. 심사 기간은 P = NP 증명보다는 짧습니다.`)}
       </p>
     );
   } else if (request?.status === 'rejected' && !retryOpen) {
     body = (
       <p className="hand request-note">
-        주인장이 이번에는 정중히 거절했습니다.{request.retryAt ? ` ${formatDate(request.retryAt)}부터 다시 부탁해 볼 수 있어요.` : ''}
+        {keepPhrases(`주인장이 이번에는 정중히 거절했습니다.${request.retryAt ? ` ${formatDate(request.retryAt)}부터 다시 부탁해 볼 수 있어요.` : ''}`)}
       </p>
     );
   } else {
     body = (
       <form className="community-form request-form" onSubmit={submit}>
         <p>
-          {retryOpen ? '다시 부탁해 볼 수 있어요. ' : '증명 대신 주인장에게 직접 부탁할 수도 있습니다. '}
-          {user.name}님 계정으로 요청이 가고, 허락하면 메일로 알려 드려요.
+          {keepPhrases(`${retryOpen ? '다시 부탁해 볼 수 있어요.' : '증명 대신 주인장에게 직접 부탁할 수도 있습니다.'} ${user.name}님 계정으로 요청이 가고, 허락하면 메일로 알려 드려요.`)}
         </p>
-        <label htmlFor="request-message">
+        <label htmlFor={`${id}-message`}>
           주인장에게 한마디 <small>안 써도 됩니다</small>
         </label>
         <textarea
-          id="request-message"
+          id={`${id}-message`}
           rows={3}
           maxLength={BLOG_LIMITS.requestMax}
           placeholder="어떻게 아는 사이인지 적어 주시면 허락이 빨라집니다"
@@ -92,8 +91,8 @@ export function RequestAccess({ postId, request, onRequested, ref }: RequestAcce
   }
 
   return (
-    <section ref={ref} className="request-access" aria-labelledby="request-title" tabIndex={-1}>
-      <h3 id="request-title">주인장에게 요청하기</h3>
+    <section className="request-access" aria-labelledby={`${id}-title`}>
+      <h3 id={`${id}-title`}>주인장에게 요청하기</h3>
       {body}
       <FormStatus status={status} />
     </section>

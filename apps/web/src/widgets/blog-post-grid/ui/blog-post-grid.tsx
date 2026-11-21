@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import { routes } from '@shared/config';
+import { keepPhrases } from '@shared/lib';
 import { problemFor } from '@features/prove-theorem';
 import { BlogCard, listBlogPosts, type BlogListQuery, type BlogPostSummary } from '@entities/blog-post';
 import { useSession } from '@entities/user';
@@ -48,7 +49,7 @@ export function BlogPostGrid({ query }: { query: BlogListQuery }) {
       )}
       <div className="blog-grid" aria-live="polite">
         {posts.map((post) => (
-          <BlogCard key={post.id} post={post} lockedNote={problemFor(post.id).ask} />
+          <BlogCard key={post.id} post={post} lockedNote={keepPhrases(problemFor(post.id).ask)} />
         ))}
       </div>
       {status === 'loading' && !posts.length && <p className="blog-grid-empty">글을 불러오는 중입니다.</p>}

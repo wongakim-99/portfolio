@@ -1,9 +1,41 @@
 /* 잠긴 본문 자리. 위쪽에 빨간 봉인 도장을 비스듬히 찍어 둠 */
 .blog-lock { position: relative; padding: 34px 0 20px; }
 .blog-lock-seal { position: absolute; right: 0; top: 18px; margin: 0; padding: 4px 16px; border: 3px double var(--stamp-red); border-radius: 8px; color: var(--stamp-red); font-size: 22px; font-weight: 700; letter-spacing: .3em; opacity: .85; transform: rotate(8deg); pointer-events: none; }
-.blog-lock-lead { max-width: 52ch; margin: 0; padding-right: 110px; color: var(--ink-soft); line-height: 1.7; }
+.blog-lock-lead { max-width: 64ch; margin: 0; padding-right: 110px; color: var(--ink-soft); line-height: 1.7; }
+/* 두 문장은 각자 한 줄에서 시작하고, 좁아서 접힐 때는 두 줄 길이를 고르게 나눔 */
+.blog-lock-lead span { display: block; text-wrap: balance; }
 
 @media (max-width: 720px) {
   .blog-lock-seal { position: static; display: inline-block; margin-bottom: 14px; font-size: 18px; transform: rotate(-4deg); }
   .blog-lock-lead { padding-right: 0; }
+}
+
+/* 항복 문서: 문제를 끝까지 넘기면 뜨는 종이 한 장. 오른쪽 위에 빨간 '항복' 도장이 쾅 찍힘 */
+.community-dialog.surrender { position: relative; width: min(540px, calc(100vw - 28px)); padding: 30px 30px 24px; border-radius: 3px; }
+.surrender-stamp { position: absolute; right: 28px; top: 74px; margin: 0; padding: 4px 14px 4px 18px; border: 3px double var(--stamp-red); border-radius: 8px; color: var(--stamp-red); font-size: 26px; font-weight: 700; letter-spacing: .3em; opacity: .85; transform: rotate(-12deg); pointer-events: none; animation: surrender-stamp .4s cubic-bezier(.2, 1.4, .4, 1) .35s both; }
+.surrender-hand { margin: 14px 0 0; padding-right: 120px; color: var(--pen); font-size: 25px; line-height: 1.3; text-wrap: balance; transform: rotate(-1.5deg); transform-origin: left; }
+.surrender-body { margin: 16px 0 0; line-height: 1.8; text-wrap: pretty; }
+.surrender-record { display: flex; flex-wrap: wrap; gap: 6px 26px; margin: 18px 0 0; padding: 12px 0; border-block: 1px solid var(--paper-rule); font-family: var(--font-mono); font-size: 13px; }
+.surrender-record div { display: flex; gap: 8px; }
+.surrender-record dt { color: var(--ink-soft); }
+.surrender-record dd { margin: 0; font-weight: 600; }
+.surrender-sign { margin: 18px 0 0; color: var(--ink-soft); font-size: 14px; }
+.surrender-sign .hand { display: inline-block; margin-left: 8px; padding: 0 18px 2px 4px; border-bottom: 1px solid var(--ink-soft); color: var(--ink); font-size: 26px; transform: rotate(-2deg); }
+.surrender-foot { margin: 10px 0 0; color: var(--ink-soft); font-size: 13px; }
+.surrender .request-access h3 { font-size: 20px; }
+.surrender-actions { display: flex; justify-content: flex-end; margin-top: 20px; }
+.surrender-actions .text-btn { font-size: 14px; }
+
+@keyframes surrender-stamp {
+  from { opacity: 0; transform: rotate(-12deg) scale(2.2); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .surrender-stamp { animation: none; }
+}
+
+@media (max-width: 520px) {
+  .community-dialog.surrender { padding: 24px 20px 20px; }
+  .surrender-stamp { top: 64px; right: 18px; font-size: 20px; }
+  .surrender-hand { padding-right: 90px; font-size: 23px; }
 }
