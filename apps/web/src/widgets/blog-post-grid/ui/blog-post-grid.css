@@ -1,6 +1,6 @@
-/* 카드 그리드. 카드 한 장이 300px 아래로 줄지 않는 만큼 칸을 늘림: 노트북 2줄, 큰 모니터 3, 4줄, 휴대폰 1줄
+/* 카드 그리드. 카드 한 장이 270px 아래로 줄지 않는 만큼 칸을 늘림: 920px 단은 3줄, 사이드바가 단 안에 들어오면 2줄, 휴대폰 1줄
    글이 적어도 카드가 한 줄을 다 차지하도록 늘어나지 않게 auto-fill 로 빈 칸을 남겨 둠 */
-.blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 24px; }
+.blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 24px; }
 .blog-filter-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 18px; color: var(--ink-soft); font-size: 15px; }
 .blog-filter-note b { color: var(--pen); font-size: 18px; overflow-wrap: anywhere; }
 .blog-grid-empty { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 8px 14px; margin: 48px 0; color: var(--ink-soft); font-size: 15px; text-align: center; }
