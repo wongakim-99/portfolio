@@ -1,10 +1,10 @@
-/* 목록 왼쪽 사이드바. 연한 바탕의 둥근 판 위에 주인 소개, 분류, 태그 */
-.blog-sidebar { display: grid; gap: 26px; align-content: start; padding: 24px 20px; border-radius: 18px; background: var(--blog-side); }
+/* 목록 왼쪽 사이드바. 책상에 놓인 종이 한 장 위에 주인 소개, 분류, 태그 */
+.blog-sidebar { display: grid; gap: 26px; align-content: start; padding: 26px 22px; border-radius: 3px; background: var(--paper); box-shadow: var(--shadow-soft); transition: background-color .4s ease; }
 .blog-side-block h2 { margin: 0 0 10px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
 .blog-side-groups { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .blog-side-groups a { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; color: var(--ink); font-size: 15px; text-decoration: none; transition: background-color .15s ease; }
-.blog-side-groups a:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
-.blog-side-groups a.is-active { background: var(--paper); font-weight: 700; box-shadow: 0 1px 2px rgb(15 20 25 / .06); }
+.blog-side-groups a:hover { background: var(--blog-tint); }
+.blog-side-groups a.is-active { background: var(--blog-tint); font-weight: 700; box-shadow: inset 3px 0 0 var(--pen); }
 .blog-side-count { color: var(--ink-soft); font-family: var(--font-mono); font-size: 12px; font-weight: 400; }
 .blog-side-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .blog-side-tags .blog-tag .blog-side-count { margin-left: 6px; }

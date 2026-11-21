@@ -9,7 +9,9 @@ export function BlogPage() {
       <header className="blog-hero">
         <p className="hand blog-hero-hand">혼잣말과 공부한 것 사이 어딘가</p>
         <h1>블로그</h1>
-        <p>기술 글은 누구나 읽을 수 있어요. 잠긴 글은 주인장이 허락한 분만 읽는데, 문제를 풀어도 열린다는 소문이 있습니다.</p>
+        <p>
+          기술 글은 누구나 읽을 수 있어요. <mark>잠긴 글</mark>은 주인장이 허락한 분만 읽는데, 문제를 풀어도 열린다는 소문이 있습니다.
+        </p>
       </header>
       <Suspense fallback={null}>
         <BlogBoard />

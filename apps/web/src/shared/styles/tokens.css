@@ -53,6 +53,8 @@
 
   --gutter: clamp(16px, 4vw, 40px);
   --page: 1160px;
+  /* 상단 바와 바닥글, 블로그 목록. 넓은 모니터에서도 양끝 여백(--gutter)만 두고 펼쳐서 페이지를 옮겨도 로고 자리가 같음 */
+  --chrome: 2200px;
   color-scheme: light;
 }
 

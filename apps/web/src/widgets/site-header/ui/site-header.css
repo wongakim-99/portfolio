@@ -1,6 +1,6 @@
 /* 상단: 로고 테이프, 페이지 탭, (피드에서는 계정 칸), 스탠드 */
 .topbar {
-  max-width: var(--page);
+  max-width: var(--chrome);
   margin: 0 auto;
   padding-block: 18px 0;
   display: flex;

@@ -1,6 +1,6 @@
 /* 아래쪽 */
 .footer {
-  max-width: var(--page);
+  max-width: var(--chrome);
   margin: 0 auto;
   padding-block: 28px 40px;
   display: flex;

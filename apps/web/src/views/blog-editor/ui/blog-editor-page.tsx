@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
-import { BackLink, type Status } from '@shared/ui';
+import { BackLink, Sheet, type Status } from '@shared/ui';
 import { BlogPostForm } from '@features/write-blog-post';
 import { getBlogPost, type BlogPostInput } from '@entities/blog-post';
 import { useSession } from '@entities/user';
@@ -37,7 +37,7 @@ export function BlogEditorPage({ postId }: { postId?: string }) {
   // 로그인 확인 전, 불러오는 중, 다 받은 뒤마다 폼을 새로 그려 처음 값을 다시 넣음
   const stage = !owner ? 'not-owner' : !postId ? 'draft' : loaded ? 'loaded' : loadStatus ? 'failed' : 'loading';
   return (
-    <section className="blog-editor" aria-labelledby="blog-editor-title">
+    <Sheet className="blog-editor" aria-labelledby="blog-editor-title">
       <BackLink href={postId ? routes.blogPost(postId) : routes.blog}>{postId ? '글로 돌아가기' : '블로그'}</BackLink>
       <h1 id="blog-editor-title" className="sr">
         {postId ? '글 고치기' : '새 글 쓰기'}
@@ -51,6 +51,6 @@ export function BlogEditorPage({ postId }: { postId?: string }) {
         disabled={stage !== 'draft' && stage !== 'loaded'}
         initialStatus={loadStatus}
       />
-    </section>
+    </Sheet>
   );
 }

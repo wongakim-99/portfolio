@@ -1,5 +1,4 @@
-/* 블로그 화면(/blog/*)의 바탕. 피드의 점박이 책상과 달리 깨끗한 흰 페이지에 카드를 늘어놓음
-   app/blog/layout.tsx 에서 불러옴 */
-:root { --blog-side: color-mix(in srgb, var(--desk) 30%, var(--paper)); }
-body:has(.blog-main) { background-color: var(--paper); background-image: none; }
-.blog-main { min-height: 70vh; }
+/* 블로그 화면(/blog/*). 다른 페이지와 같은 책상 바탕 위에 종이 카드와 사이드바를 놓음
+   목록은 넓은 모니터에서 양옆이 비지 않게 상단 바와 같은 폭(--chrome)까지 펼침. app/blog/layout.tsx 에서 불러옴 */
+:root { --blog-tint: color-mix(in srgb, var(--desk) 30%, var(--paper)); }
+.blog-main { min-height: 70vh; padding-bottom: clamp(64px, 8vw, 110px); }

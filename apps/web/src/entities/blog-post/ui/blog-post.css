@@ -1,7 +1,7 @@
-/* 블로그 카드, 태그, 공개 범위 도장. 카드는 흰 종이에 얇은 테두리, 올려 두면 살짝 뜸 */
-.blog-card { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 24px 24px 18px; border: 1px solid var(--paper-rule); border-radius: 16px; background: var(--paper); transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease; }
-.blog-card:hover { border-color: color-mix(in srgb, var(--ink) 30%, transparent); box-shadow: 0 10px 28px rgb(15 20 25 / .08); transform: translateY(-2px); }
-.blog-card:focus-within { border-color: var(--pen); }
+/* 블로그 카드, 태그, 공개 범위 도장. 카드는 책상에 놓인 종이 한 장, 올려 두면 살짝 들림 */
+.blog-card { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 26px 26px 18px; border-radius: 3px; background: var(--paper); box-shadow: var(--shadow-soft); transition: box-shadow .2s ease, transform .2s ease, background-color .4s ease; }
+.blog-card:hover { box-shadow: 0 2px 4px rgb(15 20 25 / .1), 0 16px 36px rgb(15 20 25 / .16); transform: translateY(-3px); }
+.blog-card:focus-within { outline: 2px solid var(--pen); outline-offset: 3px; }
 .blog-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; color: var(--ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
 .blog-card-title { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.45; letter-spacing: -.02em; overflow-wrap: anywhere; text-wrap: balance; }
 .blog-card-title a { color: var(--ink); text-decoration: none; }
@@ -31,6 +31,6 @@
 }
 
 @media (max-width: 720px) {
-  .blog-card { padding: 20px 18px 16px; border-radius: 14px; }
+  .blog-card { padding: 22px 20px 16px; }
   .blog-card-title { font-size: 19px; }
 }

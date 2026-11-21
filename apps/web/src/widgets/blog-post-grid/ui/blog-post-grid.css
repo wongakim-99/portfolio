@@ -1,10 +1,11 @@
-/* 카드 그리드. 넓으면 두 줄, 좁으면 한 줄 */
-.blog-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+/* 카드 그리드. 카드 한 장이 300px 아래로 줄지 않는 만큼 칸을 늘림: 노트북 2줄, 큰 모니터 3, 4줄, 휴대폰 1줄
+   글이 적어도 카드가 한 줄을 다 차지하도록 늘어나지 않게 auto-fill 로 빈 칸을 남겨 둠 */
+.blog-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 24px; }
 .blog-filter-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 18px; color: var(--ink-soft); font-size: 15px; }
 .blog-filter-note b { color: var(--pen); font-size: 18px; overflow-wrap: anywhere; }
 .blog-grid-empty { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 8px 14px; margin: 48px 0; color: var(--ink-soft); font-size: 15px; text-align: center; }
 .blog-more { display: flex; margin: 32px auto 0; background: none; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
 
-@media (max-width: 820px) {
-  .blog-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+@media (max-width: 720px) {
+  .blog-grid { gap: 16px; }
 }

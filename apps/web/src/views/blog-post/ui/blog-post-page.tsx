@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { formatDate, useDocumentTitle } from '@shared/lib';
-import { BackLink, FormStatus, NO_STATUS, type Status } from '@shared/ui';
+import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
 import { BlogLock } from '@widgets/blog-lock';
 import { BlogOwnerCard } from '@widgets/blog-sidebar';
 import { BlogPostActions } from '@features/manage-blog-post';
@@ -48,7 +48,7 @@ export function BlogPostPage({ postId }: { postId: string }) {
 
   const edited = post && post.updatedAt.slice(0, 10) !== post.createdAt.slice(0, 10);
   return (
-    <article className="blog-article">
+    <Sheet as="article" className="blog-article">
       <BackLink href={routes.blog}>블로그</BackLink>
       <header className="blog-article-head">
         <h1>{missing ? '글을 찾을 수 없습니다' : post?.title}</h1>
@@ -81,6 +81,6 @@ export function BlogPostPage({ postId }: { postId: string }) {
           <BlogOwnerCard owner={owner} />
         </footer>
       )}
-    </article>
+    </Sheet>
   );
 }

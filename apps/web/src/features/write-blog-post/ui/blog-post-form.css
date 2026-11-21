@@ -19,7 +19,7 @@
 .blog-visibility-option input { position: absolute; opacity: 0; pointer-events: none; }
 .blog-visibility-option b { justify-self: start; padding: 0 8px; border: 2px solid transparent; border-radius: 6px; font-size: 14px; letter-spacing: .04em; transition: transform .15s ease; }
 .blog-visibility-option span { color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
-.blog-visibility-option.is-checked { border-color: var(--ink); background: var(--blog-side); }
+.blog-visibility-option.is-checked { border-color: var(--ink); background: var(--blog-tint); }
 .blog-visibility-option.is-checked b { border-color: var(--stamp-red); color: var(--stamp-red); transform: rotate(-4deg); }
 .blog-visibility-option:has(input:focus-visible) { outline: 3px solid var(--pen); outline-offset: 2px; }
 
