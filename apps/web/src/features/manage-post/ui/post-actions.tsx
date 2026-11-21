@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { errorMessage } from '@shared/api';
 import { routes } from '@shared/config';
-import type { Status } from '@shared/ui';
+import { ActionButton, type Status } from '@shared/ui';
 import { deletePost, deletePostAsAdmin, type Post } from '@entities/post';
 import type { ReportTarget } from '@entities/report';
 import { useSession } from '@entities/user';
@@ -31,30 +31,30 @@ export function PostActions({ post, onReport, onStatus }: PostActionsProps) {
 
   if (user?.id === post.authorId) {
     return (
-      <div className="community-inline-actions">
-        <button className="text-btn" type="button" onClick={() => router.push(routes.editPost(post.id))}>
+      <div className="community-inline-actions action-row">
+        <ActionButton icon="edit" onClick={() => router.push(routes.editPost(post.id))}>
           수정
-        </button>
-        <button className="text-btn" type="button" onClick={() => remove('이 글과 댓글을 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.', () => deletePost(post.id))}>
+        </ActionButton>
+        <ActionButton icon="delete" tone="danger" onClick={() => remove('이 글과 댓글을 삭제할까요? 삭제 후에는 되돌릴 수 없습니다.', () => deletePost(post.id))}>
           삭제
-        </button>
+        </ActionButton>
       </div>
     );
   }
 
   return (
-    <div className="community-inline-actions">
-      <button className="text-btn" type="button" onClick={() => onReport({ targetType: 'post', targetId: post.id })}>
+    <div className="community-inline-actions action-row">
+      <ActionButton icon="report" onClick={() => onReport({ targetType: 'post', targetId: post.id })}>
         신고
-      </button>
+      </ActionButton>
       {can('content:moderate') && (
-        <button
-          className="text-btn text-btn-danger"
-          type="button"
+        <ActionButton
+          icon="delete"
+          tone="danger"
           onClick={() => remove('관리자 권한으로 이 글과 댓글을 삭제할까요? 되돌릴 수 없습니다.', () => deletePostAsAdmin(post.id))}
         >
           관리자 삭제
-        </button>
+        </ActionButton>
       )}
     </div>
   );

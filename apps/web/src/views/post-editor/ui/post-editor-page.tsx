@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
-import { Sheet, type Status } from '@shared/ui';
+import { BackLink, Sheet, type Status } from '@shared/ui';
 import { PostForm } from '@features/write-post';
 import { getPost, type PostDraft } from '@entities/post';
 import { useSession } from '@entities/user';
@@ -45,9 +44,7 @@ export function PostEditorPage({ postId }: { postId?: string }) {
   const stage = !userId ? 'signed-out' : !postId ? 'draft' : loaded ? 'loaded' : loadStatus ? 'failed' : 'loading';
   return (
     <Sheet className="community-sheet editor-sheet" aria-labelledby="editor-title">
-      <Link className="community-back" href={routes.feed}>
-        ← 모든 글
-      </Link>
+      <BackLink href={routes.feed}>모든 글</BackLink>
       <h2 id="editor-title">{postId ? '글 수정하기' : '새 글 쓰기'}</h2>
       <p className="community-meta">제목과 본문을 적어 주세요. 줄바꿈이 그대로 보입니다.</p>
       <PostForm

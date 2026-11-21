@@ -1,0 +1,30 @@
+/* 글과 댓글의 수정, 삭제, 신고 버튼. 아이콘이 붙은 테두리 버튼이고, 되돌릴 수 없는 삭제는 빨강 */
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 15px 0 12px;
+  border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent);
+  border-radius: 8px;
+  background: none;
+  color: var(--ink);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color .2s ease, background-color .2s ease, transform .15s ease;
+}
+.action-btn:hover { border-color: var(--ink); background: color-mix(in srgb, var(--desk) 35%, transparent); }
+.action-btn:active { transform: translateY(1px); }
+.action-btn:disabled { opacity: .55; cursor: default; transform: none; }
+.action-btn svg { flex: none; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.action-btn-danger { border-color: color-mix(in srgb, var(--stamp-red) 45%, transparent); color: var(--stamp-red); }
+.action-btn-danger:hover { border-color: var(--stamp-red); background: color-mix(in srgb, var(--stamp-red) 8%, transparent); }
+.action-btn-sm { height: 30px; padding: 0 11px 0 9px; border-radius: 6px; font-size: 13px; }
+.action-btn-sm svg { width: 14px; height: 14px; }
+
+/* 버튼이 늘어선 줄. 글자 버튼 줄(.community-inline-actions)보다 촘촘하게 */
+.community-inline-actions.action-row { gap: 8px; margin-top: 18px; }
+.community-comment .community-inline-actions.action-row { margin-top: 10px; }

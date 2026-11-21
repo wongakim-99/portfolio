@@ -7,8 +7,6 @@
 .community-meta { color: var(--ink-soft); font-size: 13px; line-height: 1.5; font-variant-numeric: tabular-nums; }
 .community-empty { margin: 24px 0; color: var(--ink-soft); font-size: 15px; }
 .community-more { margin-top: 24px; }
-.community-back { display: inline-block; margin: 0 0 34px; font-size: 14px; color: var(--ink-soft); text-underline-offset: 4px; }
-.community-back:hover { color: var(--pen); }
 .community-inline-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
 .community-inline-actions:empty { display: none; }
 /* 글 목록, 글 머리, 댓글의 메타 줄은 글쓴이 사진과 글자를 한 줄로 늘어놓음 */
@@ -43,6 +41,6 @@
 }
 
 @media print {
-  .community-back, .community-inline-actions, .community-dialog { display: none !important; }
+  .community-inline-actions, .community-dialog { display: none !important; }
   .community-sheet { box-shadow: none; }
 }

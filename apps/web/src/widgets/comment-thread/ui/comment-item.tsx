@@ -3,7 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { errorMessage } from '@shared/api';
 import { formatDate } from '@shared/lib';
-import type { Status } from '@shared/ui';
+import { ActionButton, type Status } from '@shared/ui';
 import { COMMENT_LIMITS, deleteComment, deleteCommentAsAdmin, updateComment, type Comment } from '@entities/comment';
 import type { ReportTarget } from '@entities/report';
 import { AuthorLink, useSession } from '@entities/user';
@@ -71,29 +71,25 @@ export function CommentItem({ comment, onChanged, onDeleted, onReport, onStatus 
       ) : (
         <p>{comment.body}</p>
       )}
-      <div className="community-inline-actions">
+      <div className="community-inline-actions action-row">
         {mine ? (
           <>
-            <button className="text-btn" type="button" onClick={() => setEditing(true)}>
+            <ActionButton icon="edit" size="sm" onClick={() => setEditing(true)}>
               수정
-            </button>
-            <button className="text-btn" type="button" onClick={() => remove('이 댓글을 삭제할까요?', () => deleteComment(comment.id))}>
+            </ActionButton>
+            <ActionButton icon="delete" size="sm" tone="danger" onClick={() => remove('이 댓글을 삭제할까요?', () => deleteComment(comment.id))}>
               삭제
-            </button>
+            </ActionButton>
           </>
         ) : (
           <>
-            <button className="text-btn" type="button" onClick={() => onReport({ targetType: 'comment', targetId: comment.id })}>
+            <ActionButton icon="report" size="sm" onClick={() => onReport({ targetType: 'comment', targetId: comment.id })}>
               신고
-            </button>
+            </ActionButton>
             {can('content:moderate') && (
-              <button
-                className="text-btn text-btn-danger"
-                type="button"
-                onClick={() => remove('관리자 권한으로 이 댓글을 삭제할까요?', () => deleteCommentAsAdmin(comment.id))}
-              >
+              <ActionButton icon="delete" size="sm" tone="danger" onClick={() => remove('관리자 권한으로 이 댓글을 삭제할까요?', () => deleteCommentAsAdmin(comment.id))}>
                 관리자 삭제
-              </button>
+              </ActionButton>
             )}
           </>
         )}

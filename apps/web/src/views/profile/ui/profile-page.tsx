@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { cx, formatDate, useDocumentTitle } from '@shared/lib';
-import { FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
+import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
 import { PostList } from '@widgets/post-list';
 import { useLogout } from '@features/auth';
 import { AvatarActions } from '@features/change-avatar';
@@ -50,9 +49,7 @@ export function ProfilePage({ userId }: { userId: string }) {
 
   return (
     <Sheet clip className="community-sheet" aria-labelledby="profile-name">
-      <Link className="community-back" href={routes.feed}>
-        ← 모든 글
-      </Link>
+      <BackLink href={routes.feed}>모든 글</BackLink>
       <div className="profile-card">
         <div className="profile-photo-wrap">
           {!missing && <figure className="profile-photo">{profile && <Avatar person={profile} />}</figure>}

@@ -4,8 +4,8 @@ import { useEffect, useRef } from 'react';
 import { prefersReducedMotion } from '@shared/lib';
 import { treeFrame } from '../lib/christmas-tree';
 
-const FONT = '600 13px "IBM Plex Mono", ui-monospace, Menlo, monospace';
-const LINE = 15;
+const FONT = '600 14px "IBM Plex Mono", ui-monospace, Menlo, monospace';
+const LINE = 16;
 const FRAME_MS = 33;
 
 /** 터미널 전체를 채우는 돌아가는 트리. 움직임을 줄이는 설정이면 한 장만 그림 */

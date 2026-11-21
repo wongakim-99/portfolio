@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { formatDate, useDocumentTitle } from '@shared/lib';
-import { NO_STATUS, Sheet, type Status } from '@shared/ui';
+import { BackLink, NO_STATUS, Sheet, type Status } from '@shared/ui';
 import { CommentThread } from '@widgets/comment-thread';
 import { PostActions } from '@features/manage-post';
 import { ReportDialog } from '@features/report-content';
@@ -37,9 +36,7 @@ export function PostPage({ postId }: { postId: string }) {
 
   return (
     <Sheet as="article" className="community-sheet">
-      <Link className="community-back" href={routes.feed}>
-        ← 모든 글
-      </Link>
+      <BackLink href={routes.feed}>모든 글</BackLink>
       <header className="community-article-head">
         <h2>{missing ? '글을 찾을 수 없습니다' : post?.title}</h2>
         {post && (

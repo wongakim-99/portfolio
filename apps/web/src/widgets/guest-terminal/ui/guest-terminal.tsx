@@ -46,6 +46,12 @@ export function GuestTerminal() {
     if (pageOf(cwd) !== pathname) setCwd(dirForPathname(pathname));
   }
 
+  // 글자를 드래그해 고르는 중이면 선택을 지우지 않도록 넘어감
+  function focusInput() {
+    if (getSelection()?.toString()) return;
+    inputRef.current?.focus({ preventScroll: true });
+  }
+
   const write = (parts: Part[]) => setLines((list) => [...list, { id: ++lineId.current, parts }]);
 
   useEffect(() => {
@@ -60,8 +66,23 @@ export function GuestTerminal() {
       if (isChristmasSeason()) hello.push({ text: '\n12월이니까 tree 도 한번 입력해 보세요.', tone: 'dim' });
       setLines((list) => [...list, { id: ++lineId.current, parts: hello }]);
     }
-    inputRef.current?.focus();
+    focusInput();
+    // Safari 는 모달을 연 직후 창 자체로 포커스를 한 번 더 옮겨서, 그린 뒤에 다시 입력 칸으로 가져옴
+    const frame = requestAnimationFrame(focusInput);
+    return () => cancelAnimationFrame(frame);
   }, [open]);
+
+  // 창 안 아무 데나 눌러도, 포커스가 입력 칸 밖에 있을 때 글자를 쳐도 입력 칸으로 감
+  useEffect(() => {
+    if (!open || treeOn) return;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      const input = inputRef.current;
+      if (!input || document.activeElement === input || event.metaKey || event.ctrlKey || event.altKey) return;
+      if (event.key.length === 1 || event.key === 'Enter' || event.key === 'Backspace' || event.key === 'ArrowUp' || event.key === 'ArrowDown') input.focus();
+    };
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => document.removeEventListener('keydown', onKeyDown, true);
+  }, [open, treeOn]);
 
   useEffect(() => {
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -163,13 +184,13 @@ export function GuestTerminal() {
       className="term"
       labelledBy="term-title"
     >
-      <div className="term-bar">
+      <div className="term-bar" onMouseUp={(event) => !treeOn && !(event.target as Element).closest('button') && focusInput()}>
         <span id="term-title">guest@gawon-dev: {displayPath(cwd)}</span>
         <button className="term-close" type="button" onClick={close}>
           닫기
         </button>
       </div>
-      <div className="term-body" ref={bodyRef}>
+      <div className="term-body" ref={bodyRef} onMouseUp={() => !treeOn && focusInput()}>
         {treeOn ? (
           <ChristmasTree onExit={stopTree} />
         ) : (

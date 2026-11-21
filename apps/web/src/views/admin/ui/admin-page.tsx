@@ -1,10 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { useDocumentTitle } from '@shared/lib';
-import { FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
+import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
 import { AdminInbox } from '@widgets/admin-inbox';
 import { AdminReports } from '@widgets/admin-reports';
 import { ServerTopology } from '@widgets/server-topology';
@@ -25,9 +24,7 @@ export function AdminPage() {
   const allowed = can('messages:read') || can('reports:read') || can('server:read');
   return (
     <Sheet className="community-sheet admin-sheet" aria-labelledby="admin-title">
-      <Link className="community-back" href={routes.feed}>
-        ← 모든 글
-      </Link>
+      <BackLink href={routes.feed}>모든 글</BackLink>
       <p className="hand profile-hand">운영자에게만 보이는 곳</p>
       <h2 id="admin-title">관리실</h2>
       <p className="community-meta admin-lead">
