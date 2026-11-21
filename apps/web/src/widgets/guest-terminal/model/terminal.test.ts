@@ -26,6 +26,8 @@ describe('터미널 경로', () => {
     expect(dirForPathname('/feed/admin')).toEqual(['feed', 'admin']);
     expect(dirForPathname('/feed/posts/6650a1')).toEqual(['feed', 'posts']);
     expect(dirForPathname('/feed/users/6650b2')).toEqual(['feed']);
+    expect(dirForPathname('/blog/posts/6650c3')).toEqual(['blog']);
+    expect(pageOf(['blog'])).toBe('/blog');
     expect(pageOf(['feed', 'posts'])).toBe('/feed');
     expect(pageOf(['feed', 'write'])).toBe('/feed/write');
     expect(pageOf([])).toBe('/');

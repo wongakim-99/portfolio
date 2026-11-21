@@ -31,5 +31,7 @@ import {
     CommunityAuthService, CommunityPostsService, CommunityProfileService,
     CommunityMailService, CommunityStorageService, CommunityTopologyService, AdminTokenGuard, PermissionGuard,
   ],
+  // 블로그(BlogModule)가 같은 로그인, 권한, 메일, 회원 컬렉션을 씀
+  exports: [MongooseModule, CommunityAuthService, CommunityMailService, PermissionGuard],
 })
 export class CommunityModule {}

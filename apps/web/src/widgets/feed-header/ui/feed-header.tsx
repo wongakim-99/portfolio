@@ -3,7 +3,6 @@
 import { useRouter } from 'next/navigation';
 import { routes } from '@shared/config';
 import { useSession } from '@entities/user';
-import './feed-header.css';
 
 /** 피드의 모든 화면 위에 늘 있는 머리. 로그인 전에 글 쓰기를 누르면 로그인 창부터 띄움 */
 export function FeedHeader() {

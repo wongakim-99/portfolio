@@ -1,4 +1,4 @@
-// 피드 API(/api/community) 호출. 로그인은 HttpOnly 쿠키라 같은 주소에서만 보냄
+// 피드 API(/api/community)와 블로그 API(/api/blog) 호출. 로그인은 HttpOnly 쿠키라 같은 주소에서만 보냄
 
 const FALLBACK_MESSAGE = '요청을 처리하지 못했습니다. 잠시 뒤에 다시 시도해 주세요.';
 
@@ -18,8 +18,8 @@ interface RequestOptions {
   file?: Blob;
 }
 
-export async function communityRequest<T>(path: string, { method = 'GET', body, file }: RequestOptions = {}): Promise<T> {
-  const response = await fetch(`/api/community${path}`, {
+async function sessionRequest<T>(url: string, { method = 'GET', body, file }: RequestOptions = {}): Promise<T> {
+  const response = await fetch(url, {
     method,
     credentials: 'same-origin',
     headers: file ? { 'Content-Type': file.type } : body ? { 'Content-Type': 'application/json' } : undefined,
@@ -33,6 +33,9 @@ export async function communityRequest<T>(path: string, { method = 'GET', body, 
   }
   return data as T;
 }
+
+export const communityRequest = <T>(path: string, options?: RequestOptions) => sessionRequest<T>(`/api/community${path}`, options);
+export const blogRequest = <T>(path: string, options?: RequestOptions) => sessionRequest<T>(`/api/blog${path}`, options);
 
 export const errorMessage = (error: unknown) => (error instanceof Error ? error.message : FALLBACK_MESSAGE);
 export const errorStatus = (error: unknown) => (error instanceof ApiError ? error.status : 0);

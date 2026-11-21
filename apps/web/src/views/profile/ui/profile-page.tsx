@@ -62,6 +62,7 @@ export function ProfilePage({ userId }: { userId: string }) {
           <div className="profile-name-row">
             <h2 id="profile-name">{missing ? '사용자를 찾을 수 없습니다' : profile?.name}</h2>
             {profile?.role === 'admin' && <span className="profile-role">운영자</span>}
+            {profile?.role === 'owner' && <span className="profile-role">주인장</span>}
           </div>
           {missing && <p className="profile-bio">탈퇴했거나 아직 이메일 확인을 마치지 않은 계정입니다.</p>}
           {profile && (profile.bio || mine) && (

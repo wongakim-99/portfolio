@@ -1,0 +1,9 @@
+/* 잠긴 본문 자리. 위쪽에 빨간 봉인 도장을 비스듬히 찍어 둠 */
+.blog-lock { position: relative; padding: 34px 0 20px; }
+.blog-lock-seal { position: absolute; right: 0; top: 18px; margin: 0; padding: 4px 16px; border: 3px double var(--stamp-red); border-radius: 8px; color: var(--stamp-red); font-size: 22px; font-weight: 700; letter-spacing: .3em; opacity: .85; transform: rotate(8deg); pointer-events: none; }
+.blog-lock-lead { max-width: 52ch; margin: 0; padding-right: 110px; color: var(--ink-soft); line-height: 1.7; }
+
+@media (max-width: 720px) {
+  .blog-lock-seal { position: static; display: inline-block; margin-bottom: 14px; font-size: 18px; transform: rotate(-4deg); }
+  .blog-lock-lead { padding-right: 0; }
+}

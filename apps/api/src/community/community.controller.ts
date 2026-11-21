@@ -1,9 +1,7 @@
-import {
-  Body, Controller, Delete, Get, Header, HttpCode, NotFoundException, Post, Patch, Put, Query, Req, Res,
-  UnsupportedMediaTypeException, UseGuards,
-} from '@nestjs/common';
+import { Body, Controller, Delete, Get, Header, HttpCode, NotFoundException, Post, Patch, Put, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
 import type { Request, Response } from 'express';
+import { jsonOnly } from '../common/json-only.js';
 import { AdminTokenGuard } from '../messages/admin-token.guard.js';
 import { MessagesService } from '../messages/messages.service.js';
 import { CommunityAuthService } from './community-auth.service.js';
@@ -18,10 +16,6 @@ import { AVATAR_FILE, CommunityStorageService } from './community-storage.servic
 import { CommunityTopologyService } from './community-topology.service.js';
 
 const AVATAR_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' } as const;
-
-function jsonOnly(req: Request): void {
-  if (!req.is('application/json')) throw new UnsupportedMediaTypeException('JSON 요청만 받을 수 있습니다.');
-}
 
 @Controller('community')
 export class CommunityController {

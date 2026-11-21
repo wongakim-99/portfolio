@@ -1,7 +1,16 @@
 // apps/api/src/community 의 응답 모양
 
-export type Permission = 'messages:read' | 'messages:delete' | 'reports:read' | 'reports:dismiss' | 'content:moderate' | 'server:read';
-export type Role = 'member' | 'admin';
+export type Permission =
+  | 'messages:read'
+  | 'messages:delete'
+  | 'reports:read'
+  | 'reports:dismiss'
+  | 'content:moderate'
+  | 'server:read'
+  | 'blog:write'
+  | 'blog:grant';
+/** owner 는 사이트 주인. 관리자 권한에 블로그 글쓰기와 열람 허락이 더해짐 */
+export type Role = 'member' | 'admin' | 'owner';
 
 /** 로그인한 나 */
 export interface SessionUser {

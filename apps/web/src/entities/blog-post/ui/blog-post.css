@@ -1,0 +1,13 @@
+/* 블로그 글 목록 줄과 공개 범위 도장. 도장은 관리실의 '새 쪽지'처럼 살짝 기울인 고무도장 */
+.blog-row { padding: 26px 0; border-bottom: 1px solid var(--paper-rule); }
+.blog-row:last-child { border-bottom: 0; }
+.blog-row > p { max-width: 68ch; margin: 8px 0 10px; color: var(--ink-soft); line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.blog-row .community-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; }
+.blog-row-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
+.blog-row-title > a { font-size: clamp(20px, 2.5vw, 25px); font-weight: 700; line-height: 1.4; letter-spacing: -.018em; text-decoration: none; text-wrap: balance; }
+.blog-row-title > a:hover { color: var(--pen); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
+.blog-row > p.blog-row-locked { font-family: var(--font-hand); font-size: 22px; line-height: 1.35; }
+
+.blog-stamp { flex: none; display: inline-flex; align-items: center; padding: 1px 9px; border: 2px solid currentColor; border-radius: 6px; font-size: 12px; font-weight: 700; letter-spacing: .06em; line-height: 1.5; white-space: nowrap; transform: rotate(-4deg); }
+.blog-stamp-locked, .blog-stamp-approved { color: var(--stamp-red); }
+.blog-stamp-private { color: var(--ink-soft); border-style: dashed; }

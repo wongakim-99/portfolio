@@ -1,0 +1,17 @@
+/* 관리실의 블로그 열람 요청. 요청 한 장마다 남긴 한마디는 손글씨로 */
+.access-card { padding: 22px 0; border-bottom: 1px dashed var(--paper-rule); }
+.access-card:last-child { border-bottom: 0; }
+.access-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; font-size: 16px; }
+.access-head a:not(.community-author) { font-weight: 600; text-underline-offset: 3px; }
+.access-message { max-width: 62ch; margin: 8px 0 0; font-family: var(--font-hand); font-size: 24px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
+.access-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; margin-top: 14px; }
+.access-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+.access-actions .btn-line.access-all { min-height: 34px; padding: 4px 14px; font-size: 14px; background: none; color: var(--ink); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.access-actions .btn-line.access-all:hover { background: var(--ink); color: var(--desk); }
+.access-actions :disabled { opacity: .55; cursor: wait; }
+
+.grant-list { margin: 0; padding: 0; list-style: none; }
+.grant-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 16px; padding: 14px 0; border-bottom: 1px solid var(--paper-rule); }
+.grant-list li:last-child { border-bottom: 0; }
+.grant-what { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; }
+.grant-what a { text-underline-offset: 3px; }

@@ -1,0 +1,17 @@
+/* 블로그 글쓰기. 공개 범위는 도장 세 개 중 하나를 고르는 모양 */
+.blog-form { max-width: 720px; }
+.blog-form textarea { min-height: 340px; }
+.blog-visibility { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 14px 0 0; padding: 0; border: 0; }
+.blog-visibility legend { margin-bottom: 7px; padding: 0; font-size: 14px; font-weight: 700; }
+.community-form .blog-visibility-option { position: relative; display: grid; align-content: start; gap: 4px; margin: 0; padding: 12px 14px 13px; border: 1px solid color-mix(in srgb, var(--ink) 22%, transparent); border-radius: 8px; font-weight: 400; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }
+.community-form .blog-visibility-option:hover { border-color: var(--ink); }
+.blog-visibility-option input { position: absolute; opacity: 0; pointer-events: none; }
+.blog-visibility-option b { justify-self: start; padding: 0 8px; border: 2px solid transparent; border-radius: 6px; font-size: 14px; letter-spacing: .04em; transition: transform .15s ease; }
+.blog-visibility-option span { color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
+.community-form .blog-visibility-option.is-checked { border-color: var(--ink); background: color-mix(in srgb, var(--desk) 30%, transparent); }
+.blog-visibility-option.is-checked b { border-color: var(--stamp-red); color: var(--stamp-red); transform: rotate(-4deg); }
+.blog-visibility-option:has(input:focus-visible) { outline: 3px solid var(--pen); outline-offset: 2px; }
+
+@media (max-width: 720px) {
+  .blog-visibility { grid-template-columns: 1fr; }
+}

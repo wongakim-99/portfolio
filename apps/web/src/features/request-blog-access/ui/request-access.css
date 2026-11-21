@@ -1,0 +1,8 @@
+/* 문제지 아래, 가위선으로 잘라 둔 요청 칸 */
+.request-access { margin-top: 26px; padding-top: 30px; border-top: 2px dashed var(--paper-rule); }
+.request-access:focus { outline: none; }
+.request-access h3 { margin: 0 0 8px; font-size: 22px; letter-spacing: -.02em; }
+.request-access > p, .request-form > p { max-width: 58ch; margin: 0 0 16px; color: var(--ink-soft); line-height: 1.7; }
+.request-access > p.request-note { color: var(--ink); font-size: 24px; line-height: 1.4; }
+.request-form { max-width: 560px; }
+.request-form > p { margin-bottom: 4px; }

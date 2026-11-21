@@ -1,5 +1,6 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
 import { SchemaTypes, Types } from 'mongoose';
+import { ROLES, type Role } from './community-roles.js';
 
 @Schema({ collection: 'community_users', versionKey: false, timestamps: true })
 export class CommunityUser {
@@ -13,8 +14,8 @@ export class CommunityUser {
   passwordHash: string;
 
   // 역할만 적고 권한은 community-roles.ts 에서 역할로 계산함
-  @Prop({ type: String, enum: ['member', 'admin'], default: 'member' })
-  role: 'member' | 'admin';
+  @Prop({ type: String, enum: ROLES, default: 'member' })
+  role: Role;
 
   @Prop({ type: String, default: '' })
   bio: string;

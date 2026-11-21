@@ -7,11 +7,12 @@ import { Dialog, FormStatus, NO_STATUS, type Status } from '@shared/ui';
 import { login, register, requestPasswordReset, resendVerification, useSession } from '@entities/user';
 
 type Tab = 'login' | 'register' | 'forgot';
-const TITLE: Record<Tab, string> = { login: '피드 로그인', register: '피드 가입', forgot: '비밀번호 찾기' };
+// 피드와 블로그가 같은 계정을 씀
+const TITLE: Record<Tab, string> = { login: '로그인', register: '가입', forgot: '비밀번호 찾기' };
 
 const fields = (form: HTMLFormElement) => Object.fromEntries(new FormData(form));
 
-// 피드 로그인 창. 어디서든 useSession().requestLogin(next) 로 열고, 로그인하면 next 로 감
+// 피드, 블로그 로그인 창. 어디서든 useSession().requestLogin(next) 로 열고, 로그인하면 next 로 감
 export function AuthDialog() {
   const router = useRouter();
   const { config, loginRequest, closeLogin, setUser } = useSession();

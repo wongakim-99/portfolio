@@ -36,4 +36,16 @@ export class CommunityMailService {
     const url = `${this.baseUrl}/feed#reset=${token}`;
     await this.send(to, '[김가원 피드] 비밀번호 재설정', `${name}님, 아래 주소에서 새 비밀번호를 정해 주세요.\n\n${url}\n\n이 링크는 30분 동안 한 번만 사용할 수 있습니다. 요청하지 않았다면 이 메일을 무시해 주세요.`);
   }
+
+  // 블로그 열람 요청이 오면 주인에게, 허락하면 요청한 사람에게 알림. 메일이 못 가도 요청과 허락은 그대로 남음 (BlogService)
+  async sendBlogRequest(to: string, requester: string, postTitle: string): Promise<void> {
+    const url = `${this.baseUrl}/feed/admin#blog-requests`;
+    await this.send(to, '[김가원 블로그] 열람 요청', `${requester}님이 '${postTitle}' 글을 보고 싶어 합니다.\n\n관리실에서 허락하거나 거절할 수 있습니다.\n${url}`);
+  }
+
+  async sendBlogGranted(to: string, name: string, postTitle: string | null, postId: string): Promise<void> {
+    const url = `${this.baseUrl}/blog/posts/${postId}`;
+    const what = postTitle ? `'${postTitle}' 글을` : '허락받은 사람만 보는 글을 모두';
+    await this.send(to, '[김가원 블로그] 열람 요청이 허락되었습니다', `${name}님, 이제 ${what} 읽을 수 있습니다. 증명은 안 하셔도 됩니다.\n\n${url}`);
+  }
 }

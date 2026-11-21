@@ -1,5 +1,6 @@
 import { routes } from '@shared/config';
 import { formatDate, formatDuration } from '@shared/lib';
+import { listBlogPosts } from '@entities/blog-post';
 import { PORTFOLIO_PDF, portfolio } from '@entities/portfolio';
 import { listPosts } from '@entities/post';
 import { formatBattery, getServerStatus } from '@entities/server-status';
@@ -62,11 +63,26 @@ async function recentPosts(): Promise<readonly FsNode[]> {
   }));
 }
 
+// 블로그 최근 글. 잠긴 글은 제목만 보이고 읽으려 하면 권한이 없다고 함
+async function blogPosts(): Promise<readonly FsNode[]> {
+  const { posts } = await listBlogPosts();
+  return posts.map((post) => ({
+    name: post.id,
+    note: post.locked ? `${post.title} (잠김)` : post.title,
+    href: routes.blogPost(post.id),
+    read: () =>
+      post.excerpt === null
+        ? `cat: ${post.id}: Permission denied\n주인장에게 허락받거나 P = NP 를 증명해 오세요. open ~/blog/${post.id} 하면 문제지를 드립니다.`
+        : `${post.title}\n${formatDate(post.createdAt)}\n\n${post.excerpt}${post.excerpt.length >= 220 ? '…' : ''}`,
+  }));
+}
+
 export const ROOT: FsNode = {
   name: '~',
   href: routes.home,
   children: [
     { name: 'portfolio', href: routes.portfolio, children: PORTFOLIO_FILES },
+    { name: 'blog', href: routes.blog, children: blogPosts },
     {
       name: 'feed',
       href: routes.feed,
@@ -152,7 +168,7 @@ export function pageOf(path: FsPath): string {
   return routes.home;
 }
 
-/** 지금 페이지 주소에 맞는 디렉터리. 글 화면은 ~/feed/posts, 회원 페이지처럼 없는 곳은 가장 가까운 위 디렉터리 */
+/** 지금 페이지 주소에 맞는 디렉터리. 글 화면은 ~/feed/posts 나 ~/blog, 회원 페이지처럼 없는 곳은 가장 가까운 위 디렉터리 */
 export function dirForPathname(pathname: string): FsPath {
   if (pathname.startsWith(`${routes.feed}/posts/`)) return ['feed', 'posts'];
   const path: string[] = [];

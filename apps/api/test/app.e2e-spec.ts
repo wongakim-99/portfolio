@@ -8,6 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { Readable } from 'node:stream';
 import request from 'supertest';
+import { vi } from 'vitest';
 import type { App } from 'supertest/types.js';
 import { readRelease } from '../src/server/server.service.js';
 import { CommunityMailService } from '../src/community/community-mail.service.js';
@@ -16,11 +17,14 @@ import { configureApp } from '../src/setup.js';
 
 const ADMIN_TOKEN = 'test-admin-token-0123456789abcdef';
 let mongo: MongoMemoryServer;
-const sentMail: { kind: 'verify' | 'reset'; to: string; token: string }[] = [];
+const sentMail: { kind: 'verify' | 'reset' | 'blog-request' | 'blog-granted'; to: string; token: string }[] = [];
 const fakeMail = {
   ready: true,
   async sendVerify(to: string, _name: string, token: string) { sentMail.push({ kind: 'verify' as const, to, token }); },
   async sendReset(to: string, _name: string, token: string) { sentMail.push({ kind: 'reset' as const, to, token }); },
+  // 블로그 알림은 토큰 대신 글 제목을 남김
+  async sendBlogRequest(to: string, _requester: string, postTitle: string) { sentMail.push({ kind: 'blog-request' as const, to, token: postTitle }); },
+  async sendBlogGranted(to: string, _name: string, postTitle: string | null) { sentMail.push({ kind: 'blog-granted' as const, to, token: postTitle ?? '*' }); },
 };
 // MinIO 대신 메모리에 사진을 보관함
 const storedFiles = new Map<string, Buffer>();
@@ -487,6 +491,125 @@ describe('community', () => {
     ]));
     expect(events.some((event) => event.label.includes('topology'))).toBe(false);
     expect(next.body.rates.http).toBeGreaterThanOrEqual(2);
+  });
+});
+
+describe('blog', () => {
+  let app: INestApplication<App>;
+  beforeAll(async () => (app = await createApp()));
+  afterAll(async () => app.close());
+
+  it('주인만 글을 쓰고, 공개 범위대로 읽히며, 잠긴 글은 요청을 허락받아야 읽음', async () => {
+    const server = app.getHttpServer();
+    const ip = '203.0.113.150, 172.18.0.1';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    };
+    const owner = await join('blog-owner@example.com', '주인장');
+    const friend = await join('blog-friend@example.com', '친구');
+    const stranger = await join('blog-stranger@example.com', '지나가던 사람');
+    await request(server).put('/api/community/admin/users/role').set('Authorization', `Bearer ${ADMIN_TOKEN}`)
+      .send({ email: 'blog-owner@example.com', role: 'owner' }).expect(200);
+    expect((await request(server).get('/api/community/auth/me').set('Cookie', owner).expect(200)).body.user)
+      .toMatchObject({ role: 'owner', permissions: expect.arrayContaining(['blog:write', 'blog:grant', 'messages:read']) });
+
+    const write = (cookie: string | null, title: string, visibility: string) => {
+      const req = request(server).post('/api/blog/posts').set('X-Forwarded-For', ip);
+      return (cookie ? req.set('Cookie', cookie) : req).send({ title, body: `${title} 본문입니다.`, visibility });
+    };
+    await write(null, '로그인 안 한 글', 'public').expect(401);
+    await write(friend, '회원이 쓴 글', 'public').expect(403);
+    await write(owner, '잘못된 범위', 'friends').expect(400);
+    await request(server).post('/api/blog/posts').set('Cookie', owner).set('Origin', 'https://evil.example')
+      .send({ title: '외부 요청', body: '다른 사이트에서 보낸 글', visibility: 'public' }).expect(403);
+    const tech = (await write(owner, '기술 글', 'public').expect(201)).body.post;
+    const diary = (await write(owner, '넋두리 하나', 'approved').expect(201)).body.post;
+    const diary2 = (await write(owner, '넋두리 둘', 'approved').expect(201)).body.post;
+    const secret = (await write(owner, '나만 보는 글', 'private').expect(201)).body.post;
+    expect(diary).toMatchObject({ visibility: 'approved', locked: false, body: '넋두리 하나 본문입니다.' });
+
+    // 로그인 전: 공개 글은 읽고, 승인 글은 제목만, 나만 보기 글은 없는 글
+    const anonList = (await request(server).get('/api/blog/posts').expect(200)).body.posts;
+    expect(anonList.map((post: { title: string }) => post.title)).toEqual(['넋두리 둘', '넋두리 하나', '기술 글']);
+    expect(anonList.find((post: { id: string }) => post.id === diary.id)).toMatchObject({ locked: true, excerpt: null });
+    expect(anonList.find((post: { id: string }) => post.id === tech.id)).toMatchObject({ locked: false, excerpt: '기술 글 본문입니다.' });
+    const locked = await request(server).get(`/api/blog/posts/${diary.id}`).expect(200);
+    expect(locked.body).toMatchObject({ title: '넋두리 하나', locked: true, body: null, request: null });
+    expect(locked.headers['cache-control']).toContain('no-store');
+    await request(server).get(`/api/blog/posts/${secret.id}`).expect(404);
+    await request(server).get(`/api/blog/posts/${secret.id}`).set('Cookie', friend).expect(404);
+    expect((await request(server).get(`/api/blog/posts/${secret.id}`).set('Cookie', owner).expect(200)).body.body).toBe('나만 보는 글 본문입니다.');
+    expect((await request(server).get('/api/blog/posts').set('Cookie', owner).expect(200)).body.posts).toHaveLength(4);
+
+    // 요청은 로그인한 회원만, 잠긴 글에만
+    const ask = (cookie: string | null, postId: string, message?: string) => {
+      const req = request(server).post(`/api/blog/posts/${postId}/access-requests`).set('X-Forwarded-For', ip);
+      return (cookie ? req.set('Cookie', cookie) : req).send(message === undefined ? {} : { message });
+    };
+    await ask(null, diary.id).expect(401);
+    await ask(friend, tech.id).expect(409);
+    await ask(friend, secret.id).expect(404);
+    expect((await ask(friend, diary.id, '오래된 친구입니다').expect(201)).body.request).toMatchObject({ status: 'pending', retryAt: null });
+    await ask(friend, diary.id).expect(409);
+    expect((await request(server).get(`/api/blog/posts/${diary.id}`).set('Cookie', friend).expect(200)).body)
+      .toMatchObject({ locked: true, body: null, request: { status: 'pending' } });
+    await vi.waitFor(() => expect(sentMail).toContainEqual({ kind: 'blog-request', to: 'blog-owner@example.com', token: '넋두리 하나' }));
+
+    await request(server).get('/api/blog/admin/requests').expect(401);
+    await request(server).get('/api/blog/admin/requests').set('Cookie', friend).expect(403);
+    const pending = (await request(server).get('/api/blog/admin/requests').set('Cookie', owner).expect(200)).body.requests;
+    expect(pending).toEqual([expect.objectContaining({ message: '오래된 친구입니다', user: expect.objectContaining({ name: '친구' }), post: { id: diary.id, title: '넋두리 하나' } })]);
+
+    // 이 글만 허락하면 다른 승인 글은 여전히 잠김
+    await request(server).post(`/api/blog/admin/requests/${pending[0].id}/approve`).set('Cookie', friend).send({ scope: 'post' }).expect(403);
+    await request(server).post(`/api/blog/admin/requests/${pending[0].id}/approve`).set('Cookie', owner).send({ scope: 'everything' }).expect(400);
+    await request(server).post(`/api/blog/admin/requests/${pending[0].id}/approve`).set('Cookie', owner).send({ scope: 'post' }).expect(204);
+    await request(server).post(`/api/blog/admin/requests/${pending[0].id}/approve`).set('Cookie', owner).send({ scope: 'post' }).expect(404);
+    expect((await request(server).get(`/api/blog/posts/${diary.id}`).set('Cookie', friend).expect(200)).body)
+      .toMatchObject({ locked: false, body: '넋두리 하나 본문입니다.' });
+    expect((await request(server).get(`/api/blog/posts/${diary2.id}`).set('Cookie', friend).expect(200)).body.locked).toBe(true);
+    await vi.waitFor(() => expect(sentMail).toContainEqual({ kind: 'blog-granted', to: 'blog-friend@example.com', token: '넋두리 하나' }));
+
+    // 거절하면 3일 동안 다시 보낼 수 없음
+    await ask(stranger, diary2.id).expect(201);
+    const strangerRequest = (await request(server).get('/api/blog/admin/requests').set('Cookie', owner).expect(200)).body.requests[0];
+    await request(server).post(`/api/blog/admin/requests/${strangerRequest.id}/reject`).set('Cookie', owner).expect(204);
+    const rejected = (await request(server).get(`/api/blog/posts/${diary2.id}`).set('Cookie', stranger).expect(200)).body;
+    expect(rejected).toMatchObject({ locked: true, request: { status: 'rejected' } });
+    expect(new Date(rejected.request.retryAt).getTime()).toBeGreaterThan(Date.now() + 2 * 24 * 60 * 60_000);
+    await ask(stranger, diary2.id).expect(409);
+    expect((await request(server).get('/api/blog/admin/requests').set('Cookie', owner).expect(200)).body.requests).toEqual([]);
+
+    // 전부 허락하면 앞으로 쓸 승인 글까지 읽고, 허락을 거두면 다시 잠김
+    await ask(friend, diary2.id).expect(201);
+    const friendRequest = (await request(server).get('/api/blog/admin/requests').set('Cookie', owner).expect(200)).body.requests[0];
+    await request(server).post(`/api/blog/admin/requests/${friendRequest.id}/approve`).set('Cookie', owner).send({ scope: 'all' }).expect(204);
+    const later = (await write(owner, '넋두리 셋', 'approved').expect(201)).body.post;
+    expect((await request(server).get(`/api/blog/posts/${later.id}`).set('Cookie', friend).expect(200)).body.locked).toBe(false);
+    expect((await request(server).get(`/api/blog/posts/${later.id}`).set('Cookie', stranger).expect(200)).body.locked).toBe(true);
+    const grants = (await request(server).get('/api/blog/admin/grants').set('Cookie', owner).expect(200)).body.grants;
+    expect(grants).toEqual(expect.arrayContaining([
+      expect.objectContaining({ user: expect.objectContaining({ name: '친구' }), post: null }),
+      expect.objectContaining({ user: expect.objectContaining({ name: '친구' }), post: { id: diary.id, title: '넋두리 하나' } }),
+    ]));
+    const allGrant = grants.find((grant: { post: unknown }) => grant.post === null);
+    await request(server).delete(`/api/blog/admin/grants/${allGrant.id}`).set('Cookie', friend).expect(403);
+    await request(server).delete(`/api/blog/admin/grants/${allGrant.id}`).set('Cookie', owner).expect(204);
+    expect((await request(server).get(`/api/blog/posts/${later.id}`).set('Cookie', friend).expect(200)).body.locked).toBe(true);
+    expect((await request(server).get(`/api/blog/posts/${diary.id}`).set('Cookie', friend).expect(200)).body.locked).toBe(false);
+
+    // 공개로 바꾸면 누구나 읽고, 지우면 그 글의 허락도 같이 지움
+    await request(server).patch(`/api/blog/posts/${diary2.id}`).set('Cookie', owner)
+      .send({ title: '넋두리 둘', body: '이제는 공개해도 되는 이야기', visibility: 'public' }).expect(200);
+    expect((await request(server).get(`/api/blog/posts/${diary2.id}`).expect(200)).body).toMatchObject({ locked: false, body: '이제는 공개해도 되는 이야기' });
+    await request(server).delete(`/api/blog/posts/${diary.id}`).set('Cookie', friend).expect(403);
+    await request(server).delete(`/api/blog/posts/${diary.id}`).set('Cookie', owner).expect(204);
+    await request(server).get(`/api/blog/posts/${diary.id}`).set('Cookie', owner).expect(404);
+    expect((await request(server).get('/api/blog/admin/grants').set('Cookie', owner).expect(200)).body.grants).toEqual([]);
   });
 });
 

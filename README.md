@@ -8,8 +8,8 @@
 ## 구조
 
 ```
-apps/web/        Next.js 16 (App Router) 페이지. 홈, 포트폴리오, 피드
-apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지, 서버 상태, 하이파이브, 피드, 프로필 사진)
+apps/web/        Next.js 16 (App Router) 페이지. 홈, 포트폴리오, 블로그, 피드
+apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지, 서버 상태, 하이파이브, 피드, 블로그, 프로필 사진)
 scripts/         포트폴리오 PDF 생성기와 테스트, PDF 용 글꼴(IBM Plex Sans KR, OFL), 로컬 개발 실행기
 deploy/          배포 스크립트, compose, Caddyfile, Actions runner 사용자 유닛, 1회성 서버 설정
 .github/workflows/deploy.yml
@@ -24,12 +24,16 @@ src/
   app/         라우팅만. layout, page, 메타데이터, 옛 주소 리다이렉트 (community.html/route.ts)
     (site)/    홈(/), 포트폴리오(/portfolio). 상단 바만 있는 틀
     feed/      피드(/feed/*). 로그인 상태(SessionProvider), 계정 칸, 로그인 창, 메일 링크 창을 여기서 한 번 둠
-  views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin
+    blog/      블로그(/blog/*). 피드와 같은 로그인 상태, 계정 칸, 로그인 창
+  views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin, blog, blog-post, blog-editor
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
-               guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports
+               guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports,
+               blog-header, blog-post-list, blog-lock(잠긴 글 자리), admin-blog-access(열람 요청과 허락 명단)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
-               write-comment, report-content, edit-profile, change-password, change-avatar
-  entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report
+               write-comment, report-content, edit-profile, change-password, change-avatar,
+               write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장), request-blog-access
+  entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report,
+               blog-post, blog-access
   shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 저장소), ui(Sheet, Dialog, FormStatus), styles(색 토큰, 바탕)
 ```
 
@@ -39,10 +43,12 @@ src/
 
 ## 페이지
 
-상단의 홈, 포트폴리오, 피드 탭으로 페이지를 이동한다. 각 페이지는 책상을 위에서 내려다본 디자인을 공유한다.
+상단의 홈, 포트폴리오, 블로그, 피드 탭으로 페이지를 이동한다. 각 페이지는 책상을 위에서 내려다본 디자인을 공유한다.
 
 - `/` 홈: 스티커 붙은 홈서버 노트북, 페이지 안내, 배포 영수증과 엽서
 - `/portfolio`: 소개, 경력, 프로젝트, 기술, 이력을 담은 종이 포트폴리오. 목차는 이 페이지 안에서만 이동
+- `/blog`: 주인장(`owner` 역할)만 쓰는 블로그. 아래 '블로그' 참고
+- `/blog/posts/<글_ID>`, `/blog/write`, `/blog/posts/<글_ID>/edit`: 글 읽기, 새 글 쓰기, 글 고치기
 - `/feed`: 긴 글과 댓글을 읽고, 이메일 확인을 마친 계정으로 작성하는 피드
 - `/feed/posts/<글_ID>`, `/feed/write`, `/feed/posts/<글_ID>/edit`: 글 읽기, 새 글 쓰기, 내 글 고치기
 - `/feed/users/<회원_ID>`: 회원 페이지. 프로필 사진, 이름, 소개, 쓴 글. 내 페이지에서는 사진과 프로필을 고치고 비밀번호 변경, 로그아웃을 함
@@ -57,11 +63,28 @@ src/
 - 오른쪽 위 스탠드 버튼으로 밝은 화면과 어두운 화면 전환
 - 하이파이브 버튼: 연타를 모아 보내고, 한 사람이 하루 50번까지 셈
 - 상단의 터미널 버튼이나 `` ` `` 키로 어느 페이지에서든 숨은 터미널이 열림. 사이트를 폴더처럼 돌아다님 (`apps/web/src/widgets/guest-terminal`)
-  - `~` 가 홈이고 `portfolio/`(about, work, projects, skills, history), `feed/`(posts, write, admin), `server`, `note`, PDF 가 들어 있음. `feed/posts` 는 API 에서 최근 글 10개를 받아 글 ID 이름의 파일로 보여 줌
+  - `~` 가 홈이고 `portfolio/`(about, work, projects, skills, history), `blog/`, `feed/`(posts, write, admin), `server`, `note`, PDF 가 들어 있음. `feed/posts` 와 `blog` 는 API 에서 최근 글 10개를 받아 글 ID 이름의 파일로 보여 줌. 잠긴 블로그 글을 `cat` 하면 Permission denied
   - `ls`, `cd`, `pwd`, `cat`, `open`, `tree <경로>`, `history`, Tab 자동 완성. `cd` 로 다른 페이지 디렉터리에 가면 실제로 그 페이지로 옮기고 터미널을 닫음. 다시 열면 기록과 위치가 이어짐
   - `git log` 는 진짜 저장소 대신 홈서버의 배포 기록을 보여 줌 (`--oneline`, `-n 5`). `mail gawon` 은 이름, 답장 메일, 메시지를 차례로 묻고 `.` 만 있는 줄에서 홈 엽서와 같은 쪽지함으로 보냄
   - 그 밖에 `neofetch`, `curl /api/health`, `hi5`, `lamp`, `pdf` 등
   - 인자 없이 `tree` 를 치면 크리스마스 트리 이스터에그. 줄기가 서고, 잎이 코드 글자로 흐르며 아래에서부터 자라고, 전구가 감기고, 별이 꽂힌 뒤 돌기 시작함 (`widgets/guest-terminal/lib/christmas-tree.ts`). q 또는 Esc 로 나가고, 12월 1~25일에는 첫인사에 살짝 알려 줌
+
+## 블로그
+
+- 글은 주인장만 쓰고, 글마다 공개 범위를 고름. 새 글은 '허락한 사람만'으로 시작함 (넋두리를 실수로 공개하는 쪽이 더 곤란해서)
+
+| 공개 범위 | 목록 | 본문 |
+|---|---|---|
+| `public` 전체 공개 | 누구나 | 누구나 |
+| `approved` 허락한 사람만 | 누구나 제목만 (잠김 도장) | 주인장, 허락받은 회원 |
+| `private` 나만 보기 | 주인장만 | 주인장만 (남에게는 없는 글, 404) |
+
+- 허락받지 못한 사람이 잠긴 글을 열면 본문 자리에 풀 수 없는 문제(P = NP, 리만 가설 등 글마다 하나)와 노란 메모장이 나옴. 무엇을 써 내든 빨간 펜으로 0점. '더 쉬운 문제 주세요' 를 누르면 쉬워 보이지만 안 쉬운 문제가 차례로 나오고, 마지막에는 요청하기 칸으로 보냄 (`features/prove-theorem/lib/problems.ts`)
+- 그 아래 '주인장에게 요청하기'. 피드 계정으로 로그인한 회원만 보내고, 주인장에게 알림 메일이 감. 관리실의 `블로그 열람 요청` 에서 '이 글만 허락', '잠긴 글 모두 허락'(앞으로 쓸 글 포함), '거절' 중 하나로 답함. 허락하면 요청한 사람에게 메일이 감
+- 거절된 요청은 3일 뒤에 다시 보낼 수 있음. 허락은 관리실의 `열람 허락 명단` 에서 언제든 거둠
+- 본문은 API 가 허락된 계정에게만 내려 줌. 블로그 읽기 응답은 보는 사람마다 달라서 `Cache-Control: private, no-store`. 글 화면은 미리 그리지 않고 브라우저에서 로그인 상태를 확인한 뒤 받음
+- 글을 공개나 나만 보기로 바꾸면 그 글에 온 요청은 지우고, 글을 지우면 그 글의 요청과 허락도 같이 지움
+- 데이터는 `blog_posts`, `blog_access_requests`, `blog_grants` 컬렉션 (`apps/api/src/blog`)
 
 ## 피드 계정과 운영
 
@@ -103,6 +126,7 @@ COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 |---|---|
 | `member` (기본) | 없음. 글, 댓글, 신고, 내 페이지 같은 일반 기능만 씀 |
 | `admin` | `messages:read`, `messages:delete` (홈 엽서 쪽지), `reports:read`, `reports:dismiss` (신고), `content:moderate` (남의 글과 댓글 삭제), `server:read` (지금 서버 구성도) |
+| `owner` | 사이트 주인 한 사람. `admin` 권한 전부와 `blog:write` (블로그 글쓰기, 나만 보기 글까지 읽기), `blog:grant` (블로그 열람 요청 허락, 거절, 허락 거두기). 회원 페이지에 `주인장` 도장 |
 
 - 내 글과 댓글만 고치고 지우는 규칙은 역할이 아니라 글쓴이가 누구인지로 따진다. 관리자도 남의 글 내용은 고칠 수 없고 삭제만 할 수 있다
 - 관리자로 로그인하면 피드 위에 `관리실` 버튼과 새 쪽지 수가 보이고, `/feed/admin` 에서 쪽지함과 신고를 처리한다. 쪽지함을 열면 그때까지 온 쪽지는 읽은 것으로 바뀐다
@@ -117,7 +141,7 @@ COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 source ~/.config/portfolio/api.docker.env
 curl -X PUT -H "Authorization: Bearer $ADMIN_TOKEN" -H 'Content-Type: application/json' \
   -d '{"email":"<회원 이메일>","role":"admin"}' http://127.0.0.1:8090/api/community/admin/users/role
-# 되돌릴 때는 "role":"member"
+# 블로그 주인은 "role":"owner", 되돌릴 때는 "role":"member"
 ```
 
 관리 API 는 관리자 세션 말고도 `ADMIN_TOKEN` 으로 쓸 수 있다. 토큰을 브라우저에 저장하거나 공개 페이지에 넣지 않는다.

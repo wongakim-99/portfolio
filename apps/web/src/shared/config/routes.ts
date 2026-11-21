@@ -8,4 +8,10 @@ export const routes = {
   post: (id: string) => `/feed/posts/${encodeURIComponent(id)}`,
   editPost: (id: string) => `/feed/posts/${encodeURIComponent(id)}/edit`,
   user: (id: string) => `/feed/users/${encodeURIComponent(id)}`,
+  blog: '/blog',
+  blogWrite: '/blog/write',
+  blogPost: (id: string) => `/blog/posts/${encodeURIComponent(id)}`,
+  editBlogPost: (id: string) => `/blog/posts/${encodeURIComponent(id)}/edit`,
+  /** 관리실의 블로그 열람 요청 칸 */
+  blogRequests: '/feed/admin#blog-requests',
 } as const;

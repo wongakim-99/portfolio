@@ -1,5 +1,13 @@
-/* 피드 화면(/feed/*)이 같이 쓰는 종이, 목록 머리, 메타 줄, 폼, 대화상자. app/feed/layout.tsx 에서 불러옴 */
+/* 피드(/feed/*)와 블로그(/blog/*) 화면이 같이 쓰는 머리, 종이, 목록 머리, 메타 줄, 폼, 대화상자
+   app/feed/layout.tsx, app/blog/layout.tsx 에서 불러옴 */
 .community-main { padding-bottom: clamp(64px, 8vw, 110px); }
+
+/* 화면 위에 늘 있는 머리. 손글씨 한 줄, 큰 제목, 글 쓰기 (widgets/feed-header, widgets/blog-header) */
+.community-header { max-width: 920px; margin: 0 auto; padding: clamp(52px, 8vw, 100px) clamp(4px, 2vw, 16px) clamp(54px, 7vw, 90px); }
+.community-hand { margin: 0 0 -8px; color: var(--pen); font-size: clamp(25px, 3vw, 34px); transform: rotate(-2deg); transform-origin: left; }
+.community-header h1 { margin: 0; font-family: var(--font-display); font-size: clamp(76px, 10vw, 112px); font-weight: 700; line-height: 1.12; letter-spacing: -.035em; }
+.community-header > p:not(.community-hand) { max-width: 58ch; margin: 12px 0 0; font-size: clamp(16px, 1.8vw, 19px); line-height: 1.7; text-wrap: pretty; }
+.community-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 28px; }
 
 .community-sheet { min-height: 300px; }
 .community-section-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; padding-bottom: 24px; border-bottom: 1px solid var(--paper-rule); }
@@ -9,6 +17,11 @@
 .community-more { margin-top: 24px; }
 .community-inline-actions { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; }
 .community-inline-actions:empty { display: none; }
+/* 글 한 편: 제목, 글쓴이와 날짜, 본문. 줄바꿈은 쓴 그대로 보임 (피드 글, 블로그 글) */
+.community-article-head { padding-bottom: 30px; border-bottom: 1px solid var(--paper-rule); }
+.community-article-head h2 { max-width: 20em; margin: 0 0 12px; font-size: clamp(30px, 4vw, 45px); font-weight: 700; line-height: 1.3; letter-spacing: -.025em; overflow-wrap: anywhere; text-wrap: balance; }
+.community-article-head .community-meta { margin: 0; }
+.community-body { max-width: 68ch; padding: 38px 0 48px; font-size: 17px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; text-wrap: pretty; }
 /* 글 목록, 글 머리, 댓글의 메타 줄은 글쓴이 사진과 글자를 한 줄로 늘어놓음 */
 .community-post .community-meta, .community-article-head .community-meta, .community-comment .community-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 5px 14px; }
 
@@ -35,12 +48,14 @@
 .community-dialog .form-status { margin-top: 18px; }
 
 @media (max-width: 720px) {
+  .community-header { padding-block: 52px 60px; }
+  .community-body { font-size: 16px; }
   /* 종이(shared/ui/sheet) 기본 여백보다 앞서도록 두 클래스로 지정 */
   .sheet.community-sheet { padding: 40px 22px 50px; }
   .community-dialog { padding: 22px; }
 }
 
 @media print {
-  .community-inline-actions, .community-dialog { display: none !important; }
+  .community-header, .community-inline-actions, .community-dialog { display: none !important; }
   .community-sheet { box-shadow: none; }
 }

@@ -1,0 +1,70 @@
+/* 잠긴 글의 문제지. 위에는 인쇄한 문제, 아래에는 책상에 올려 둔 노란 줄 메모장, 채점은 빨간 펜 */
+.proof { padding: 34px 0 8px; }
+.proof-number { margin: 0 0 2px; color: var(--pen); font-size: clamp(26px, 3vw, 32px); transform: rotate(-2deg); transform-origin: left; }
+.proof-ask { max-width: 30em; margin: 0; font-size: clamp(21px, 2.6vw, 26px); font-weight: 700; line-height: 1.5; letter-spacing: -.02em; text-wrap: balance; }
+.proof-note { max-width: 62ch; margin: 10px 0 0; color: var(--ink-soft); font-size: 15px; line-height: 1.7; text-wrap: pretty; }
+
+.proof-form { margin-top: 28px; }
+/* 메모장: 위쪽 빨간 머리띠, 왼쪽 여백선, 34px 마다 줄. 글자는 손글씨라 줄에 맞춰 씀 */
+.proof-pad {
+  --rule: 34px;
+  position: relative;
+  max-width: 640px;
+  padding-top: 18px;
+  border-radius: 2px 2px 4px 4px;
+  background: var(--sticky-1);
+  box-shadow: var(--shadow-sticker);
+  transform: rotate(-.5deg);
+}
+.proof-pad::before { content: ""; position: absolute; inset: 0 0 auto; height: 18px; border-radius: 2px 2px 0 0; background: color-mix(in srgb, var(--stamp-red) 80%, var(--sticky-1)); }
+/* 왼쪽 여백선은 글자와 같이 스크롤되지 않고 종이에 붙어 있음 */
+.proof-pad::after { content: ""; position: absolute; left: 46px; top: 18px; bottom: 0; width: 2px; background: color-mix(in srgb, var(--stamp-red) 45%, transparent); pointer-events: none; }
+.proof-pad textarea {
+  display: block;
+  width: 100%;
+  min-height: calc(var(--rule) * 6 + 12px);
+  padding: 6px 18px 6px 62px;
+  border: 0;
+  background: linear-gradient(transparent calc(var(--rule) - 1px), color-mix(in srgb, var(--pen) 22%, transparent) 0) 0 6px / 100% var(--rule) local;
+  color: var(--sticky-ink);
+  font-family: var(--font-hand);
+  font-size: 25px;
+  line-height: var(--rule);
+  resize: vertical;
+}
+.proof-pad textarea::placeholder { color: color-mix(in srgb, var(--sticky-ink) 40%, transparent); }
+.proof-pad textarea:focus { outline: none; }
+.proof-pad:focus-within { outline: 3px solid var(--pen); outline-offset: 4px; }
+
+.proof-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-top: 22px; }
+.proof-actions .tape:disabled { opacity: .6; cursor: wait; transform: none; }
+.proof-actions .text-btn { font-size: 14px; }
+
+/* 채점: 빨간 펜으로 동그라미 친 0 과 한 줄 평 */
+.proof-grade { display: flex; align-items: center; gap: 18px; margin-top: 18px; }
+.proof-grade:not(:empty) { min-height: 92px; }
+.proof-grading { margin: 0; color: var(--ink-soft); font-family: var(--font-mono); font-size: 13px; }
+.proof-grading::after { content: ""; animation: proof-dots 1.2s steps(4, end) infinite; }
+.proof-score { flex: none; display: grid; place-items: center; width: 70px; height: 62px; border: 3px solid var(--stamp-red); border-radius: 50% 46% 52% 48%; color: var(--stamp-red); font-family: var(--font-hand); font-size: 48px; line-height: 1; transform: rotate(-9deg); animation: proof-mark .32s cubic-bezier(.2, 1.4, .4, 1) both; }
+.proof-verdict { max-width: 34em; margin: 0; color: var(--stamp-red); font-size: clamp(22px, 2.6vw, 26px); line-height: 1.35; transform: rotate(-1deg); transform-origin: left; }
+
+@keyframes proof-dots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75% { content: "..."; }
+}
+@keyframes proof-mark {
+  from { opacity: 0; transform: rotate(-9deg) scale(1.6); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .proof-grading::after { animation: none; content: "..."; }
+  .proof-score { animation: none; }
+}
+
+@media (max-width: 720px) {
+  .proof-pad textarea { padding-left: 50px; }
+  .proof-pad::after { left: 36px; }
+  .proof-grade { align-items: flex-start; }
+}

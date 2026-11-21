@@ -10,7 +10,6 @@ import { ReportDialog } from '@features/report-content';
 import { getPost, type Post } from '@entities/post';
 import type { ReportTarget } from '@entities/report';
 import { AuthorLink, useSession } from '@entities/user';
-import './post-page.css';
 
 export function PostPage({ postId }: { postId: string }) {
   const { user, requestLogin } = useSession();
