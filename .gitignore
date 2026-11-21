@@ -4,3 +4,6 @@ coverage/
 *.tsbuildinfo
 .env
 .DS_Store
+
+# npm run dev 가 남기는 로컬 메모리 Mongo 주소 (scripts/dev-accounts.mjs 가 읽음)
+.dev-mongo-uri
