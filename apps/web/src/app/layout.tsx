@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
+import { GuestTerminal } from '@widgets/guest-terminal';
 import { portfolio } from '@entities/portfolio';
 import '@shared/styles/tokens.css';
 import '@shared/styles/base.css';
@@ -46,6 +47,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           본문 바로가기
         </a>
         {children}
+        {/* 숨은 터미널은 페이지를 옮겨도 기록과 위치가 이어지도록 여기 하나만 둠 */}
+        <GuestTerminal />
       </body>
     </html>
   );

@@ -39,6 +39,9 @@
   --term-fg: #d6dde6;
   --term-dim: #7f8a97;
   --term-accent: #7ee2a0;
+  --term-blue: #7fb4ff;
+  --term-red: #ff8f8f;
+  --term-gold: #f5c86b;
   --shadow-soft: 0 1px 2px rgb(15 20 25 / .08), 0 10px 28px rgb(15 20 25 / .12);
   --shadow-sticker: 0 1px 1px rgb(15 20 25 / .25), 0 3px 8px rgb(15 20 25 / .18);
 

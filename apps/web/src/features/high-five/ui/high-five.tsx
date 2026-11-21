@@ -1,17 +1,20 @@
 'use client';
 
+import { useEffect } from 'react';
 import { cx, formatNumber } from '@shared/lib';
-import type { HighFive as HighFiveState } from '../model/use-high-five';
+import { dismissClap, giveHighFive, loadHighFives, useHighFive } from '../model/use-high-five';
 import './high-five.css';
 
-/** 상태는 홈 화면이 가짐. 숨은 터미널의 hi5 명령도 같은 상태로 보내야 해서 */
-export function HighFive({ hi5 }: { hi5: HighFiveState }) {
+export function HighFive() {
+  const hi5 = useHighFive();
+  useEffect(loadHighFives, []);
+
   return (
     <div className="hi5">
-      <button className={cx('hi5-btn', hi5.pressed && 'is-pressed')} type="button" onClick={hi5.give}>
+      <button className={cx('hi5-btn', hi5.pressed && 'is-pressed')} type="button" onClick={giveHighFive}>
         <span>하이파이브</span>
         {hi5.claps.map((clap) => (
-          <span key={clap.id} className="clap" aria-hidden="true" style={clap.style} onAnimationEnd={() => hi5.dismissClap(clap.id)}>
+          <span key={clap.id} className="clap" aria-hidden="true" style={clap.style} onAnimationEnd={() => dismissClap(clap.id)}>
             {clap.text}
           </span>
         ))}

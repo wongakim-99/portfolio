@@ -1,15 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { routes } from '@shared/config';
 import { formatNumber } from '@shared/lib';
 import { DeployReceipt } from '@widgets/deploy-receipt';
-import { GuestTerminal } from '@widgets/guest-terminal';
 import { Laptop } from '@widgets/laptop';
 import { SiteFooter } from '@widgets/site-footer';
 import { CopyEmail } from '@features/copy-email';
-import { HighFive, useHighFive } from '@features/high-five';
+import { HighFive } from '@features/high-five';
 import { PostcardForm } from '@features/send-postcard';
 import { displayUrl, PORTFOLIO_PDF, portfolio } from '@entities/portfolio';
 import { useServerStatus } from '@entities/server-status';
@@ -20,11 +19,9 @@ import './home-page.css';
 const LEGACY_PORTFOLIO_HASHES = new Set(['sheet', 'about', 'work', 'projects', 'skills', 'history']);
 
 export function HomePage() {
-  // 서버 상태와 하이파이브는 노트북, 영수증, 숨은 터미널이 같이 씀
+  // 서버 상태는 노트북과 영수증이 같이 씀. 숨은 터미널은 상단 버튼으로 어느 페이지에서든 열림 (app/layout.tsx)
   const server = useServerStatus();
   const visits = useVisitCount();
-  const hi5 = useHighFive();
-  const [terminalOpen, setTerminalOpen] = useState(false);
 
   useEffect(() => {
     const hash = location.hash.slice(1);
@@ -94,18 +91,12 @@ export function HomePage() {
             </h2>
             <p className="desk-lead">궁금한 점이나 제안을 적어 주세요. 메일을 남기시면 답장 드릴게요.</p>
             <PostcardForm />
-            <HighFive hi5={hi5} />
+            <HighFive />
           </section>
         </div>
       </main>
 
-      <SiteFooter note={visits === null ? null : ` / 방문 ${formatNumber(visits)}`}>
-        <button className="text-btn" type="button" onClick={() => setTerminalOpen(true)}>
-          터미널 열기 <kbd>`</kbd>
-        </button>
-      </SiteFooter>
-
-      <GuestTerminal open={terminalOpen} onOpenChange={setTerminalOpen} server={server.online ? server.latest : null} onHighFive={hi5.give} />
+      <SiteFooter note={visits === null ? null : ` / 방문 ${formatNumber(visits)}`} homeLink={false} />
     </>
   );
 }

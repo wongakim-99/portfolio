@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { routes } from '@shared/config';
+import { TerminalButton } from '@features/open-terminal';
 import { LampButton } from '@features/theme-toggle';
 import { SiteNav } from './site-nav';
 import './site-header.css';
@@ -14,7 +15,10 @@ export function SiteHeader({ account }: { account?: ReactNode }) {
       </Link>
       <SiteNav />
       {account}
-      <LampButton />
+      <div className="topbar-tools">
+        <TerminalButton />
+        <LampButton />
+      </div>
     </header>
   );
 }

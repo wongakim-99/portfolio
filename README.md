@@ -26,8 +26,8 @@ src/
     feed/      피드(/feed/*). 로그인 상태(SessionProvider), 계정 칸, 로그인 창, 메일 링크 창을 여기서 한 번 둠
   views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
-               guest-terminal(숨은 터미널), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports
-  features/    한 가지 동작: theme-toggle(스탠드), copy-email, high-five, send-postcard, auth, write-post, manage-post,
+               guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports
+  features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar
   entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report
   shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 저장소), ui(Sheet, Dialog, FormStatus), styles(색 토큰, 바탕)
@@ -54,7 +54,10 @@ src/
 - 노트북 LED 와 영수증은 `/api/server` 를 10초마다 불러 실제 가동 시간, CPU 온도, 배터리, 배포 커밋을 보여 줌
 - 오른쪽 위 스탠드 버튼으로 밝은 화면과 어두운 화면 전환
 - 하이파이브 버튼: 연타를 모아 보내고, 한 사람이 하루 50번까지 셈
-- `` ` `` 키를 누르면 숨은 터미널이 열림 (`help`, `neofetch`, `cat about`, `curl /api/health`, `pdf` 등)
+- 상단의 터미널 버튼이나 `` ` `` 키로 어느 페이지에서든 숨은 터미널이 열림. 사이트를 폴더처럼 돌아다님 (`apps/web/src/widgets/guest-terminal`)
+  - `~` 가 홈이고 `portfolio/`(about, work, projects, skills, history), `feed/`(posts, write, admin), `server`, `note`, PDF 가 들어 있음. `feed/posts` 는 API 에서 최근 글 10개를 받아 글 ID 이름의 파일로 보여 줌
+  - `ls`, `cd`, `pwd`, `cat`, `open`, `tree <경로>`, `history`, Tab 자동 완성. `cd` 로 다른 페이지 디렉터리에 가면 실제로 그 페이지로 옮기고 터미널을 닫음. 다시 열면 기록과 위치가 이어짐
+  - 그 밖에 `neofetch`, `curl /api/health`, `hi5`, `lamp`, `pdf` 등. 인자 없이 `tree` 를 치면 크리스마스 트리 이스터에그 (q 또는 Esc 로 나감, 12월 1~25일에는 첫인사에 살짝 알려 줌)
 
 ## 피드 계정과 운영
 
@@ -126,7 +129,7 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
 ## 포트폴리오 PDF
 
 - `npm run build`(`npm run pdf`)가 `apps/web/src/entities/portfolio/model/content.ts` 를 읽어 `apps/web/public/gawon-portfolio.pdf` 를 만듦 (git 에는 안 올림). Next 가 `/gawon-portfolio.pdf` 로 내보냄
-- 홈, 포트폴리오 페이지, 숨은 터미널(`cat about`), PDF 가 모두 `content.ts` 를 읽음. 내용은 이 파일 한곳만 고치면 됨. PDF 생성기가 Node 로 바로 불러오므로 이 파일은 다른 모듈을 import 하지 않음
+- 홈, 포트폴리오 페이지, 숨은 터미널(`cat portfolio/about`), PDF 가 모두 `content.ts` 를 읽음. 내용은 이 파일 한곳만 고치면 됨. PDF 생성기가 Node 로 바로 불러오므로 이 파일은 다른 모듈을 import 하지 않음
 - 표시를 지우거나 구조를 바꿔서 내용을 못 찾으면 생성이 실패하고, 배포도 멈춤
 - `npm test` 가 금지 문자(가운뎃점, em dash 등, `content.ts` 와 `apps/web/src` 전체)와 PDF 내용 추출을 검사함
 - 로컬에서 바로 보려면 `npm run pdf`
@@ -230,7 +233,7 @@ npm run dev        # PDF 생성 후 API(메모리 Mongo, :3000)와 Next 개발 �
 npm run typecheck  # API, 페이지 타입 검사
 npm run lint       # 페이지 ESLint (Next 권장 규칙, FSD 레이어 경계)
 npm run build      # 포트폴리오 PDF 생성 + API 빌드 + Next 빌드
-npm test           # API e2e 21건(메모리 Mongo, MinIO 는 메모리 가짜) + 페이지 단위 2건 + PDF 생성기 7건
+npm test           # API e2e 21건(메모리 Mongo, MinIO 는 메모리 가짜) + 페이지 단위 12건 + PDF 생성기 7건
 ```
 
 ## 배포 흐름
