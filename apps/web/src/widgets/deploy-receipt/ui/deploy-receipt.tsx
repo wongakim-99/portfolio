@@ -1,4 +1,5 @@
 import { formatDuration, formatNumber, formatStamp } from '@shared/lib';
+import { formatDeployDuration, type DeployRecord } from '@entities/deploy';
 import { formatBattery, type ServerStatusState } from '@entities/server-status';
 import './deploy-receipt.css';
 
@@ -17,8 +18,15 @@ function commitText({ latest, online }: ServerStatusState) {
   return latest.release ? latest.release.commit : '로컬 실행';
 }
 
-/** 배포 영수증. 숫자는 /api/server 를 10초마다 받은 실제 값 */
-export function DeployReceipt({ server, visits }: { server: ServerStatusState; visits: number | null }) {
+interface DeployReceiptProps {
+  server: ServerStatusState;
+  visits: number | null;
+  /** 최근 배포 기록. 아직 모르면 null */
+  deploys: DeployRecord[] | null;
+}
+
+/** 배포 영수증. 숫자는 /api/server 를 10초마다 받은 실제 값, 아래 품목은 실제 배포 기록 */
+export function DeployReceipt({ server, visits, deploys }: DeployReceiptProps) {
   const { latest } = server;
   const rows: [string, string][] = [
     ['켜진 지', latest ? formatDuration(latest.uptime) : '-'],
@@ -54,6 +62,25 @@ export function DeployReceipt({ server, visits }: { server: ServerStatusState; v
           <li key={step}>{step}</li>
         ))}
       </ol>
+      <p className="r-sub">최근 배포</p>
+      {deploys?.length ? (
+        <ol className="r-deploys">
+          {deploys.map((deploy) => (
+            <li key={`${deploy.commit}-${deploy.deployedAt}`}>
+              <p className="r-deploy-head">
+                <span>{formatStamp(deploy.deployedAt).slice(5)}</span>
+                <b>{deploy.commit}</b>
+                {deploy.result === 'success' ? <span>{formatDeployDuration(deploy.durationSec)}</span> : <span className="r-deploy-back">되돌림</span>}
+              </p>
+              <p className="r-deploy-subject" title={deploy.subject}>
+                {deploy.subject}
+              </p>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="r-deploys-empty">{deploys ? '아직 기록이 없어요' : '불러오는 중'}</p>
+      )}
       <p className="r-sub">지금 서버</p>
       <dl className="r-rows">
         {rows.map(row)}

@@ -34,6 +34,9 @@ export function GuestTerminal() {
   const [input, setInput] = useState('');
   const [treeOn, setTreeOn] = useState(false);
   const [history, setHistory] = useState<string[]>([]);
+  // mail 처럼 명령이 한 줄 입력을 기다리는 중이면 그 질문. 프롬프트 자리에 대신 보임
+  const [question, setQuestion] = useState<string | null>(null);
+  const answer = useRef<((value: string | null) => void) | null>(null);
   const historyIndex = useRef(0);
   const lineId = useRef(0);
   const greeted = useRef(false);
@@ -96,9 +99,17 @@ export function GuestTerminal() {
     return () => document.removeEventListener('keydown', onKeyDown);
   }, []);
 
-  // 닫기 버튼, 바깥 클릭, exit. 트리가 돌고 있었으면 같이 끔
+  function reply(value: string | null) {
+    const resolve = answer.current;
+    answer.current = null;
+    setQuestion(null);
+    resolve?.(value);
+  }
+
+  // 닫기 버튼, 바깥 클릭, exit. 트리가 돌고 있었으면 같이 끄고, 묻던 중이면 그만둠
   function close() {
     setTreeOn(false);
+    reply(null);
     closeTerminal();
   }
 
@@ -129,6 +140,12 @@ export function GuestTerminal() {
     highFive: giveHighFive,
     toggleLamp: toggleTheme,
     startTree: () => setTreeOn(true),
+    print: (output) => write(toParts(output)),
+    ask: (text) =>
+      new Promise((resolve) => {
+        answer.current = resolve;
+        setQuestion(text);
+      }),
     clear: () => setLines([]),
     close,
   };
@@ -137,6 +154,11 @@ export function GuestTerminal() {
     event.preventDefault();
     const line = input;
     setInput('');
+    if (question !== null) {
+      write([{ text: `${question} ${line}`, tone: 'cmd' }]);
+      reply(line);
+      return;
+    }
     write([{ text: `${promptOf(cwd)} ${line}`, tone: 'cmd' }]);
     if (line.trim()) {
       setHistory((list) => [...list, line]);
@@ -163,8 +185,9 @@ export function GuestTerminal() {
       if (candidates.length > 1) write([{ text: candidates.join('  '), tone: 'dim' }]);
     } else if (event.ctrlKey && event.key === 'c') {
       event.preventDefault();
-      write([{ text: `${promptOf(cwd)} ${input}^C`, tone: 'cmd' }]);
+      write([{ text: `${question ?? promptOf(cwd)} ${input}^C`, tone: 'cmd' }]);
       setInput('');
+      reply(null);
     } else if (event.ctrlKey && event.key === 'l') {
       event.preventDefault();
       setLines([]);
@@ -208,7 +231,7 @@ export function GuestTerminal() {
             </div>
             <form className="term-line" onSubmit={submit}>
               <label htmlFor="term-input" className="term-prompt">
-                {promptOf(cwd)}
+                {question ?? promptOf(cwd)}
               </label>
               <input
                 ref={inputRef}

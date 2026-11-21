@@ -1,17 +1,10 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
-import { postJson } from '@shared/api';
 import { cx, formatStamp } from '@shared/lib';
 import { FormStatus, NO_STATUS, type Status } from '@shared/ui';
+import { SEND_FALLBACK_TEXT, SEND_RESULT_TEXT, sendMessage, type MessageInput } from '@entities/message';
 import './postcard.css';
-
-const FALLBACK = '지금은 보낼 수 없어요. 메일로 연락해 주세요.';
-const STATUS_TEXT: Record<number, string> = {
-  201: '보냈어요. 남겨 주셔서 고맙습니다.',
-  400: '입력한 내용을 다시 확인해 주세요. 메시지는 5자 이상이어야 해요.',
-  429: '잠시 뒤에 다시 보내 주세요.',
-};
 
 // 홈의 쪽지 엽서. 받은 쪽지는 피드 관리실 쪽지함에서 봄 (POST /api/messages)
 export function PostcardForm() {
@@ -26,14 +19,14 @@ export function PostcardForm() {
     setSending(true);
     setStatus({ message: '보내는 중...' });
     try {
-      const response = await postJson('/messages', Object.fromEntries(new FormData(form)));
-      setStatus({ message: STATUS_TEXT[response.status] ?? FALLBACK, tone: response.ok ? 'ok' : 'error' });
+      const response = await sendMessage(Object.fromEntries(new FormData(form)) as unknown as MessageInput);
+      setStatus({ message: SEND_RESULT_TEXT[response.status] ?? SEND_FALLBACK_TEXT, tone: response.ok ? 'ok' : 'error' });
       if (response.ok) {
         form.reset();
         setSentOn(formatStamp(Date.now()).slice(0, 10));
       }
     } catch {
-      setStatus({ message: FALLBACK, tone: 'error' });
+      setStatus({ message: SEND_FALLBACK_TEXT, tone: 'error' });
     } finally {
       setSending(false);
     }

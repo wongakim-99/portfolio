@@ -36,6 +36,16 @@
   background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 4px, currentColor 4px 5px, transparent 5px 8px, currentColor 8px 11px, transparent 11px 12px);
 }
 
+/* 최근 배포를 영수증 품목처럼. 날짜와 커밋, 걸린 시간 한 줄에 커밋 제목 한 줄 */
+.r-deploys { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
+/* 긴 커밋 제목이 칸을 늘리지 않고 영수증 폭 안에서 … 으로 잘리게 */
+.r-deploys li { min-width: 0; }
+.r-deploy-head { display: flex; justify-content: space-between; gap: 10px; font-variant-numeric: tabular-nums; }
+.r-deploy-head b { font-weight: 600; }
+.r-deploy-back { font-family: var(--font-body); font-size: 11.5px; font-weight: 700; color: var(--stamp-red); }
+.r-deploy-subject { overflow: hidden; font-family: var(--font-body); font-size: 11.5px; line-height: 1.45; text-overflow: ellipsis; white-space: nowrap; opacity: .72; }
+.r-deploys-empty { margin-top: 6px !important; font-family: var(--font-body); font-size: 12px; opacity: .72; }
+
 @media (max-width: 900px) {
   .receipt { max-width: 380px; }
 }

@@ -22,22 +22,22 @@
         <mxCell id="c8" value="&lt;b&gt;2. npm ci&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="336" width="420" height="44" as="geometry" />
         </mxCell>
-        <mxCell id="c9" value="&lt;b&gt;3. typecheck&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
+        <mxCell id="c9" value="&lt;b&gt;3. typecheck, lint&lt;/b&gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="404" width="420" height="44" as="geometry" />
         </mxCell>
-        <mxCell id="c10" value="&lt;b&gt;4. build&lt;/b&gt;&lt;br&gt;API 빌드 + portfolio.html 로 포트폴리오 PDF 생성" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
+        <mxCell id="c10" value="&lt;b&gt;4. build&lt;/b&gt;&lt;br&gt;포트폴리오 PDF 생성 + API 빌드 + Next.js 빌드" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="472" width="420" height="58" as="geometry" />
         </mxCell>
-        <mxCell id="c11" value="&lt;b&gt;5. test&lt;/b&gt;&lt;br&gt;API e2e 15건 (메모리 Mongo) + PDF 생성기 7건" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
+        <mxCell id="c11" value="&lt;b&gt;5. test&lt;/b&gt;&lt;br&gt;API e2e 23건 + 페이지 14건 + PDF 생성기 7건" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="554" width="420" height="58" as="geometry" />
         </mxCell>
-        <mxCell id="c12" value="&lt;b&gt;6. deploy.sh: 이미지 빌드&lt;/b&gt;&lt;br&gt;portfolio-api:&amp;lt;커밋&amp;gt;, portfolio-web:&amp;lt;커밋&amp;gt;" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
+        <mxCell id="c12" value="&lt;b&gt;6. deploy.sh: 이미지 빌드&lt;/b&gt;&lt;br&gt;api, web(Next.js), proxy(Caddy) + web 단독 기동 확인" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="636" width="420" height="58" as="geometry" />
         </mxCell>
-        <mxCell id="c13" value="&lt;b&gt;7. mongo 준비&lt;/b&gt;&lt;br&gt;앱 계정, 백업용 읽기 전용 계정 확인" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
+        <mxCell id="c13" value="&lt;b&gt;7. mongo, minio 준비&lt;/b&gt;&lt;br&gt;앱 계정, 백업 계정, 사진 버킷 확인" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="718" width="420" height="58" as="geometry" />
         </mxCell>
-        <mxCell id="c14" value="&lt;b&gt;8. compose up --wait&lt;/b&gt;&lt;br&gt;web, api, mongo 헬스체크까지 대기" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
+        <mxCell id="c14" value="&lt;b&gt;8. compose up --wait&lt;/b&gt;&lt;br&gt;proxy, web, api, mongo, minio 헬스체크까지 대기" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;align=left;spacingLeft=14;" vertex="1" parent="1">
           <mxGeometry x="40" y="800" width="420" height="58" as="geometry" />
         </mxCell>
         <mxCell id="c15" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563EB;fontColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;fontSize=12;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c7" target="c8">
@@ -61,16 +61,16 @@
         <mxCell id="c21" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563EB;fontColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;fontSize=12;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c13" target="c14">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c22" value="&lt;b&gt;Caddy 를 거쳐 확인&lt;/b&gt;&lt;br&gt;/api/server 커밋 = 이번 커밋, 페이지, PDF" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;" vertex="1" parent="1">
+        <mxCell id="c22" value="&lt;b&gt;Caddy 를 거쳐 확인&lt;/b&gt;&lt;br&gt;/api/server 커밋 = 이번 커밋, 페이지 3개, PDF" style="rhombus;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;" vertex="1" parent="1">
           <mxGeometry x="40" y="882" width="420" height="76" as="geometry" />
         </mxCell>
         <mxCell id="c23" value="" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#2563EB;fontColor=#2563EB;fontFamily=Apple SD Gothic Neo;fontSize=13;fontSize=12;labelBackgroundColor=#FFFFFF;" edge="1" parent="1" source="c14" target="c22">
           <mxGeometry relative="1" as="geometry" />
         </mxCell>
-        <mxCell id="c24" value="&lt;b&gt;성공&lt;/b&gt;&lt;br&gt;태그 기록 ~/portfolio/docker-release&lt;br&gt;이미지 최근 3개만 보관" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#DCFCE7;strokeColor=#16A34A;fontFamily=Apple SD Gothic Neo;fontSize=13;" vertex="1" parent="1">
+        <mxCell id="c24" value="&lt;b&gt;성공&lt;/b&gt;&lt;br&gt;태그, compose 파일 기록&lt;br&gt;배포 기록 남김, 이미지 3개 보관" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#DCFCE7;strokeColor=#16A34A;fontFamily=Apple SD Gothic Neo;fontSize=13;" vertex="1" parent="1">
           <mxGeometry x="40" y="992" width="200" height="84" as="geometry" />
         </mxCell>
-        <mxCell id="c25" value="&lt;b&gt;실패&lt;/b&gt;&lt;br&gt;직전 태그로 되돌림&lt;br&gt;(첫 전환이면 systemd 재가동)" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FEE2E2;strokeColor=#DC2626;fontFamily=Apple SD Gothic Neo;fontSize=13;" vertex="1" parent="1">
+        <mxCell id="c25" value="&lt;b&gt;실패&lt;/b&gt;&lt;br&gt;직전 태그와 compose 파일로&lt;br&gt;되돌리고 배포 기록에 남김" style="rounded=1;whiteSpace=wrap;html=1;arcSize=12;fillColor=#FEE2E2;strokeColor=#DC2626;fontFamily=Apple SD Gothic Neo;fontSize=13;" vertex="1" parent="1">
           <mxGeometry x="260" y="992" width="200" height="84" as="geometry" />
         </mxCell>
         <mxCell id="c26" value="통과" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=block;endFill=1;strokeWidth=2;strokeColor=#16A34A;fontColor=#16A34A;fontFamily=Apple SD Gothic Neo;fontSize=13;fontSize=12;labelBackgroundColor=#FFFFFF;exitX=0.2381;exitY=0.7381;exitPerimeter=0;entryX=0.5;entryY=0;" edge="1" parent="1" source="c22" target="c24">

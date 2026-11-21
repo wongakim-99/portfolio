@@ -52,12 +52,16 @@ src/
 
 - 노트북 스티커는 끌어서 옮길 수 있음. 위치는 방문자 브라우저에만 저장
 - 노트북 LED 와 영수증은 `/api/server` 를 10초마다 불러 실제 가동 시간, CPU 온도, 배터리, 배포 커밋을 보여 줌
+- 영수증의 '최근 배포' 품목은 실제 배포 기록 5건 (`/api/deploys`). `deploy/deploy.sh` 가 배포를 마칠 때마다 커밋, 제목, 걸린 시간, 성공이나 되돌림을 남김
+- 누적 방문 수는 같은 IP 를 브라우저와 상관없이 평생 한 번만 셈. IP 원문은 저장하지 않고 salt 섞은 해시만 남김 (2026-11-21 전까지는 30분마다 다시 셌고, 그때까지의 수에 이어서 더함)
 - 오른쪽 위 스탠드 버튼으로 밝은 화면과 어두운 화면 전환
 - 하이파이브 버튼: 연타를 모아 보내고, 한 사람이 하루 50번까지 셈
 - 상단의 터미널 버튼이나 `` ` `` 키로 어느 페이지에서든 숨은 터미널이 열림. 사이트를 폴더처럼 돌아다님 (`apps/web/src/widgets/guest-terminal`)
   - `~` 가 홈이고 `portfolio/`(about, work, projects, skills, history), `feed/`(posts, write, admin), `server`, `note`, PDF 가 들어 있음. `feed/posts` 는 API 에서 최근 글 10개를 받아 글 ID 이름의 파일로 보여 줌
   - `ls`, `cd`, `pwd`, `cat`, `open`, `tree <경로>`, `history`, Tab 자동 완성. `cd` 로 다른 페이지 디렉터리에 가면 실제로 그 페이지로 옮기고 터미널을 닫음. 다시 열면 기록과 위치가 이어짐
-  - 그 밖에 `neofetch`, `curl /api/health`, `hi5`, `lamp`, `pdf` 등. 인자 없이 `tree` 를 치면 크리스마스 트리 이스터에그 (q 또는 Esc 로 나감, 12월 1~25일에는 첫인사에 살짝 알려 줌)
+  - `git log` 는 진짜 저장소 대신 홈서버의 배포 기록을 보여 줌 (`--oneline`, `-n 5`). `mail gawon` 은 이름, 답장 메일, 메시지를 차례로 묻고 `.` 만 있는 줄에서 홈 엽서와 같은 쪽지함으로 보냄
+  - 그 밖에 `neofetch`, `curl /api/health`, `hi5`, `lamp`, `pdf` 등
+  - 인자 없이 `tree` 를 치면 크리스마스 트리 이스터에그. 줄기가 서고, 잎이 코드 글자로 흐르며 아래에서부터 자라고, 전구가 감기고, 별이 꽂힌 뒤 돌기 시작함 (`widgets/guest-terminal/lib/christmas-tree.ts`). q 또는 Esc 로 나가고, 12월 1~25일에는 첫인사에 살짝 알려 줌
 
 ## 피드 계정과 운영
 
@@ -208,7 +212,9 @@ docker compose -f deploy/docker-compose.yml exec minio sh -c \
 |---|---|---|
 | GET | `/api/health` | DB 연결까지 확인. 배포 스크립트가 사용 |
 | GET | `/api/views` | 누적 방문 수 |
-| POST | `/api/views` | 방문 기록. 같은 방문자는 30분 안에 다시 와도 한 번만 셈 (TTL 인덱스) |
+| POST | `/api/views` | 방문 기록. 같은 IP 는 평생 한 번만 셈 (`view_visitors` 에 IP 해시 표식) |
+| GET | `/api/deploys?limit=10` | 최근 배포 기록 (커밋 앞 7자, 제목, 시각, 걸린 시간, 결과). 최대 30건 |
+| POST | `/api/deploys` | 배포 기록 남기기. `Authorization: Bearer <ADMIN_TOKEN>` 필요. `deploy/deploy.sh` 가 씀 |
 | POST | `/api/messages` | 메시지 남기기. IP 당 10분 3건, honeypot 으로 봇 차단 |
 | GET | `/api/messages` | 최근 메시지 50건. `Authorization: Bearer <ADMIN_TOKEN>` 필요. 사이트에서는 관리실 쪽지함으로 봄 |
 | GET | `/api/server` | 가동 시간, 부하, 메모리, CPU 온도, 배터리, 배포 커밋. 5초 캐시 |
@@ -233,7 +239,7 @@ npm run dev        # PDF 생성 후 API(메모리 Mongo, :3000)와 Next 개발 �
 npm run typecheck  # API, 페이지 타입 검사
 npm run lint       # 페이지 ESLint (Next 권장 규칙, FSD 레이어 경계)
 npm run build      # 포트폴리오 PDF 생성 + API 빌드 + Next 빌드
-npm test           # API e2e 21건(메모리 Mongo, MinIO 는 메모리 가짜) + 페이지 단위 12건 + PDF 생성기 7건
+npm test           # API e2e 23건(메모리 Mongo, MinIO 는 메모리 가짜) + 페이지 단위 14건 + PDF 생성기 7건
 ```
 
 ## 배포 흐름

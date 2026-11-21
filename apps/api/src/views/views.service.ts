@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
 import { ViewCounter } from './schemas/view-counter.schema.js';
-import { ViewMark } from './schemas/view-mark.schema.js';
+import { ViewVisitor } from './schemas/view-visitor.schema.js';
 
 const DUPLICATE_KEY = 11000;
 
@@ -10,11 +10,12 @@ const DUPLICATE_KEY = 11000;
 export class ViewsService {
   constructor(
     @InjectModel(ViewCounter.name) private readonly counters: Model<ViewCounter>,
-    @InjectModel(ViewMark.name) private readonly marks: Model<ViewMark>,
+    @InjectModel(ViewVisitor.name) private readonly visitors: Model<ViewVisitor>,
   ) {}
 
-  async hit(page: string, visitor: string): Promise<number> {
-    const isNewVisit = await this.markVisit(`${page}:${visitor}`);
+  /** 처음 온 IP 면 1 늘리고, 지금 누적 수를 돌려줌 */
+  async hit(page: string, ip: string): Promise<number> {
+    const isNewVisit = await this.markVisitor(`${page}:${ip}`);
     if (!isNewVisit) {
       return this.total(page);
     }
@@ -29,10 +30,10 @@ export class ViewsService {
     return counter?.total ?? 0;
   }
 
-  // 30분 안에 같은 표식이 있으면 unique 충돌이 나므로 새 방문이 아님
-  private async markVisit(id: string): Promise<boolean> {
+  // 이미 센 IP 면 _id 충돌이 나므로 새 방문이 아님
+  private async markVisitor(id: string): Promise<boolean> {
     try {
-      await this.marks.create({ _id: id });
+      await this.visitors.create({ _id: id });
       return true;
     } catch (error) {
       if ((error as { code?: number }).code === DUPLICATE_KEY) {

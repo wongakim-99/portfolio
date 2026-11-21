@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { christmasCountdown, isChristmasSeason, treeFrame } from '../lib/christmas-tree';
+import { christmasCountdown, isChristmasSeason, TREE_INTRO_SECONDS, treeFrame } from '../lib/christmas-tree';
 import { complete } from './commands';
 import { absolutePath, dirForPathname, displayPath, pageOf, resolvePath } from './filesystem';
 
@@ -55,25 +55,47 @@ describe('tree 이스터에그', () => {
   const cols = 80;
   const rows = 28;
 
-  it('별, 트리, 인사말이 화면 안에 그려짐', () => {
-    const cells = treeFrame(cols, rows, 0);
-    expect(cells.every((cell) => cell.x >= 0 && cell.x < cols && cell.y >= 0 && cell.y < rows)).toBe(true);
-    expect(cells.some((cell) => cell.y === 1 && cell.ch === '*' && cell.glow > 0)).toBe(true);
-    const greeting = cells
-      .filter((cell) => cell.y === rows - 1 && /[A-Z]/.test(cell.ch))
+  const done = TREE_INTRO_SECONDS + 1;
+  const text = (time: number, y: number) =>
+    treeFrame(cols, rows, time)
+      .filter((cell) => cell.y === y && /[A-Z]/.test(cell.ch))
       .sort((a, b) => a.x - b.x)
       .map((cell) => cell.ch)
       .join('');
-    expect(greeting).toBe('MERRYCHRISTMAS');
+
+  it('다 만들어지면 별, 트리, 인사말이 화면 안에 그려짐', () => {
+    const cells = treeFrame(cols, rows, done);
+    expect(cells.every((cell) => cell.x >= 0 && cell.x < cols && cell.y >= 0 && cell.y < rows)).toBe(true);
+    expect(cells.some((cell) => cell.y === 1 && cell.ch === '*' && cell.glow > 0)).toBe(true);
+    expect(text(done, rows - 1)).toBe('MERRYCHRISTMAS');
+  });
+
+  it('처음에는 줄기부터 서고, 잎은 아래에서 위로 코드 글자가 흐르며 자람', () => {
+    const start = treeFrame(cols, rows, 0.05);
+    expect(start.some((cell) => cell.ch === '#' && cell.color === '#9a6a43')).toBe(true);
+    expect(start.some((cell) => cell.y === 1 && cell.ch === '*')).toBe(false);
+    expect(text(0.05, rows - 1)).toBe('');
+
+    const growing = treeFrame(cols, rows, 1.0);
+    const leafRows = new Set(growing.filter((cell) => cell.y >= 3 && cell.y < rows - 5 && cell.color.startsWith('hsl(1')).map((cell) => cell.y));
+    expect(Math.min(...leafRows)).toBeGreaterThan(6);
+    expect(growing.some((cell) => '01{}[]<>/;'.includes(cell.ch) && cell.glow > 0)).toBe(true);
+  });
+
+  it('별이 꽂힌 뒤 인사말이 한 글자씩 찍힘', () => {
+    expect(treeFrame(cols, rows, 3.0).some((cell) => cell.y === 1 && cell.ch === '*' && cell.glow >= 20)).toBe(false);
+    expect(treeFrame(cols, rows, 3.6).some((cell) => cell.y === 1 && cell.ch === '*' && cell.glow >= 20)).toBe(true);
+    expect(text(3.75, rows - 1).length).toBeGreaterThan(0);
+    expect(text(3.75, rows - 1).length).toBeLessThan(13);
   });
 
   it('시간이 흐르면 돌아서 그림이 바뀜', () => {
     const at = (time: number) => treeFrame(cols, rows, time).map((cell) => `${cell.x},${cell.y},${cell.ch}`).join('|');
-    expect(at(0)).not.toBe(at(1));
+    expect(at(done)).not.toBe(at(done + 1));
   });
 
   it('작은 화면에서도 깨지지 않음', () => {
-    expect(treeFrame(30, 12, 2).length).toBeGreaterThan(30);
+    expect(treeFrame(30, 12, done).length).toBeGreaterThan(30);
   });
 
   it('크리스마스까지 남은 날 (서울 기준)', () => {

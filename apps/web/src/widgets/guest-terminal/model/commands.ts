@@ -1,4 +1,6 @@
-import { formatDuration } from '@shared/lib';
+import { formatDuration, formatStamp } from '@shared/lib';
+import { formatDeployDuration, getDeploys } from '@entities/deploy';
+import { SEND_FALLBACK_TEXT, SEND_RESULT_TEXT, sendMessage } from '@entities/message';
 import { formatBattery, getServerStatus } from '@entities/server-status';
 import {
   absolutePath,
@@ -17,7 +19,7 @@ import {
 // 숨은 터미널의 명령. 진짜 리눅스는 아니지만 ls, cd, cat 처럼 익숙한 명령으로 사이트를 돌아다님
 // 화면을 바꾸는 일(페이지 이동, 터미널 닫기, 트리 켜기)은 TerminalContext 로 부탁함
 
-export type Tone = 'cmd' | 'dim' | 'ok' | 'err' | 'dir' | 'pdf' | 'hidden';
+export type Tone = 'cmd' | 'dim' | 'ok' | 'err' | 'dir' | 'pdf' | 'hidden' | 'commit';
 export interface Part {
   text: string;
   tone?: Tone;
@@ -39,6 +41,10 @@ export interface TerminalContext {
   /** 스탠드를 켜거나 끄고 바뀐 뒤 어두운지 돌려줌 */
   toggleLamp: () => boolean;
   startTree: () => void;
+  /** 명령이 끝나기 전에 한 줄 보여 줌 */
+  print: (output: Output) => void;
+  /** 한 줄 입력을 기다림. Ctrl+C 나 터미널을 닫으면 null */
+  ask: (question: string) => Promise<string | null>;
   clear: () => void;
   close: () => void;
 }
@@ -182,7 +188,66 @@ async function neofetch(): Promise<Output> {
   }
 }
 
-const CURL_TARGETS = ['/api/health', '/api/server', '/api/views', '/api/high-fives'];
+// git log. 진짜 저장소 대신 홈서버의 실제 배포 기록(/api/deploys)을 보여 줌
+async function gitLog(args: string[]): Promise<Output> {
+  const oneline = args.includes('--oneline');
+  const countArg = args.find((arg) => /^-n?\d+$/.test(arg)) ?? (args.includes('-n') ? args[args.indexOf('-n') + 1] : undefined);
+  const count = Math.min(Math.max(Number(countArg?.replace(/^-n?/, '')) || 10, 1), 30);
+  let deploys;
+  try {
+    deploys = await getDeploys(count);
+  } catch {
+    return 'git: 배포 기록을 불러오지 못했어요. 잠시 뒤에 다시 해 보세요.';
+  }
+  if (!deploys.length) return 'git: 아직 배포 기록이 없어요.';
+  return deploys.flatMap((deploy, index): Part[] => {
+    const head: Part[] = index === 0 ? [{ text: ' (' }, { text: 'HEAD -> main', tone: 'ok' }, { text: ')' }] : [];
+    const result: Part[] = deploy.result === 'success' ? [] : [{ text: '  되돌림', tone: 'err' }];
+    if (oneline) return [...(index ? [{ text: '\n' }] : []), { text: deploy.commit, tone: 'commit' }, ...head, { text: ` ${deploy.subject}` }, ...result];
+    return [
+      ...(index ? [{ text: '\n\n' }] : []),
+      { text: `commit ${deploy.commit}`, tone: 'commit' },
+      ...head,
+      ...result,
+      { text: `\nDate:   ${formatStamp(deploy.deployedAt)} (배포 ${formatDeployDuration(deploy.durationSec)})`, tone: 'dim' },
+      { text: `\n\n    ${deploy.subject}` },
+    ];
+  });
+}
+
+// mail gawon. 진짜 mail 처럼 차례로 묻고, . 만 있는 줄에서 홈 엽서와 같은 쪽지함으로 보냄
+const MAIL_TO = new Set(['gawon', '김가원', 'gawon@gawon-dev', 'kgw1999zz@naver.com']);
+const MAIL_CANCELLED = '보내지 않았어요.';
+
+async function mail(args: string[], context: TerminalContext): Promise<Output> {
+  const to = args.join(' ').trim();
+  if (!to) return 'mail: 받는 사람을 적어 주세요. 예) mail gawon';
+  if (!MAIL_TO.has(to.toLowerCase())) return `mail: ${to}: 이 방에서는 gawon 에게만 보낼 수 있어요`;
+  context.print([{ text: '받는 사람: gawon (김가원). 다 쓰면 . 만 있는 줄로 끝내고, 그만두려면 Ctrl+C', tone: 'dim' }]);
+  const name = await context.ask('보내는 사람:');
+  if (name === null) return MAIL_CANCELLED;
+  if (!name.trim()) return `mail: 이름이 비어 있어서 ${MAIL_CANCELLED}`;
+  const email = await context.ask('답장 받을 메일 (없으면 Enter):');
+  if (email === null) return MAIL_CANCELLED;
+  const lines: string[] = [];
+  for (;;) {
+    const line = await context.ask('>');
+    if (line === null) return MAIL_CANCELLED;
+    if (line.trim() === '.') break;
+    lines.push(line);
+  }
+  const message = lines.join('\n').trim();
+  if (message.length < 5) return `mail: 메시지가 너무 짧아서 ${MAIL_CANCELLED} 5자 이상 적어 주세요.`;
+  try {
+    const response = await sendMessage({ name: name.trim(), email: email.trim(), message, website: '' });
+    const text = SEND_RESULT_TEXT[response.status] ?? SEND_FALLBACK_TEXT;
+    return [{ text: response.ok ? `${text} 홈의 엽서함으로 들어갔어요.` : `mail: ${text}`, tone: response.ok ? 'ok' : 'err' }];
+  } catch {
+    return [{ text: `mail: ${SEND_FALLBACK_TEXT}`, tone: 'err' }];
+  }
+}
+
+const CURL_TARGETS = ['/api/health', '/api/server', '/api/views', '/api/high-fives', '/api/deploys'];
 
 const vim: Command = () => '에디터는 없어요. 나가는 법을 몰라도 괜찮아요.';
 const clear: Command = (_, context) => {
@@ -208,6 +273,8 @@ export const COMMANDS: Record<string, Command> = {
       '  cat <파일>        내용 보기. cat portfolio/about',
       '  open <경로>       화면에서 열기. PDF 는 내려받기',
       '  tree <경로>       폴더 구조 보기',
+      '  git log          홈서버 배포 기록. --oneline, -n 5',
+      '  mail gawon       쪽지 보내기 (홈 엽서와 같은 곳으로 감)',
       '  neofetch         서버 정보',
       '  curl /api/health 헬스체크',
       '  hi5              하이파이브 보내기',
@@ -264,7 +331,13 @@ export const COMMANDS: Record<string, Command> = {
   vim,
   vi: vim,
   nano: vim,
-  git: (args) => (args[0] === 'push' ? 'main 에 push 하면 진짜 배포돼요. 여기서는 참을게요.' : `git ${args.join(' ')}: 여기서는 안 돼요`),
+  mail,
+  git: ([sub, ...rest]) => {
+    if (sub === 'log') return gitLog(rest);
+    if (sub === 'push') return 'main 에 push 하면 진짜 배포돼요. 여기서는 참을게요.';
+    if (sub === 'status') return "On branch main\nYour branch is up to date with 'origin/main'.\n\nnothing to commit, working tree clean";
+    return `git ${[sub, ...rest].join(' ')}: 여기서는 git log, git status 만 돼요`;
+  },
 };
 
 /** 한 줄을 실행해 출력을 돌려줌. 없는 명령이면 known 이 false */

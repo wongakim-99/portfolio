@@ -5,6 +5,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { validateEnv, type Env } from './env.js';
 import { CommunityModule } from './community/community.module.js';
+import { DeploysModule } from './deploys/deploys.module.js';
 import { HealthModule } from './health/health.module.js';
 import { HighFivesModule } from './high-fives/high-fives.module.js';
 import { MessagesModule } from './messages/messages.module.js';
@@ -32,6 +33,7 @@ import { ViewsModule } from './views/views.module.js';
     ServerModule,
     HighFivesModule,
     CommunityModule,
+    DeploysModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

@@ -2,13 +2,13 @@
 
 import { useEffect, useRef } from 'react';
 import { prefersReducedMotion } from '@shared/lib';
-import { treeFrame } from '../lib/christmas-tree';
+import { TREE_INTRO_SECONDS, treeFrame } from '../lib/christmas-tree';
 
 const FONT = '600 14px "IBM Plex Mono", ui-monospace, Menlo, monospace';
 const LINE = 16;
 const FRAME_MS = 33;
 
-/** 터미널 전체를 채우는 돌아가는 트리. 움직임을 줄이는 설정이면 한 장만 그림 */
+/** 터미널 전체를 채우는 트리. 처음부터 만들어진 뒤 돌고, 움직임을 줄이는 설정이면 다 만든 한 장만 그림 */
 export function ChristmasTree({ onExit }: { onExit: () => void }) {
   const boxRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -47,7 +47,7 @@ export function ChristmasTree({ onExit }: { onExit: () => void }) {
       const cols = Math.floor(width / cellWidth);
       const rows = Math.floor(height / LINE);
       const left = (width - cols * cellWidth) / 2;
-      const cells = treeFrame(cols, rows, still ? 1.4 : (now - started) / 1000);
+      const cells = treeFrame(cols, rows, still ? TREE_INTRO_SECONDS + 1 : (now - started) / 1000);
 
       context.clearRect(0, 0, width, height);
       context.font = FONT;

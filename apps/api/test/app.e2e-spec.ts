@@ -1,5 +1,6 @@
 import { NotFoundException, type INestApplication } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
+import { getConnectionToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -94,11 +95,13 @@ describe('views', () => {
   beforeAll(async () => (app = await createApp()));
   afterAll(async () => app.close());
 
-  it('같은 방문자의 새로고침은 한 번만 셈', async () => {
+  it('같은 IP 는 새로고침해도, 브라우저를 바꿔도 한 번만 셈', async () => {
     const server = app.getHttpServer();
     const first = await request(server).post('/api/views').set('User-Agent', 'visitor-a').expect(200);
     const again = await request(server).post('/api/views').set('User-Agent', 'visitor-a').expect(200);
+    const otherBrowser = await request(server).post('/api/views').set('User-Agent', 'visitor-a-safari').expect(200);
     expect(again.body.total).toBe(first.body.total);
+    expect(otherBrowser.body.total).toBe(first.body.total);
   });
 
   // Caddy 컨테이너가 붙여 넘긴 X-Forwarded-For 에서 맨 오른쪽의 공인 주소를 방문자로 봄
@@ -113,11 +116,50 @@ describe('views', () => {
     expect(other.body.total).toBe(first.body.total + 1);
   });
 
-  it('다른 방문자는 1 증가', async () => {
+  it('처음 온 IP 는 1 증가하고, 표식은 시간이 지나도 남아 다시 세지 않음', async () => {
     const server = app.getHttpServer();
     const before = await request(server).get('/api/views').expect(200);
-    const after = await request(server).post('/api/views').set('User-Agent', 'visitor-b').expect(200);
-    expect(after.body.total).toBe(before.body.total + 1);
+    const firstVisit = await request(server).post('/api/views').set('X-Forwarded-For', '203.0.113.9, 172.18.0.1').expect(200);
+    expect(firstVisit.body.total).toBe(before.body.total + 1);
+    const visitors = app.get(getConnectionToken()).collection('view_visitors');
+    expect(await visitors.countDocuments()).toBe(firstVisit.body.total);
+    const indexes = await visitors.indexes();
+    expect(indexes.some((index: { expireAfterSeconds?: number }) => index.expireAfterSeconds !== undefined)).toBe(false);
+  });
+});
+
+describe('deploys', () => {
+  let app: INestApplication<App>;
+  beforeAll(async () => (app = await createApp()));
+  afterAll(async () => app.close());
+
+  const record = (body: object, token = ADMIN_TOKEN) =>
+    request(app.getHttpServer()).post('/api/deploys').set('Authorization', `Bearer ${token}`).send(body);
+
+  it('관리자 토큰이 있어야 배포 기록을 남김', async () => {
+    const body = { commit: 'abc1234', subject: 'feat: 첫 배포', durationSec: 40, result: 'success' };
+    await request(app.getHttpServer()).post('/api/deploys').send(body).expect(401);
+    await record(body, 'wrong-token-0123456789abcdef').expect(401);
+    await record({ ...body, commit: 'not-a-sha' }).expect(400);
+    await record({ ...body, result: 'maybe' }).expect(400);
+    await record(body).expect(201);
+  });
+
+  it('최근 배포부터 보여 주고, 같은 기록을 다시 보내도 한 건만 남음', async () => {
+    const server = app.getHttpServer();
+    const older = { commit: '1111111aaaa', subject: 'fix: 예전 배포', durationSec: 30, result: 'success', deployedAt: '2026-11-01T00:00:00Z' };
+    const newer = { commit: '2222222', subject: '  feat:   새   배포  ', durationSec: 52, result: 'rolled-back', deployedAt: '2026-11-20T00:00:00Z' };
+    await record(older).expect(201);
+    await record(older).expect(201);
+    await record(newer).expect(201);
+    const res = await request(server).get('/api/deploys?limit=2').expect(200);
+    // 앞 테스트에서 지금 시각으로 남긴 abc1234 가 가장 최근
+    expect(res.body.deploys).toEqual([
+      expect.objectContaining({ commit: 'abc1234', subject: 'feat: 첫 배포' }),
+      { commit: '2222222', subject: 'feat: 새 배포', deployedAt: '2026-11-20T00:00:00.000Z', durationSec: 52, result: 'rolled-back' },
+    ]);
+    const all = await request(server).get('/api/deploys?limit=30').expect(200);
+    expect(all.body.deploys.filter((deploy: { commit: string }) => deploy.commit === '1111111')).toHaveLength(1);
   });
 });
 

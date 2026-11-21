@@ -3,6 +3,7 @@
 # 1) 커밋 태그로 API, 페이지(Next.js), 앞단 프록시(Caddy) 이미지를 만들고, 페이지 이미지가 혼자 뜨는지 먼저 확인
 # 2) docker compose 로 교체하고, Caddy 를 거쳐 새 커밋이 응답하는지까지 확인
 # 3) 실패하면 직전 태그와 그때의 compose 파일로 되돌림
+# 4) 결과를 API 의 배포 기록(/api/deploys)에 남김. 홈의 영수증과 숨은 터미널 git log 가 보여 줌
 set -euo pipefail
 
 CONFIG="$HOME/.config/portfolio"
@@ -36,6 +37,19 @@ compose_previous() {
 # 컨테이너 안에서 root 계정으로 mongo 도구를 실행함. 비밀번호는 컨테이너 환경변수에서 읽어 명령줄에 남기지 않음
 mongo_root() {
   compose "$SHA" exec -T mongo sh -c "$1"' -u "$MONGO_INITDB_ROOT_USERNAME" -p "$MONGO_INITDB_ROOT_PASSWORD" --authenticationDatabase admin'
+}
+
+# 배포 기록 한 건. 토큰은 명령줄에 남지 않게 헤더 파일로 넘기고, 기록에 실패해도 배포는 그대로 둠
+record_deploy() {
+  local result=$1 token subject body
+  token=$(sed -n 's/^ADMIN_TOKEN=//p' "$CONFIG/api.docker.env" | head -n 1)
+  subject=$(git log -1 --format=%s)
+  body=$(node -e 'const [commit, subject, seconds, result] = process.argv.slice(1); console.log(JSON.stringify({ commit, subject, durationSec: Number(seconds), result }))' \
+    "$SHA" "$subject" "$SECONDS" "$result")
+  if ! curl -fsS -o /dev/null -X POST -H 'Content-Type: application/json' -H @<(printf 'Authorization: Bearer %s\n' "$token") \
+    --data "$body" "$PROXY_URL/api/deploys"; then
+    echo "[deploy] 배포 기록을 남기지 못함 ($result). 배포 자체는 그대로" >&2
+  fi
 }
 
 # Caddy 를 거쳐 이번 커밋의 API 가 응답하고 페이지와 PDF 가 열리는지 확인
@@ -105,6 +119,7 @@ if ! compose "$SHA" up -d --wait --wait-timeout 90 --remove-orphans || ! serving
   if [[ -n "$PREV" ]]; then
     echo "[deploy] 직전 버전으로 되돌림: $PREV" >&2
     compose_previous "$PREV" up -d --wait --wait-timeout 90 --remove-orphans || true
+    record_deploy rolled-back
   fi
   exit 1
 fi
@@ -112,6 +127,7 @@ fi
 mkdir -p "$(dirname "$STATE")"
 echo "$SHA" > "$STATE"
 cp deploy/docker-compose.yml "$STATE_COMPOSE"
+record_deploy success
 echo "[deploy] 방문 수 확인: $(curl -fsS "$PROXY_URL/api/views")"
 
 # 최근 이미지 3개만 남기고 빌드 중간 산출물 정리

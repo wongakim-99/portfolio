@@ -10,6 +10,7 @@ import { SiteFooter } from '@widgets/site-footer';
 import { CopyEmail } from '@features/copy-email';
 import { HighFive } from '@features/high-five';
 import { PostcardForm } from '@features/send-postcard';
+import { useRecentDeploys } from '@entities/deploy';
 import { displayUrl, PORTFOLIO_PDF, portfolio } from '@entities/portfolio';
 import { useServerStatus } from '@entities/server-status';
 import { useVisitCount } from '@entities/visit';
@@ -22,6 +23,7 @@ export function HomePage() {
   // 서버 상태는 노트북과 영수증이 같이 씀. 숨은 터미널은 상단 버튼으로 어느 페이지에서든 열림 (app/layout.tsx)
   const server = useServerStatus();
   const visits = useVisitCount();
+  const deploys = useRecentDeploys(5);
 
   useEffect(() => {
     const hash = location.hash.slice(1);
@@ -82,7 +84,7 @@ export function HomePage() {
               이 페이지가 도는 곳
             </h2>
             <p className="desk-lead">집에 있는 노트북 한 대에서 돌아갑니다. 영수증 숫자는 10초마다 실제 서버 값으로 바뀌어요.</p>
-            <DeployReceipt server={server} visits={visits} />
+            <DeployReceipt server={server} visits={visits} deploys={deploys} />
           </section>
 
           <section className="mail" id="note" aria-labelledby="note-title">

@@ -26,6 +26,7 @@
 .term-out .t-dir { color: var(--term-blue); font-weight: 600; }
 .term-out .t-pdf { color: var(--term-red); }
 .term-out .t-hidden { color: var(--term-gold); }
+.term-out .t-commit { color: var(--term-gold); }
 .term-line { display: flex; gap: 8px; align-items: baseline; }
 .term-prompt { flex: none; color: var(--term-accent); }
 .term-line input { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: var(--term-fg); font: inherit; caret-color: var(--term-accent); }
