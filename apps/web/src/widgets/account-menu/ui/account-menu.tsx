@@ -33,12 +33,16 @@ export function AccountMenu() {
       )}
       {canReadMessages && (
         <Link
-          className="account-pill"
+          className="account-pill account-admin"
           href={routes.admin}
           aria-current={pathname === routes.admin ? 'page' : undefined}
           aria-label={unread ? `관리실, 새 쪽지 ${unread}개` : '관리실'}
         >
-          관리실
+          <svg className="account-admin-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <rect x="5" y="4" width="14" height="17" rx="2" />
+            <path d="M9 2.5h6v3H9zM9 11h6M9 15h4" />
+          </svg>
+          <span className="account-admin-text">관리실</span>
           {unread > 0 && <span className="community-badge">{unread > 99 ? '99+' : unread}</span>}
         </Link>
       )}

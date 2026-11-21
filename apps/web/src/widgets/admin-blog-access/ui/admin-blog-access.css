@@ -1,7 +1,9 @@
 /* 관리실의 블로그 열람 요청. 요청 한 장마다 남긴 한마디는 손글씨로 */
 .access-card { padding: 22px 0; border-bottom: 1px dashed var(--paper-rule); }
 .access-card:last-child { border-bottom: 0; }
-.access-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0; font-size: 16px; }
+/* 이름과 문장이 한 줄 글처럼 이어지게 둠. 좁은 화면에서 '님이' 만 따로 떨어지지 않음 */
+.access-head { margin: 0; font-size: 16px; line-height: 1.7; overflow-wrap: anywhere; }
+.access-head .community-author { vertical-align: -6px; }
 .access-head a:not(.community-author) { font-weight: 600; text-underline-offset: 3px; }
 .access-message { max-width: 62ch; margin: 8px 0 0; font-family: var(--font-hand); font-size: 24px; line-height: 1.35; white-space: pre-wrap; overflow-wrap: anywhere; }
 .access-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 18px; margin-top: 14px; }

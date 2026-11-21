@@ -92,9 +92,7 @@ export function AdminBlogAccess({ onStatus }: { onStatus: (status: Status) => vo
             <article className="access-card" key={item.id}>
               <p className="access-head">
                 <AuthorLink authorId={item.user.id} authorName={item.user.name} authorAvatarUrl={item.user.avatarUrl} />
-                <span>
-                  님이 &lsquo;<Link href={routes.blogPost(item.post.id)}>{item.post.title}</Link>&rsquo; 글을 보고 싶어 합니다
-                </span>
+                님이 &lsquo;<Link href={routes.blogPost(item.post.id)}>{item.post.title}</Link>&rsquo; 글을 보고 싶어 합니다
               </p>
               {item.message && <p className="access-message">{item.message}</p>}
               <div className="access-foot">

@@ -4,7 +4,8 @@
 .blog-row > p { max-width: 68ch; margin: 8px 0 10px; color: var(--ink-soft); line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
 .blog-row .community-meta { display: flex; flex-wrap: wrap; gap: 5px 14px; }
 .blog-row-title { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; }
-.blog-row-title > a { font-size: clamp(20px, 2.5vw, 25px); font-weight: 700; line-height: 1.4; letter-spacing: -.018em; text-decoration: none; text-wrap: balance; }
+/* 띄어쓰기 없는 긴 제목도 좁은 화면에서 줄을 바꿈 (body 의 keep-all 은 한글을 낱말째 붙여 둠) */
+.blog-row-title > a { min-width: 0; font-size: clamp(20px, 2.5vw, 25px); font-weight: 700; line-height: 1.4; letter-spacing: -.018em; text-decoration: none; text-wrap: balance; overflow-wrap: anywhere; }
 .blog-row-title > a:hover { color: var(--pen); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
 .blog-row > p.blog-row-locked { font-family: var(--font-hand); font-size: 22px; line-height: 1.35; }
 

@@ -1,6 +1,6 @@
 /* 글 목록의 한 줄: 제목, 앞부분, 글쓴이와 날짜 */
 .community-post { padding: 26px 0; border-bottom: 1px solid var(--paper-rule); }
 .community-post:last-child { border-bottom: 0; }
-.community-post > a { display: inline-block; font-size: clamp(20px, 2.5vw, 25px); font-weight: 700; line-height: 1.4; letter-spacing: -.018em; text-decoration: none; text-wrap: balance; }
+.community-post > a { display: inline-block; max-width: 100%; font-size: clamp(20px, 2.5vw, 25px); font-weight: 700; line-height: 1.4; letter-spacing: -.018em; text-decoration: none; text-wrap: balance; overflow-wrap: anywhere; }
 .community-post > a:hover { color: var(--pen); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 5px; }
 .community-post p { max-width: 68ch; margin: 8px 0 10px; color: var(--ink-soft); line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
