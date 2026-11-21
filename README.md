@@ -41,6 +41,44 @@ src/
 - 스타일은 옛 정적 페이지의 클래스 이름을 그대로 두고, 쓰는 슬라이스 옆에 CSS 파일로 나눠 둠. 색과 글꼴은 `shared/styles/tokens.css`, 피드 공통은 `shared/styles/community.css`
 - 포트폴리오, 홈의 글자는 서버에서 미리 그려 보내고(정적 생성), 서버 상태, 피드처럼 바뀌는 것은 브라우저에서 `/api` 를 불러 채움
 
+### apps/api 폴더 (DDD)
+
+영역(bounded context)마다 폴더를 두고, 그 안을 네 계층으로 나눈다. 규칙은 `apps/api/test/architecture.spec.ts` 가 검사한다 (CI 의 `npm test`).
+
+```
+src/
+  main.ts, setup.ts, app.module.ts
+  config/env.ts        환경변수 검사
+  shared/              여러 영역이 같이 쓰는 조각
+    domain/            ID 모양 같은 순수 규칙
+    application/       응용 계층 도우미 (ID 가 틀리면 404)
+    http/              같은 사이트 확인, JSON 만 받기, ADMIN_TOKEN, 방문자 해시, 입력 다듬기
+    crypto/            세션, 메일 링크 비밀 토큰
+    events/            영역 사이 이벤트 (예: 이름이 바뀌면 피드가 글쓴이 이름을 고침)
+    infrastructure/    메일(SMTP), 사진 저장소(MinIO), 텔레메트리, Mongo 도우미
+  modules/
+    identity/          계정: 가입, 로그인, 세션, 역할과 권한, 프로필 사진
+    feed/              피드: 글, 댓글, 신고, 회원 페이지
+    blog/              블로그(gawon-log): 주인장 글, 공개 범위, 열람 요청과 허락
+    messages/          홈 엽서 쪽지, 관리실 쪽지함
+    visits/            홈 누적 방문 수
+    high-fives/        하이파이브
+    deploys/           배포 기록
+    ops/               헬스체크, 홈서버 노트북 상태, 관리실 '지금 서버' 구성도
+    backoffice/        관리실 요약 (새 쪽지, 신고 수). 여러 영역 숫자를 모으기만 함
+```
+
+| 계층 | 하는 일 | 쓸 수 있는 것 |
+|---|---|---|
+| `domain/` | 엔티티 모양, 규칙(누가 글을 읽을 수 있나 등), 저장소와 바깥 서비스의 약속(추상 클래스) | 같은 영역의 domain, `shared/domain` 만. Nest, Mongoose 를 모름 |
+| `application/` | 유스케이스. 약속(추상 클래스)만 보고 일을 시킴. 실패는 Nest 예외로 알림 | domain, 다른 영역의 `index.ts`, `shared` |
+| `infrastructure/` | Mongo 스키마와 저장소 구현, 메일 어댑터 | domain, application, `shared` |
+| `presentation/` | 컨트롤러, DTO, 가드, 로그인 쿠키 | application, domain, 다른 영역의 `index.ts`, `shared` |
+
+- 다른 영역은 그 영역의 `index.ts` 로만 가져다 쓴다. 계정을 읽을 때는 컬렉션을 직접 읽지 않고 `UserDirectory` 를 쓴다
+- 약속(추상 클래스)과 구현은 `<영역>.module.ts` 의 `{ provide: 약속, useClass: 구현 }` 으로 잇는다
+- 주소(`/api/community/*`, `/api/blog/*` 등)와 Mongo 컬렉션 이름은 예전 그대로다. 피드를 처음 만들 때 붙인 `community_*` 이름도 데이터가 있어 바꾸지 않는다
+
 ## 페이지
 
 상단의 홈, 포트폴리오, 블로그, 피드 탭으로 페이지를 이동한다. 각 페이지는 책상을 위에서 내려다본 디자인을 공유한다.
@@ -87,7 +125,7 @@ src/
 - 거절된 요청은 3일 뒤에 다시 보낼 수 있음. 허락은 관리실의 `열람 허락 명단` 에서 언제든 거둠
 - 본문은 API 가 허락된 계정에게만 내려 줌. 블로그 읽기 응답은 보는 사람마다 달라서 `Cache-Control: private, no-store`. 글 화면은 미리 그리지 않고 브라우저에서 로그인 상태를 확인한 뒤 받음
 - 글을 공개나 나만 보기로 바꾸면 그 글에 온 요청은 지우고, 글을 지우면 그 글의 요청과 허락도 같이 지움
-- 데이터는 `blog_posts`, `blog_access_requests`, `blog_grants` 컬렉션 (`apps/api/src/blog`)
+- 데이터는 `blog_posts`, `blog_access_requests`, `blog_grants` 컬렉션 (`apps/api/src/modules/blog`)
 
 ## 피드 계정과 운영
 
@@ -123,7 +161,7 @@ COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 
 ### 관리자 역할과 관리실 (RBAC)
 
-권한은 역할 단위로 묶어 둔다 (`apps/api/src/community/community-roles.ts`). 회원 문서에는 역할만 적고, 서버가 요청마다 DB 의 역할에서 권한을 다시 계산한다. 그래서 역할을 바꾸면 이미 로그인한 세션에도 바로 반영된다.
+권한은 역할 단위로 묶어 둔다 (`apps/api/src/modules/identity/domain/role.ts`). 회원 문서에는 역할만 적고, 서버가 요청마다 DB 의 역할에서 권한을 다시 계산한다. 그래서 역할을 바꾸면 이미 로그인한 세션에도 바로 반영된다.
 
 | 역할 | 권한 |
 |---|---|
@@ -135,7 +173,7 @@ COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 - 관리자로 로그인하면 피드 위에 `관리실` 버튼과 새 쪽지 수가 보이고, `/feed/admin` 에서 쪽지함과 신고를 처리한다. 쪽지함을 열면 그때까지 온 쪽지는 읽은 것으로 바뀐다
 - 관리자 계정의 회원 페이지에는 `운영자` 도장이 찍힌다
 - 관리실 맨 위 `지금 서버` 는 방문자 → Tailscale Funnel → proxy(Caddy) → api(NestJS) → mongo, minio 구성도다. 2초마다 `/api/community/admin/topology` 를 불러, 실제 요청과 DB 명령, 사진 저장소 작업을 일어난 간격 그대로 점으로 흘려보낸다. 요청은 파란 점으로 api 까지 갔다가 응답 상태 색(정상 초록, 4xx 노랑, 5xx 빨강)으로 돌아오고, 칸마다 상태 불빛과 분당 횟수, 노트북 온도와 배터리, 최근 요청 12건이 같이 바뀐다
-- 이 기록은 API 메모리에 최근 400건만 두고 재시작하면 비운다 (`apps/api/src/telemetry`). 경로는 `:id` 같은 라우트 모양으로만, 방문자는 salt 섞은 해시로만 센다. 배포 헬스체크와 관리실 자신의 새로고침은 세지 않는다. 페이지 요청은 web(Next.js) 컨테이너가 받아 API 를 거치지 않으므로 API 요청만 보인다
+- 이 기록은 API 메모리에 최근 400건만 두고 재시작하면 비운다 (`apps/api/src/shared/infrastructure/telemetry`). 경로는 `:id` 같은 라우트 모양으로만, 방문자는 salt 섞은 해시로만 센다. 배포 헬스체크와 관리실 자신의 새로고침은 세지 않는다. 페이지 요청은 web(Next.js) 컨테이너가 받아 API 를 거치지 않으므로 API 요청만 보인다
 - 페이지는 권한 목록으로 버튼만 보이거나 숨기고, 실제 허용 여부는 서버의 `PermissionGuard` 가 확인한다
 
 역할 지정은 서버의 `ADMIN_TOKEN` 으로만 한다. 페이지에서 스스로 관리자가 되는 길은 없다. 이메일 확인을 마친 회원만 지정할 수 있다.

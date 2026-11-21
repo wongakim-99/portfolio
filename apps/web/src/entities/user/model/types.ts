@@ -1,4 +1,4 @@
-// apps/api/src/community 의 응답 모양
+// apps/api/src/modules/identity 와 feed(회원 페이지)의 응답 모양
 
 export type Permission =
   | 'messages:read'

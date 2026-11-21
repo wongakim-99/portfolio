@@ -1,4 +1,4 @@
-// apps/api/src/blog/blog.service.ts 의 관리 응답 모양 (blog:grant 권한)
+// apps/api/src/modules/blog/application/blog-access.service.ts 의 관리 응답 모양 (blog:grant 권한)
 
 interface Requester {
   id: string;

@@ -1,4 +1,4 @@
-// GET /api/server 응답 (apps/api/src/server/server.service.ts 의 ServerStatus)
+// GET /api/server 응답 (apps/api/src/modules/ops/domain/server-status.ts 의 ServerStatus)
 export interface ServerStatus {
   uptime: number;
   load: number;
@@ -22,7 +22,7 @@ export interface TelemetryEvent {
   ms: number;
 }
 
-// GET /api/community/admin/topology 응답 (apps/api/src/community/community-topology.service.ts)
+// GET /api/community/admin/topology 응답 (apps/api/src/modules/ops/application/topology.service.ts)
 export interface TopologySnapshot {
   now: number;
   cursor: number;

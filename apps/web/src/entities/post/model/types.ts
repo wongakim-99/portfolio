@@ -1,4 +1,4 @@
-// apps/api/src/community/community-posts.service.ts 의 응답 모양
+// apps/api/src/modules/feed/application/posts.service.ts 의 응답 모양
 
 export interface PostSummary {
   id: string;

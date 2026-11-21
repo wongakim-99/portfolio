@@ -1,4 +1,4 @@
-// apps/api/src/blog/blog.service.ts 의 응답 모양
+// apps/api/src/modules/blog/application/blog-posts.service.ts 의 응답 모양
 
 /** public 은 누구나, approved 는 주인장이 허락한 회원만, private 은 주인장만 읽음 */
 export type Visibility = 'public' | 'approved' | 'private';
@@ -61,7 +61,7 @@ export interface BlogSummary {
   owner: { id: string; name: string; bio: string; avatarUrl: string | null } | null;
 }
 
-/** 글 길이 제한. API DTO(apps/api/src/blog/blog.dto.ts)와 같은 값 */
+/** 글 길이 제한. API DTO(apps/api/src/modules/blog/presentation/blog.dto.ts)와 같은 값 */
 export const BLOG_LIMITS = { titleMin: 2, titleMax: 120, bodyMin: 1, bodyMax: 50_000, requestMax: 300, tagMax: 8, tagLength: 20 } as const;
 
 export const VISIBILITY_LABEL: Record<Visibility, string> = {

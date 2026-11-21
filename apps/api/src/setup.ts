@@ -1,8 +1,8 @@
 import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import type { Env } from './env.js';
-import { TelemetryService } from './telemetry/telemetry.service.js';
+import type { Env } from './config/env.js';
+import { TelemetryService } from './shared/infrastructure/telemetry/telemetry.service.js';
 
 // main.ts 와 e2e 테스트가 같은 설정을 쓰도록 한곳에 모음
 export function configureApp(app: NestExpressApplication): void {

@@ -3,17 +3,23 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_GUARD } from '@nestjs/core';
 import { MongooseModule } from '@nestjs/mongoose';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
-import { validateEnv, type Env } from './env.js';
-import { BlogModule } from './blog/blog.module.js';
-import { CommunityModule } from './community/community.module.js';
-import { DeploysModule } from './deploys/deploys.module.js';
-import { HealthModule } from './health/health.module.js';
-import { HighFivesModule } from './high-fives/high-fives.module.js';
-import { MessagesModule } from './messages/messages.module.js';
-import { ServerModule } from './server/server.module.js';
-import { TelemetryModule } from './telemetry/telemetry.module.js';
-import { ViewsModule } from './views/views.module.js';
+import { validateEnv, type Env } from './config/env.js';
+import { BackofficeModule } from './modules/backoffice/index.js';
+import { BlogModule } from './modules/blog/index.js';
+import { DeploysModule } from './modules/deploys/index.js';
+import { FeedModule } from './modules/feed/index.js';
+import { HighFivesModule } from './modules/high-fives/index.js';
+import { IdentityModule } from './modules/identity/index.js';
+import { MessagesModule } from './modules/messages/index.js';
+import { OpsModule } from './modules/ops/index.js';
+import { VisitsModule } from './modules/visits/index.js';
+import { EventsModule } from './shared/events/events.module.js';
+import { MailModule } from './shared/infrastructure/mail/mail.module.js';
+import { StorageModule } from './shared/infrastructure/storage/storage.module.js';
+import { TelemetryModule } from './shared/infrastructure/telemetry/telemetry.module.js';
 
+// 영역(modules/*)마다 domain, application, infrastructure, presentation 으로 나눔 (CLAUDE.md '백엔드 구조')
+// shared 는 여러 영역이 같이 쓰는 기술 조각: 메일, 사진 저장소, 텔레메트리, 영역 사이 이벤트
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true, validate: validateEnv }),
@@ -25,17 +31,21 @@ import { ViewsModule } from './views/views.module.js';
         monitorCommands: true,
       }),
     }),
-    // 기본: IP 당 1분 60회. 메시지 작성은 컨트롤러에서 더 좁힘
+    // 기본: IP 당 1분 60회. 쓰기는 컨트롤러에서 더 좁힘
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 60 }]),
     TelemetryModule,
-    HealthModule,
-    ViewsModule,
-    MessagesModule,
-    ServerModule,
+    EventsModule,
+    MailModule,
+    StorageModule,
+    OpsModule,
+    VisitsModule,
     HighFivesModule,
-    CommunityModule,
-    BlogModule,
+    MessagesModule,
     DeploysModule,
+    IdentityModule,
+    FeedModule,
+    BlogModule,
+    BackofficeModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

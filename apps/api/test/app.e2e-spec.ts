@@ -10,21 +10,25 @@ import { Readable } from 'node:stream';
 import request from 'supertest';
 import { vi } from 'vitest';
 import type { App } from 'supertest/types.js';
-import { readRelease } from '../src/server/server.service.js';
-import { CommunityMailService } from '../src/community/community-mail.service.js';
-import { CommunityStorageService } from '../src/community/community-storage.service.js';
+import { readRelease } from '../src/modules/ops/index.js';
 import { configureApp } from '../src/setup.js';
+import { Mailer } from '../src/shared/infrastructure/mail/mailer.js';
+import { ObjectStorage } from '../src/shared/infrastructure/storage/object-storage.js';
 
 const ADMIN_TOKEN = 'test-admin-token-0123456789abcdef';
 let mongo: MongoMemoryServer;
+// 보낸 메일을 종류별로 모아 둠. 가입 확인, 재설정은 링크의 토큰을, 블로그 알림은 토큰 대신 글 제목을 남김
 const sentMail: { kind: 'verify' | 'reset' | 'blog-request' | 'blog-granted'; to: string; token: string }[] = [];
 const fakeMail = {
   ready: true,
-  async sendVerify(to: string, _name: string, token: string) { sentMail.push({ kind: 'verify' as const, to, token }); },
-  async sendReset(to: string, _name: string, token: string) { sentMail.push({ kind: 'reset' as const, to, token }); },
-  // 블로그 알림은 토큰 대신 글 제목을 남김
-  async sendBlogRequest(to: string, _requester: string, postTitle: string) { sentMail.push({ kind: 'blog-request' as const, to, token: postTitle }); },
-  async sendBlogGranted(to: string, _name: string, postTitle: string | null) { sentMail.push({ kind: 'blog-granted' as const, to, token: postTitle ?? '*' }); },
+  link: (path: string) => `https://test.example${path}`,
+  async send(to: string, subject: string, text: string) {
+    const token = (pattern: RegExp) => text.match(pattern)?.[1] ?? '';
+    if (subject.includes('이메일 확인')) sentMail.push({ kind: 'verify', to, token: token(/#verify=([\w-]+)/) });
+    else if (subject.includes('비밀번호 재설정')) sentMail.push({ kind: 'reset', to, token: token(/#reset=([\w-]+)/) });
+    else if (subject.includes('허락되었습니다')) sentMail.push({ kind: 'blog-granted', to, token: token(/'(.+)' 글을/) || '*' });
+    else if (subject.includes('열람 요청')) sentMail.push({ kind: 'blog-request', to, token: token(/'(.+)' 글을/) });
+  },
 };
 // MinIO 대신 메모리에 사진을 보관함
 const storedFiles = new Map<string, Buffer>();
@@ -63,8 +67,8 @@ function jpeg(width: number, height: number): Buffer {
 async function createApp(): Promise<INestApplication<App>> {
   const { AppModule } = await import('../src/app.module.js');
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
-    .overrideProvider(CommunityMailService).useValue(fakeMail)
-    .overrideProvider(CommunityStorageService).useValue(fakeStorage)
+    .overrideProvider(Mailer).useValue(fakeMail)
+    .overrideProvider(ObjectStorage).useValue(fakeStorage)
     .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
