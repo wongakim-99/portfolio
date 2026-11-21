@@ -1,12 +1,18 @@
-import { Body, Controller, Delete, Get, Header, HttpCode, Patch, Post, Query, Req } from '@nestjs/common';
+import {
+  Body, Controller, Delete, Get, Header, HttpCode, Patch, Post, Query, Req, Res, ServiceUnavailableException,
+} from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
-import type { Request } from 'express';
+import type { Request, Response } from 'express';
+import type { Env } from '../../../config/env.js';
 import { jsonOnly } from '../../../shared/http/json-only.js';
 import { assertSameOrigin } from '../../../shared/http/same-origin.js';
+import { ipHash } from '../../../shared/http/visitor-hash.js';
 import { CurrentUser, RequirePermission } from '../../identity/index.js';
 import { BlogAccessService } from '../application/blog-access.service.js';
 import { BlogPostsService } from '../application/blog-posts.service.js';
-import { AccessRequestDto, WriteBlogPostDto } from './blog.dto.js';
+import { ProofGradingService } from '../application/proof-grading.service.js';
+import { AccessRequestDto, ProofDto, WriteBlogPostDto } from './blog.dto.js';
 
 // ?tag=a&tag=b 처럼 같은 이름을 여러 번 보내면 배열로 오므로 글자 하나일 때만 씀
 const single = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
@@ -18,7 +24,9 @@ export class BlogController {
   constructor(
     private readonly posts: BlogPostsService,
     private readonly access: BlogAccessService,
+    private readonly proofs: ProofGradingService,
     private readonly currentUser: CurrentUser,
+    private readonly config: ConfigService<Env, true>,
   ) {}
 
   @Get('posts')
@@ -82,5 +90,30 @@ export class BlogController {
     jsonOnly(req);
     const viewer = await this.currentUser.require(req, '로그인한 뒤 요청할 수 있습니다.');
     return { request: await this.access.requestAccess(req.params.id as string, viewer, dto.message) };
+  }
+
+  // 잠긴 글의 '증명 제출'. AI 가 쓰는 빨간 펜 채점평을 받는 대로 글자 그대로 흘려보냄. 점수는 늘 0점이고 글은 열리지 않음
+  // AI 를 못 쓰면(키 없음, 하루 한도, 늦음) 503. 화면은 미리 적어 둔 채점평을 씀
+  @Post('posts/:id/proofs')
+  @Throttle({ default: { limit: 6, ttl: 60_000 } })
+  async gradeProof(@Body() dto: ProofDto, @Req() req: Request, @Res() res: Response) {
+    assertSameOrigin(req);
+    jsonOnly(req);
+    // 방문자가 창을 닫으면 AI 호출도 멈춤
+    const closed = new AbortController();
+    res.on('close', () => closed.abort());
+    const visitor = ipHash(req, this.config.get('HASH_SALT', { infer: true }));
+    const verdict = await this.proofs.grade(req.params.id as string, dto, visitor, closed.signal);
+    if (!verdict) throw new ServiceUnavailableException('채점 선생님이 자리를 비웠습니다.');
+    // no-transform: 앞단 Caddy 의 압축(encode)이 조각을 모아 두지 않고 바로 넘기게 함
+    res.status(200).set({ 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store, no-transform', 'X-Accel-Buffering': 'no' });
+    res.flushHeaders();
+    try {
+      for await (const piece of verdict) res.write(piece);
+    } catch {
+      // 중간에 끊기면 받은 데까지만 보여 줌
+    } finally {
+      res.end();
+    }
   }
 }

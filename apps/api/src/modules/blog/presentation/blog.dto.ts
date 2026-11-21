@@ -1,7 +1,8 @@
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsIn, IsOptional, IsString, Length, MaxLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
 import { oneLine, trim } from '../../../shared/http/transforms.js';
 import { normalizeTags, TAG_MAX, VISIBILITIES, type Visibility } from '../domain/blog.js';
+import { PROOF_MAX, PROOF_PROBLEM_IDS } from '../domain/proof.js';
 
 const tagList = ({ value }: { value: unknown }) => (Array.isArray(value) ? normalizeTags(value) : value);
 
@@ -35,6 +36,23 @@ export class AccessRequestDto {
   @IsString()
   @MaxLength(300)
   message?: string;
+}
+
+// 잠긴 글의 증명 제출. problem 은 화면 문제지의 id
+export class ProofDto {
+  @IsIn(PROOF_PROBLEM_IDS)
+  problem: string;
+
+  @Transform(trim)
+  @IsString()
+  @Length(1, PROOF_MAX)
+  proof: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(999)
+  attempt?: number;
 }
 
 export class ApproveDto {

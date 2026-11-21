@@ -1,4 +1,5 @@
 import type { AccessRequest, BlogPost, Grant, Visibility } from './blog.js';
+import type { ProofSubmission } from './proof.js';
 
 export interface BlogListFilter {
   /** 주인장이면 나만 보기 글까지 */
@@ -52,4 +53,10 @@ export abstract class GrantRepository {
 export abstract class BlogNotifier {
   abstract requestReceived(requesterName: string, postTitle: string): void;
   abstract granted(userId: string, grantedPostTitle: string | null, requestedPostId: string): void;
+}
+
+// 잠긴 글의 증명을 읽고 빨간 펜 채점평을 한 조각씩 흘려보냄. 채점기를 못 쓰면(키 없음, 바깥 오류) null
+// 채점기는 글 내용을 모르고, 무엇을 돌려주든 글이 열리지 않음
+export abstract class ProofGrader {
+  abstract grade(submission: ProofSubmission, signal: AbortSignal): Promise<AsyncIterable<string> | null>;
 }

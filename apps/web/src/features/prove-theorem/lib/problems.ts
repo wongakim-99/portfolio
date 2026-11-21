@@ -1,4 +1,5 @@
-// 잠긴 블로그 글의 '증명하시면 볼 수 있습니다' 문제와 채점. 무엇을 적어 내든 통과하지 못함
+// 잠긴 블로그 글의 '증명하시면 볼 수 있습니다' 문제와 미리 적어 둔 채점평. 무엇을 적어 내든 통과하지 못함
+// 문제 id 는 API 의 채점 문제 설명(apps/api/src/modules/blog/domain/proof.ts)과 같아야 함
 // 화면에 보이는 글이라 가운뎃점, em dash 같은 금지 문자를 쓰지 않음 (scripts/portfolio-pdf.test.mjs)
 
 export interface Problem {
@@ -99,7 +100,10 @@ const VERDICTS: readonly ((line: number) => string)[] = [
   () => '클레이 수학연구소에 먼저 보내 주세요. 상금을 받으시면 이 글은 그냥 보여 드리겠습니다.',
 ];
 
-/** attempt 는 몇 번째 제출인지(0부터). 같은 글에서 낼 때마다 다른 채점평이 돌아가며 나옴 */
+/**
+ * AI 채점을 못 쓸 때(빈 종이, 하루 한도, 서버 오류) 대신 내는 채점평
+ * attempt 는 몇 번째 제출인지(0부터). 같은 글에서 낼 때마다 다른 채점평이 돌아가며 나옴
+ */
 export function gradeProof(proof: string, attempt: number, postId = ''): string {
   const text = proof.trim();
   if (!text) return '빈 종이입니다. 자명하다고 하시려면 그 말이라도 적어 주세요.';

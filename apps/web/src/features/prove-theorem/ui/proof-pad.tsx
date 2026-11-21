@@ -1,10 +1,19 @@
 'use client';
 
 import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { prefersReducedMotion } from '@shared/lib';
+import { streamProofGrade } from '@entities/blog-post';
 import { EASIER_PROBLEMS, gradeProof, problemFor } from '../lib/problems';
 import './proof-pad.css';
 
+// 빈 종이처럼 AI 에게 보내지 않는 채점, AI 를 못 써서 미리 적어 둔 채점평을 낼 때 기다리는 척하는 시간
 const GRADING_MS = 1400;
+const FALLBACK_MIN_MS = 900;
+// 첫 글자를 기다리는 동안 돌아가며 보여 주는 줄
+const WAITING = ['답안지를 받는 중', 'Lean 4 에 넣어 보는 중', '심사위원 2번을 깨우는 중', '빨간 펜 뚜껑을 여는 중', '반례를 찾는 중', '클레이 연구소에 전화하는 중'];
+const WAITING_MS = 900;
+// 받은 채점평을 펜으로 쓰듯 한 글자씩. 받은 글자보다 많이 밀리면 몇 글자씩 따라잡음
+const PEN_MS = 30;
 
 interface ProofPadProps {
   postId: string;
@@ -12,29 +21,83 @@ interface ProofPadProps {
   onGiveUp: () => void;
 }
 
-type Grade = { state: 'idle' } | { state: 'grading' } | { state: 'graded'; verdict: string };
+type Grade = { state: 'idle' } | { state: 'waiting' } | { state: 'graded'; verdict: string; done: boolean };
 
-/** 잠긴 글 대신 놓이는 문제지와 노란 메모장. 무엇을 써 내든 빨간 펜으로 0점을 받음 */
+/** 잠긴 글 대신 놓이는 문제지와 노란 메모장. AI 가 빨간 펜으로 채점평을 쓰지만 무엇을 써 내든 0점 */
 export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
   // -1 은 글마다 정해진 첫 문제, 0부터는 '더 쉬운 문제'
   const [level, setLevel] = useState(-1);
   const [proof, setProof] = useState('');
   const [attempts, setAttempts] = useState(0);
   const [grade, setGrade] = useState<Grade>({ state: 'idle' });
+  const [waitingLine, setWaitingLine] = useState(0);
+  const [shown, setShown] = useState(0);
   const timer = useRef<number | undefined>(undefined);
+  const request = useRef<AbortController | null>(null);
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  useEffect(() => () => {
+    window.clearTimeout(timer.current);
+    request.current?.abort();
+  }, []);
+
+  useEffect(() => {
+    if (grade.state !== 'waiting') return;
+    const id = window.setInterval(() => setWaitingLine((line) => line + 1), WAITING_MS);
+    return () => window.clearInterval(id);
+  }, [grade.state]);
+
+  const verdict = grade.state === 'graded' ? grade.verdict : '';
+  useEffect(() => {
+    if (shown >= verdict.length) return;
+    const id = window.setTimeout(() => {
+      const left = verdict.length - shown;
+      setShown(shown + (prefersReducedMotion() ? left : left > 24 ? 3 : 1));
+    }, PEN_MS);
+    return () => window.clearTimeout(id);
+  }, [shown, verdict]);
 
   const problem = level < 0 ? problemFor(postId) : (EASIER_PROBLEMS[level] ?? problemFor(postId));
   const lastLevel = level >= EASIER_PROBLEMS.length - 1;
+  const writing = grade.state === 'graded' && (!grade.done || shown < verdict.length);
+  const busy = grade.state === 'waiting' || writing;
+
+  function stop() {
+    window.clearTimeout(timer.current);
+    request.current?.abort();
+    request.current = null;
+  }
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const verdict = gradeProof(proof, attempts, postId);
-    setAttempts((count) => count + 1);
-    setGrade({ state: 'grading' });
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setGrade({ state: 'graded', verdict }), GRADING_MS);
+    stop();
+    const attempt = attempts + 1;
+    const fallback = gradeProof(proof, attempts, postId);
+    setAttempts(attempt);
+    setGrade({ state: 'waiting' });
+    setWaitingLine(0);
+    setShown(0);
+    // 빈 종이는 AI 에게 보내지 않음
+    if (!proof.trim()) {
+      timer.current = window.setTimeout(() => setGrade({ state: 'graded', verdict: fallback, done: true }), GRADING_MS);
+      return;
+    }
+    const controller = new AbortController();
+    request.current = controller;
+    const started = performance.now();
+    let written = '';
+    void streamProofGrade(postId, { problem: problem.id, proof, attempt }, (text) => {
+      written += text;
+      setGrade({ state: 'graded', verdict: written, done: false });
+    }, controller.signal).then((received) => {
+      if (controller.signal.aborted) return;
+      if (received) {
+        setGrade({ state: 'graded', verdict: written, done: true });
+        return;
+      }
+      // AI 를 못 쓰면(하루 한도, 서버 오류) 미리 적어 둔 채점평. 바로 튀어나오지 않게 조금 기다림
+      const wait = Math.max(0, FALLBACK_MIN_MS - (performance.now() - started));
+      timer.current = window.setTimeout(() => setGrade({ state: 'graded', verdict: fallback, done: true }), wait);
+    });
   }
 
   function easier() {
@@ -42,7 +105,7 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
       onGiveUp();
       return;
     }
-    window.clearTimeout(timer.current);
+    stop();
     setLevel((value) => value + 1);
     setProof('');
     setGrade({ state: 'idle' });
@@ -72,7 +135,7 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
           />
         </div>
         <div className="proof-actions">
-          <button className="tape tape-lg" type="submit" disabled={grade.state === 'grading'}>
+          <button className="tape tape-lg" type="submit" disabled={busy}>
             증명 제출
           </button>
           <button className="text-btn" type="button" onClick={easier}>
@@ -80,16 +143,20 @@ export function ProofPad({ postId, onGiveUp }: ProofPadProps) {
           </button>
           {attempts > 0 && <span className="community-meta">제출 {attempts}번, 통과 0번</span>}
         </div>
+        <p className="proof-fineprint">빨간 펜은 AI 가 듭니다. 적어 낸 답안은 채점에만 쓰고 남기지 않습니다.</p>
       </form>
 
-      <div className="proof-grade" aria-live="polite">
-        {grade.state === 'grading' && <p className="proof-grading">채점하는 중</p>}
+      <div className="proof-grade" aria-live="polite" aria-busy={busy}>
+        {grade.state === 'waiting' && <p className="proof-grading">{WAITING[waitingLine % WAITING.length]}</p>}
         {grade.state === 'graded' && (
           <>
             <span className="proof-score" aria-label="0점">
               0
             </span>
-            <p className="hand proof-verdict">{grade.verdict}</p>
+            <p className="hand proof-verdict">
+              {verdict.slice(0, shown)}
+              {writing && <span className="proof-pen" aria-hidden="true" />}
+            </p>
           </>
         )}
       </div>

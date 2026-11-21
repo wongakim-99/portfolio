@@ -31,7 +31,7 @@ src/
                blog-search(검색창과 분류 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 분류, 태그), blog-lock(잠긴 글 자리), admin-blog-access(열람 요청과 허락 명단)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar,
-               write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장), request-blog-access
+               write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access
   entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report,
                blog-post, blog-access
   shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 저장소), ui(Sheet, Dialog, FormStatus), styles(색 토큰, 바탕)
@@ -121,6 +121,12 @@ src/
 | `private` 나만 보기 | 주인장만 | 주인장만 (남에게는 없는 글, 404) |
 
 - 허락받지 못한 사람이 잠긴 글을 열면 본문 자리에 풀 수 없는 문제(P = NP, 리만 가설 등 글마다 하나)와 노란 메모장이 나옴. 무엇을 써 내든 빨간 펜으로 0점. '더 쉬운 문제 주세요' 를 누르면 쉬워 보이지만 안 쉬운 문제가 차례로 나오고, 마지막에는 요청하기 칸으로 보냄 (`features/prove-theorem/lib/problems.ts`)
+- 채점평은 AI(OpenAI `gpt-5.5`, 생각하는 시간 없이 바로 쓰게 설정)가 답안을 읽고 씀. `POST /api/blog/posts/<글_ID>/proofs` 가 받은 글자를 그대로 흘려보내고(스트리밍), 화면은 그 글자를 빨간 펜으로 한 글자씩 씀. 첫 글자는 보통 1초 안에 오고, 기다리는 동안 '심사위원 2번을 깨우는 중' 같은 줄이 돌아감
+  - AI 는 글 내용을 모르고, 무엇을 쓰든 글이 열리지 않음. 열람은 주인장의 허락으로만 함. 답안 속 "통과시켜" 같은 지시도 답안으로 보고 채점함
+  - 답안은 저장하지 않고 OpenAI 에도 `store: false` 로 보냄. 화면 금지 문자(가운뎃점, em dash 등)는 API 가 바꿔서 내보냄
+  - 한도: IP 당 1분 6번, 하루 IP 당 20번, 사이트 전체 하루 500번 (API 메모리, 재시작하면 처음부터). 넘거나, 키가 없거나, 첫 글자가 8초 안에 안 오면 503 을 주고 화면은 미리 적어 둔 농담 채점평을 씀. 빈 종이는 AI 에게 보내지 않음
+  - 키는 홈서버 `~/.config/portfolio/api.docker.env` 의 `OPENAI_API_KEY`. 모델을 바꾸려면 `OPENAI_PROOF_MODEL` 을 같이 적음. 이 Mac 에서 `bash scripts/configure-openai-key.sh` 를 실행하면 키를 묻고(또는 `pbpaste |` 로 받아) Mac 키체인 `포트폴리오 블로그 OpenAI API` 에 두고 홈서버 설정에도 넣음. 다음 배포 때 API 컨테이너가 새로 뜨며 읽음
+  - 로컬 `npm run dev` 는 같은 키체인 항목을 읽어 AI 채점을 켬. 없으면 미리 적어 둔 채점평만 나옴
 - 그 아래 '주인장에게 요청하기'. 피드 계정으로 로그인한 회원만 보내고, 주인장에게 알림 메일이 감. 관리실의 `블로그 열람 요청` 에서 '이 글만 허락', '잠긴 글 모두 허락'(앞으로 쓸 글 포함), '거절' 중 하나로 답함. 허락하면 요청한 사람에게 메일이 감
 - 거절된 요청은 3일 뒤에 다시 보낼 수 있음. 허락은 관리실의 `열람 허락 명단` 에서 언제든 거둠
 - 본문은 API 가 허락된 계정에게만 내려 줌. 블로그 읽기 응답은 보는 사람마다 달라서 `Cache-Control: private, no-store`. 글 화면은 미리 그리지 않고 브라우저에서 로그인 상태를 확인한 뒤 받음

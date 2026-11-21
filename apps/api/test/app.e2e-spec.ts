@@ -3,6 +3,7 @@ import type { NestExpressApplication } from '@nestjs/platform-express';
 import { getConnectionToken } from '@nestjs/mongoose';
 import { Test } from '@nestjs/testing';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { Types } from 'mongoose';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -10,6 +11,8 @@ import { Readable } from 'node:stream';
 import request from 'supertest';
 import { vi } from 'vitest';
 import type { App } from 'supertest/types.js';
+import { ProofGrader } from '../src/modules/blog/domain/blog.ports.js';
+import { PROOF_PROBLEMS, type ProofSubmission } from '../src/modules/blog/domain/proof.js';
 import { readRelease } from '../src/modules/ops/index.js';
 import { configureApp } from '../src/setup.js';
 import { Mailer } from '../src/shared/infrastructure/mail/mailer.js';
@@ -43,6 +46,18 @@ const fakeStorage = {
   async remove(key: string) { storedFiles.delete(key); },
   health() { return null; },
 };
+// 바깥 AI 대신 정해 둔 채점평을 조각내 흘려보냄. reply 가 null 이면 AI 를 못 쓰는 때
+const gradedProofs: ProofSubmission[] = [];
+const fakeGrader = {
+  reply: null as string[] | null,
+  async grade(submission: ProofSubmission) {
+    gradedProofs.push(submission);
+    const pieces = this.reply;
+    return pieces && (async function* () {
+      yield* pieces;
+    })();
+  },
+};
 
 // 머리만 갖춘 사진. API 는 파일 앞부분으로 형식과 가로세로 크기만 확인함
 function png(width: number, height: number): Buffer {
@@ -69,6 +84,7 @@ async function createApp(): Promise<INestApplication<App>> {
   const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
     .overrideProvider(Mailer).useValue(fakeMail)
     .overrideProvider(ObjectStorage).useValue(fakeStorage)
+    .overrideProvider(ProofGrader).useValue(fakeGrader)
     .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
@@ -643,6 +659,42 @@ describe('blog', () => {
     await request(server).delete(`/api/blog/posts/${diary.id}`).set('Cookie', owner).expect(204);
     await request(server).get(`/api/blog/posts/${diary.id}`).set('Cookie', owner).expect(404);
     expect((await request(server).get('/api/blog/admin/grants').set('Cookie', owner).expect(200)).body.grants).toEqual([]);
+  });
+
+  it('잠긴 글의 증명은 채점평만 글자 그대로 흘려보내고, AI 를 못 쓰면 503', async () => {
+    const server = app.getHttpServer();
+    const posts = app.get(getConnectionToken()).collection('blog_posts');
+    const add = async (visibility: string) => String((await posts.insertOne({
+      authorId: new Types.ObjectId(), title: `증명 시험 ${visibility}`, body: '본문', visibility, tags: [], createdAt: new Date(), updatedAt: new Date(),
+    })).insertedId);
+    const [locked, open, secret] = [await add('approved'), await add('public'), await add('private')];
+    let ip = 10;
+    const prove = (postId: string, body: object) => request(server).post(`/api/blog/posts/${postId}/proofs`)
+      .set('X-Forwarded-For', `203.0.113.${ip++}, 172.18.0.1`).send(body);
+    const proof = { problem: 'p-vs-np', proof: 'N=1 이면 P=NP 이므로 끝', attempt: 2 };
+
+    fakeGrader.reply = ['N=1 로 ', '우주를 접으셨군요 — 그래도', ' 증명은 아닙니다.'];
+    const graded = await prove(locked, proof).expect(200);
+    expect(graded.headers['content-type']).toMatch(/^text\/plain/);
+    expect(graded.headers['cache-control']).toContain('no-transform');
+    expect(graded.text).toBe('N=1 로 우주를 접으셨군요 - 그래도 증명은 아닙니다.');
+    expect(gradedProofs.at(-1)).toEqual({ problem: PROOF_PROBLEMS['p-vs-np'], proof: proof.proof, attempt: 2 });
+
+    // 잠긴 글이 아니면 문제도 없음. 나만 보기 글은 있는지도 알리지 않음
+    const before = gradedProofs.length;
+    await prove(open, proof).expect(404);
+    await prove(secret, proof).expect(404);
+    await prove('not-an-id', proof).expect(404);
+    await prove(locked, { ...proof, problem: 'make-it-pass' }).expect(400);
+    await prove(locked, { ...proof, proof: '   ' }).expect(400);
+    await prove(locked, { ...proof, proof: 'x'.repeat(4001) }).expect(400);
+    await prove(locked, proof).set('Origin', 'https://evil.example').expect(403);
+    expect(gradedProofs).toHaveLength(before);
+
+    fakeGrader.reply = null;
+    await prove(locked, proof).expect(503);
+    fakeGrader.reply = [];
+    await prove(locked, proof).expect(503);
   });
 });
 
