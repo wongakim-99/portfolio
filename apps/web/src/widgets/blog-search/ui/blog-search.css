@@ -1,0 +1,20 @@
+/* 목록 위 검색창과 분류 칩. 가운데 정렬 */
+.blog-search { display: grid; justify-items: center; gap: 22px; }
+.blog-search-box { position: relative; width: min(520px, 100%); }
+.blog-search-box input { width: 100%; height: 52px; padding: 0 52px 0 20px; border: 1px solid var(--paper-rule); border-radius: 14px; background: var(--paper); color: var(--ink); font: inherit; font-size: 16px; box-shadow: 0 1px 2px rgb(15 20 25 / .04); transition: border-color .15s ease, box-shadow .15s ease; }
+.blog-search-box input::placeholder { color: color-mix(in srgb, var(--ink-soft) 75%, transparent); }
+.blog-search-box input:focus { outline: none; border-color: var(--pen); box-shadow: 0 0 0 3px color-mix(in srgb, var(--pen) 18%, transparent); }
+.blog-search-box input::-webkit-search-cancel-button { margin-right: 4px; }
+.blog-search-box svg { position: absolute; right: 18px; top: 50%; width: 20px; height: 20px; fill: none; stroke: var(--ink-soft); stroke-width: 2; stroke-linecap: round; transform: translateY(-50%); pointer-events: none; }
+
+.blog-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.blog-chip { display: inline-flex; align-items: center; min-height: 36px; padding: 0 16px; border: 1px solid var(--paper-rule); border-radius: 999px; background: var(--paper); color: var(--ink-soft); font-size: 14px; font-weight: 600; text-decoration: none; white-space: nowrap; transition: border-color .15s ease, color .15s ease, background-color .15s ease; }
+.blog-chip:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); color: var(--ink); }
+.blog-chip.is-active { border-color: var(--ink); background: var(--ink); color: var(--paper); }
+
+@media (max-width: 720px) {
+  .blog-search { gap: 16px; }
+  .blog-search-box input { height: 48px; }
+  /* 칩이 많으면 한 줄로 두고 옆으로 밀어 봄 */
+  .blog-chips { flex-wrap: nowrap; justify-content: flex-start; width: 100%; overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+}

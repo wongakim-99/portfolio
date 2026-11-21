@@ -1,12 +1,12 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AccountMenu } from '@widgets/account-menu';
-import { BlogHeader } from '@widgets/blog-header';
 import { SiteFooter } from '@widgets/site-footer';
 import { SiteHeader } from '@widgets/site-header';
 import { AuthDialog } from '@features/auth';
 import { SessionProvider } from '@entities/user';
 import '@shared/styles/community.css';
+import '@shared/styles/blog.css';
 
 export const metadata: Metadata = {
   title: '블로그',
@@ -14,13 +14,12 @@ export const metadata: Metadata = {
   referrer: 'no-referrer',
 };
 
-// 블로그 화면(/blog/*)이 같이 쓰는 틀. 로그인은 피드 계정을 그대로 씀
+// 블로그 화면(/blog/*)이 같이 쓰는 틀. 로그인은 피드 계정을 그대로 씀. 피드와 달리 흰 페이지에 목록은 카드로 놓음 (shared/styles/blog.css)
 export default function BlogLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <SiteHeader account={<AccountMenu />} />
-      <main className="community-main" id="main">
-        <BlogHeader />
+      <main className="blog-main" id="main">
         {children}
       </main>
       <SiteFooter />

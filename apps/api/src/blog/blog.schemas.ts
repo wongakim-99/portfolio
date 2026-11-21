@@ -20,12 +20,17 @@ export class BlogPost {
   @Prop({ type: String, required: true, enum: VISIBILITIES })
   visibility: Visibility;
 
+  // 글쓴이가 붙인 태그. 목록에서 태그로 모아 보고 사이드바에 많이 쓴 순서로 보여 줌
+  @Prop({ type: [String], default: [] })
+  tags: string[];
+
   createdAt: Date;
   updatedAt: Date;
 }
 
 export const BlogPostSchema = SchemaFactory.createForClass(BlogPost);
 BlogPostSchema.index({ visibility: 1, _id: -1 });
+BlogPostSchema.index({ tags: 1, _id: -1 });
 
 // 회원 한 사람이 글 한 편에 남기는 열람 요청. 거절돼도 지우지 않고 남겨서 다시 보낼 수 있는 때를 셈
 @Schema({ collection: 'blog_access_requests', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })

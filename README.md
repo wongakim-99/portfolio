@@ -28,7 +28,7 @@ src/
   views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin, blog, blog-post, blog-editor
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
                guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports,
-               blog-header, blog-post-list, blog-lock(잠긴 글 자리), admin-blog-access(열람 요청과 허락 명단)
+               blog-search(검색창과 분류 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 분류, 태그), blog-lock(잠긴 글 자리), admin-blog-access(열람 요청과 허락 명단)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar,
                write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장), request-blog-access
@@ -72,6 +72,9 @@ src/
 ## 블로그
 
 - 글은 주인장만 쓰고, 글마다 공개 범위를 고름. 새 글은 '허락한 사람만'으로 시작함 (넋두리를 실수로 공개하는 쪽이 더 곤란해서)
+- 화면은 피드의 '책상 위 종이'와 달리 흰 페이지에 카드를 늘어놓는 블로그 모양. 목록은 왼쪽에 주인 소개, 분류별 글 수, 태그 사이드바, 가운데에 검색창, 분류 칩, 두 줄 카드. 글 화면은 가운데 좁은 단에 제목, 날짜와 읽는 시간, 태그, 본문, 글 끝 소개 카드
+- 글마다 태그를 8개까지 붙임 (글쓰기에서 Enter 나 쉼표로 붙임). 목록은 주소의 `?tag=`, `?q=`(제목, 태그 검색), `?visibility=` 로 거르고, 사이드바 숫자는 `/api/blog/summary`
+- 검색은 잠긴 글이면 제목과 태그만 뒤지고 본문은 보지 않음. 본문 검색은 누구나 읽는 글에서만 (주인장은 전부)
 
 | 공개 범위 | 목록 | 본문 |
 |---|---|---|

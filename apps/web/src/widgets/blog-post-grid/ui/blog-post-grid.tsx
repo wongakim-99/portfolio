@@ -1,0 +1,87 @@
+'use client';
+
+import Link from 'next/link';
+import { useCallback, useEffect, useState } from 'react';
+import { routes } from '@shared/config';
+import { problemFor } from '@features/prove-theorem';
+import { BlogCard, listBlogPosts, type BlogListQuery, type BlogPostSummary } from '@entities/blog-post';
+import { useSession } from '@entities/user';
+import './blog-post-grid.css';
+
+interface GridState {
+  posts: BlogPostSummary[];
+  cursor: string | null;
+  status: 'loading' | 'ready' | 'error';
+}
+
+// 카드 두 줄씩. 거르기가 바뀌거나 로그인이 바뀌면 처음부터 다시 받음
+export function BlogPostGrid({ query }: { query: BlogListQuery }) {
+  const { user, ready } = useSession();
+  const userId = user?.id ?? null;
+  const { tag = null, q = null, visibility = null } = query;
+  const filtered = Boolean(tag || q || visibility);
+  const [state, setState] = useState<GridState>({ posts: [], cursor: null, status: 'loading' });
+
+  const load = useCallback(
+    (before: string | null) =>
+      listBlogPosts({ before, tag, q, visibility }).then(
+        (page) => setState((prev) => ({ posts: before ? [...prev.posts, ...page.posts] : page.posts, cursor: page.nextCursor, status: 'ready' })),
+        () => setState((prev) => ({ ...prev, status: 'error' })),
+      ),
+    [tag, q, visibility],
+  );
+
+  useEffect(() => {
+    if (ready) load(null);
+  }, [ready, userId, load]);
+
+  const { posts, cursor, status } = state;
+  return (
+    <section className="blog-grid-wrap" aria-label="글 목록" aria-busy={status === 'loading'}>
+      {tag && (
+        <p className="blog-filter-note">
+          <b>#{tag}</b> 태그가 붙은 글
+          <Link className="text-btn" href={routes.blogList({ q, visibility })} scroll={false}>
+            태그 풀기
+          </Link>
+        </p>
+      )}
+      <div className="blog-grid" aria-live="polite">
+        {posts.map((post) => (
+          <BlogCard key={post.id} post={post} lockedNote={problemFor(post.id).ask} />
+        ))}
+      </div>
+      {status === 'loading' && !posts.length && <p className="blog-grid-empty">글을 불러오는 중입니다.</p>}
+      {status === 'ready' && !posts.length && (
+        <p className="blog-grid-empty">
+          {filtered ? '조건에 맞는 글이 없어요.' : '아직 글이 없습니다.'}
+          {filtered && (
+            <Link className="text-btn" href={routes.blog}>
+              모든 글 보기
+            </Link>
+          )}
+        </p>
+      )}
+      {status === 'error' && (
+        <p className="blog-grid-empty">
+          지금은 글을 불러오지 못합니다. 잠시 뒤에 다시 시도해 주세요.
+          <button
+            className="text-btn"
+            type="button"
+            onClick={() => {
+              setState({ posts: [], cursor: null, status: 'loading' });
+              load(null);
+            }}
+          >
+            다시 시도
+          </button>
+        </p>
+      )}
+      {cursor && status === 'ready' && (
+        <button className="btn-line blog-more" type="button" onClick={() => load(cursor)}>
+          글 더 보기
+        </button>
+      )}
+    </section>
+  );
+}

@@ -1,0 +1,18 @@
+/* 블로그 글 한 편: 가운데 좁은 단에 큰 제목, 날짜와 읽는 시간, 태그, 본문. 줄바꿈은 쓴 그대로 */
+.blog-article { max-width: 760px; margin: 0 auto; padding: clamp(28px, 4vw, 44px) 0 clamp(64px, 8vw, 110px); }
+.blog-article .back-link { margin-bottom: clamp(28px, 5vw, 48px); }
+.blog-article-head h1 { margin: 0; font-family: var(--font-display); font-size: clamp(32px, 5vw, 48px); font-weight: 700; line-height: 1.3; letter-spacing: -.03em; overflow-wrap: anywhere; text-wrap: balance; }
+.blog-article-meta { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 20px; margin-top: 22px; }
+.blog-article-meta p { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0; color: var(--ink-soft); font-size: 15px; font-variant-numeric: tabular-nums; }
+.blog-article-meta b { color: var(--ink); }
+.blog-article-meta .community-inline-actions.action-row { margin-top: 0; }
+.blog-article-head .blog-tags { margin-top: 22px; }
+.blog-article-body { margin-top: 34px; padding: 40px 0 56px; border-top: 1px solid var(--paper-rule); font-size: 18px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; text-wrap: pretty; }
+.blog-article .blog-lock { margin-top: 34px; border-top: 1px solid var(--paper-rule); }
+.blog-article-foot { margin-top: 16px; padding-top: 32px; border-top: 1px solid var(--paper-rule); }
+.blog-article-foot .blog-owner { padding: 24px; border-radius: 18px; background: var(--blog-side); }
+
+@media (max-width: 720px) {
+  .blog-article-body { padding-top: 32px; font-size: 17px; }
+  .blog-article-foot .blog-owner { padding: 20px; }
+}

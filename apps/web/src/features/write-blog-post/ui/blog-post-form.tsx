@@ -17,10 +17,11 @@ import {
   type BlogPostInput,
   type Visibility,
 } from '@entities/blog-post';
+import { TagInput } from './tag-input';
 import './blog-post-form.css';
 
 // 실수로 넋두리를 공개하는 쪽이 기술 글을 잠그는 쪽보다 곤란하므로 새 글은 '허락한 사람만'으로 시작함
-const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved' };
+const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved', tags: [] };
 
 const VISIBILITY_HINT: Record<Visibility, string> = {
   public: '누구나 읽습니다. 기술 글이나 남에게도 쓸모 있는 글',
@@ -72,18 +73,25 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
 
   return (
     <>
-      <form className="community-form blog-form" onSubmit={submit}>
-        <label htmlFor="blog-title">제목</label>
+      <form className="blog-form" onSubmit={submit}>
+        <label className="sr" htmlFor="blog-title">
+          제목
+        </label>
         <input
           id="blog-title"
+          className="blog-form-title"
           name="title"
           required
           minLength={BLOG_LIMITS.titleMin}
           maxLength={BLOG_LIMITS.titleMax}
-          placeholder="글 제목"
+          placeholder="제목을 입력하세요"
           value={draft.title}
           onChange={(event) => change({ ...draft, title: event.target.value })}
         />
+        <label className="sr" htmlFor="blog-tags">
+          태그
+        </label>
+        <TagInput tags={draft.tags} onChange={(tags) => change({ ...draft, tags })} />
         <fieldset className="blog-visibility">
           <legend>누가 읽을 수 있나요</legend>
           {(Object.keys(VISIBILITY_LABEL) as Visibility[]).map((visibility) => (
@@ -100,26 +108,30 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
             </label>
           ))}
         </fieldset>
-        <label htmlFor="blog-body">본문</label>
+        <label className="sr" htmlFor="blog-body">
+          본문
+        </label>
         <textarea
           id="blog-body"
+          className="blog-form-body"
           name="body"
           required
           minLength={BLOG_LIMITS.bodyMin}
           maxLength={BLOG_LIMITS.bodyMax}
           rows={18}
-          placeholder="여기에 글을 써 주세요"
+          placeholder="이야기를 적어 보세요. 줄바꿈은 쓴 그대로 보입니다."
           value={draft.body}
           onChange={(event) => change({ ...draft, body: event.target.value })}
         />
-        <div className="community-form-foot">
+        {/* 글이 길어도 올리기 버튼이 늘 화면 아래에 보이게 붙여 둠 */}
+        <div className="blog-form-bar">
           <span>{formatCount(draft.body.length, BLOG_LIMITS.bodyMax)}</span>
+          <FormStatus status={status} className="blog-form-status" />
           <button className="tape tape-lg" type="submit" disabled={busy || disabled}>
             {postId ? '고친 내용 저장' : '글 올리기'}
           </button>
         </div>
       </form>
-      <FormStatus status={status} />
     </>
   );
 }

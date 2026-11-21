@@ -7,6 +7,9 @@ import { RequirePermission } from '../community/community-permission.guard.js';
 import { AccessRequestDto, ApproveDto, WriteBlogPostDto } from './blog.dto.js';
 import { BlogService } from './blog.service.js';
 
+// ?tag=a&tag=b 처럼 같은 이름을 여러 번 보내면 배열로 오므로 글자 하나일 때만 씀
+const single = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
+
 // 블로그. 로그인은 피드 계정을 그대로 씀. 글쓰기는 주인(owner 역할)만, 읽기는 글마다 고른 공개 범위대로
 // 누가 보느냐에 따라 응답이 달라지므로 읽기 응답은 브라우저와 앞단 어디에도 캐시하지 않음
 @Controller('blog')
@@ -19,8 +22,23 @@ export class BlogController {
   @Get('posts')
   @SkipThrottle()
   @Header('Cache-Control', 'private, no-store')
-  async list(@Req() req: Request, @Query('before') before?: string) {
-    return this.blog.list(await this.auth.current(req), before);
+  async list(
+    @Req() req: Request,
+    @Query('before') before?: unknown,
+    @Query('tag') tag?: unknown,
+    @Query('q') q?: unknown,
+    @Query('visibility') visibility?: unknown,
+  ) {
+    return this.blog.list(await this.auth.current(req), {
+      before: single(before), tag: single(tag), q: single(q), visibility: single(visibility),
+    });
+  }
+
+  @Get('summary')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-store')
+  async summary(@Req() req: Request) {
+    return this.blog.summary(await this.auth.current(req));
   }
 
   @Get('posts/:id')

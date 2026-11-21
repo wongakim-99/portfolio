@@ -1,0 +1,26 @@
+/* 목록 왼쪽 사이드바. 연한 바탕의 둥근 판 위에 주인 소개, 분류, 태그 */
+.blog-sidebar { display: grid; gap: 26px; align-content: start; padding: 24px 20px; border-radius: 18px; background: var(--blog-side); }
+.blog-side-block h2 { margin: 0 0 10px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+.blog-side-groups { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.blog-side-groups a { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; color: var(--ink); font-size: 15px; text-decoration: none; transition: background-color .15s ease; }
+.blog-side-groups a:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.blog-side-groups a.is-active { background: var(--paper); font-weight: 700; box-shadow: 0 1px 2px rgb(15 20 25 / .06); }
+.blog-side-count { color: var(--ink-soft); font-family: var(--font-mono); font-size: 12px; font-weight: 400; }
+.blog-side-tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.blog-side-tags .blog-tag .blog-side-count { margin-left: 6px; }
+.blog-side-tags .blog-tag .blog-side-count { color: inherit; opacity: .65; }
+.blog-side-tags .blog-tag.is-active { background: var(--pen); color: var(--paper); }
+
+/* 주인 소개. 사이드바에서는 세로로, 글 끝에서는 가로로 놓임 */
+.blog-owner { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: start; }
+.blog-owner .blog-owner-avatar { width: 52px; height: 52px; border-radius: 50%; font-size: 30px; }
+.blog-owner-text { min-width: 0; }
+.blog-owner-text b { display: block; font-size: 17px; line-height: 1.4; }
+.blog-owner-text p { margin: 4px 0 6px; color: var(--ink-soft); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.blog-owner-link { color: var(--pen); font-size: 13px; font-weight: 600; text-decoration: none; }
+.blog-owner-link::after { content: " \2192"; }
+.blog-owner-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.blog-owner-tools { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.blog-owner-requests { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px; border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); border-radius: 999px; color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: none; }
+.blog-owner-requests:hover { border-color: var(--ink); }
+.blog-count-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--stamp-red); color: #fff; font-family: var(--font-mono); font-size: 11px; font-weight: 600; line-height: 1; }

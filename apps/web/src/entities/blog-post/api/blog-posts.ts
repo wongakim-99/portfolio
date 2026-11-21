@@ -1,9 +1,18 @@
 import { blogRequest } from '@shared/api';
-import type { AccessRequestState, BlogPost, BlogPostInput, BlogPostPage } from '../model/types';
+import type { AccessRequestState, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
 
-/** 최근 글 10개씩. 잠긴 글은 제목만, 나만 보기 글은 주인장에게만 옴 */
-export const listBlogPosts = (before?: string | null) =>
-  blogRequest<BlogPostPage>(`/posts${before ? `?${new URLSearchParams({ before })}` : ''}`);
+/** 최근 글 10개씩. 잠긴 글은 제목과 태그만, 나만 보기 글은 주인장에게만 옴 */
+export function listBlogPosts({ before, tag, q, visibility }: BlogListQuery & { before?: string | null } = {}) {
+  const query = new URLSearchParams();
+  if (tag) query.set('tag', tag);
+  if (q) query.set('q', q);
+  if (visibility) query.set('visibility', visibility);
+  if (before) query.set('before', before);
+  return blogRequest<BlogPostPage>(`/posts${query.size ? `?${query}` : ''}`);
+}
+
+/** 공개 범위별 글 수, 많이 쓴 태그, 주인장 소개 */
+export const getBlogSummary = () => blogRequest<BlogSummary>('/summary');
 
 export const getBlogPost = (id: string) => blogRequest<BlogPost>(`/posts/${encodeURIComponent(id)}`);
 

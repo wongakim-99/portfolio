@@ -1,16 +1,28 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import type { Model } from 'mongoose';
+import type { Model, QueryFilter } from 'mongoose';
 import { Types } from 'mongoose';
 import type { CommunityIdentity } from '../community/community-auth.service.js';
 import { CommunityMailService } from '../community/community-mail.service.js';
 import { CommunityUser } from '../community/community.schemas.js';
 import { avatarUrl } from '../community/community-storage.service.js';
 import type { AccessRequestDto, WriteBlogPostDto } from './blog.dto.js';
-import { BlogAccessRequest, BlogGrant, BlogPost, type Visibility } from './blog.schemas.js';
+import { BlogAccessRequest, BlogGrant, BlogPost, VISIBILITIES, type Visibility } from './blog.schemas.js';
 
 // 거절된 요청을 다시 보낼 수 있을 때까지
 const RETRY_AFTER_MS = 3 * 24 * 60 * 60_000;
+// 읽는 시간은 한글 기준 1분에 500자쯤으로 셈
+const CHARS_PER_MINUTE = 500;
+const readMinutes = (body: string) => Math.max(1, Math.round(body.length / CHARS_PER_MINUTE));
+const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** 목록 거르기. tag 는 그 태그가 붙은 글, q 는 검색어, visibility 는 공개 범위 하나만 */
+export interface ListOptions {
+  before?: string;
+  tag?: string;
+  q?: string;
+  visibility?: string;
+}
 
 type Viewer = CommunityIdentity | null;
 type Readable = { _id: Types.ObjectId; visibility: Visibility };
@@ -50,13 +62,26 @@ export class BlogService {
     return grants.all || grants.posts.has(String(post._id));
   }
 
-  // 잠긴 글도 목록에는 제목이 보임. 나만 보기 글은 주인에게만 보임
-  async list(viewer: Viewer, before?: string) {
-    const filter = {
-      ...(isOwner(viewer) ? {} : { visibility: { $ne: 'private' as const } }),
-      ...(before ? { _id: { $lt: objectId(before) } } : {}),
-    };
-    const results = await this.posts.find(filter, { title: 1, body: 1, visibility: 1, createdAt: 1, updatedAt: 1 })
+  // 이 사람에게 목록으로 보여도 되는 글. 나만 보기 글은 주인에게만
+  private visibleTo(viewer: Viewer): QueryFilter<BlogPost> {
+    return isOwner(viewer) ? {} : { visibility: { $ne: 'private' as const } };
+  }
+
+  // 잠긴 글도 목록에는 제목과 태그가 보임. 검색은 잠긴 글이면 제목과 태그만 뒤지고 본문은 보지 않음
+  async list(viewer: Viewer, { before, tag, q, visibility }: ListOptions = {}) {
+    const and: QueryFilter<BlogPost>[] = [this.visibleTo(viewer)];
+    if (before) and.push({ _id: { $lt: objectId(before) } });
+    if (tag) and.push({ tags: tag });
+    if (visibility && (VISIBILITIES as readonly string[]).includes(visibility)) and.push({ visibility: visibility as Visibility });
+    const query = q?.trim().slice(0, 40);
+    if (query) {
+      const pattern = new RegExp(escapeRegex(query), 'i');
+      and.push({ $or: [
+        { title: pattern }, { tags: pattern },
+        isOwner(viewer) ? { body: pattern } : { visibility: 'public' as const, body: pattern },
+      ] });
+    }
+    const results = await this.posts.find({ $and: and }, { title: 1, body: 1, visibility: 1, tags: 1, createdAt: 1, updatedAt: 1 })
       .sort({ _id: -1 }).limit(11).lean();
     const page = results.slice(0, 10);
     const grants = await this.grantsOf(viewer);
@@ -64,11 +89,34 @@ export class BlogService {
       posts: page.map((post) => {
         const readable = this.canRead(post, viewer, grants);
         return {
-          id: String(post._id), title: post.title, visibility: post.visibility, locked: !readable,
-          excerpt: readable ? post.body.slice(0, 220) : null, createdAt: post.createdAt, updatedAt: post.updatedAt,
+          id: String(post._id), title: post.title, visibility: post.visibility, locked: !readable, tags: post.tags ?? [],
+          excerpt: readable ? post.body.slice(0, 220) : null, readMinutes: readable ? readMinutes(post.body) : null,
+          createdAt: post.createdAt, updatedAt: post.updatedAt,
         };
       }),
       nextCursor: results.length > 10 ? String(page.at(-1)!._id) : null,
+    };
+  }
+
+  // 목록 옆 사이드바: 공개 범위별 글 수, 많이 쓴 태그, 블로그 주인 소개
+  async summary(viewer: Viewer) {
+    const visible = this.visibleTo(viewer);
+    const [counts, tags, owner] = await Promise.all([
+      this.posts.aggregate<{ _id: Visibility; count: number }>([{ $match: visible }, { $group: { _id: '$visibility', count: { $sum: 1 } } }]),
+      this.posts.aggregate<{ _id: string; count: number }>([
+        { $match: visible }, { $unwind: '$tags' }, { $group: { _id: '$tags', count: { $sum: 1 } } },
+        { $sort: { count: -1, _id: 1 } }, { $limit: 30 },
+      ]),
+      this.users.findOne({ role: 'owner', verifiedAt: { $ne: null } }, { name: 1, bio: 1, avatar: 1 }).sort({ _id: 1 }).lean(),
+    ]);
+    const byVisibility = Object.fromEntries(counts.map((item) => [item._id, item.count])) as Partial<Record<Visibility, number>>;
+    return {
+      total: counts.reduce((sum, item) => sum + item.count, 0),
+      public: byVisibility.public ?? 0,
+      approved: byVisibility.approved ?? 0,
+      private: isOwner(viewer) ? (byVisibility.private ?? 0) : null,
+      tags: tags.map((item) => ({ name: item._id, count: item.count })),
+      owner: owner ? { id: String(owner._id), name: owner.name, bio: owner.bio ?? '', avatarUrl: avatarUrl(owner.avatar) } : null,
     };
   }
 
@@ -78,8 +126,9 @@ export class BlogService {
     if (!post || (post.visibility === 'private' && !isOwner(viewer))) throw new NotFoundException('글을 찾을 수 없습니다.');
     const readable = this.canRead(post, viewer, await this.grantsOf(viewer));
     return {
-      id: String(post._id), title: post.title, visibility: post.visibility, locked: !readable,
-      body: readable ? post.body : null, createdAt: post.createdAt, updatedAt: post.updatedAt,
+      id: String(post._id), title: post.title, visibility: post.visibility, locked: !readable, tags: post.tags ?? [],
+      body: readable ? post.body : null, readMinutes: readable ? readMinutes(post.body) : null,
+      createdAt: post.createdAt, updatedAt: post.updatedAt,
       request: !readable && viewer ? await this.requestState(viewer.id, post._id) : null,
     };
   }
@@ -92,7 +141,9 @@ export class BlogService {
   }
 
   async create(dto: WriteBlogPostDto, author: CommunityIdentity) {
-    const post = await this.posts.create({ title: dto.title, body: dto.body, visibility: dto.visibility, authorId: objectId(author.id) });
+    const post = await this.posts.create({
+      title: dto.title, body: dto.body, visibility: dto.visibility, tags: dto.tags ?? [], authorId: objectId(author.id),
+    });
     return this.get(String(post._id), author);
   }
 
@@ -102,6 +153,7 @@ export class BlogService {
     post.title = dto.title;
     post.body = dto.body;
     post.visibility = dto.visibility;
+    post.tags = dto.tags ?? [];
     await post.save();
     // 공개하거나 나만 보기로 돌리면 이 글에 온 요청은 더 기다릴 일이 없음
     if (dto.visibility !== 'approved') await this.requests.deleteMany({ postId: post._id });

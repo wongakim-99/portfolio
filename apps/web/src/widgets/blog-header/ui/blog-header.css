@@ -1,3 +1,0 @@
-/* 머리 틀은 shared/styles/community.css 의 .community-header. 글 쓰기 옆 열람 요청 버튼만 더함 */
-.blog-requests { gap: 10px; min-height: 46px; font-size: 14px; }
-.blog-requests-count { display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: var(--stamp-red); color: #fff; font-family: var(--font-mono); font-size: 12px; font-weight: 600; line-height: 1; }

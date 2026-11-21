@@ -3,17 +3,20 @@
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { formatDate, useDocumentTitle } from '@shared/lib';
-import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
+import { BackLink, FormStatus, NO_STATUS, type Status } from '@shared/ui';
 import { BlogLock } from '@widgets/blog-lock';
+import { BlogOwnerCard } from '@widgets/blog-sidebar';
 import { BlogPostActions } from '@features/manage-blog-post';
-import { getBlogPost, VisibilityStamp, type BlogPost } from '@entities/blog-post';
+import { getBlogPost, getBlogSummary, TagList, VisibilityStamp, type BlogPost, type BlogSummary } from '@entities/blog-post';
 import { useSession } from '@entities/user';
+import './blog-post-page.css';
 
 export function BlogPostPage({ postId }: { postId: string }) {
   const { user, ready } = useSession();
   const userId = user?.id ?? null;
   const [post, setPost] = useState<BlogPost | null>(null);
   const [missing, setMissing] = useState(false);
+  const [owner, setOwner] = useState<BlogSummary['owner']>(null);
   const [status, setStatus] = useState<Status>(NO_STATUS);
   useDocumentTitle(post ? `${post.title} | 김가원 블로그` : null);
 
@@ -34,30 +37,50 @@ export function BlogPostPage({ postId }: { postId: string }) {
     };
   }, [postId, ready, userId]);
 
+  // 글쓴이 이름과 글 끝의 소개 카드. 못 받으면 빼고 보여 줌
+  useEffect(() => {
+    let active = true;
+    getBlogSummary().then((value) => active && setOwner(value.owner), () => {});
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const edited = post && post.updatedAt.slice(0, 10) !== post.createdAt.slice(0, 10);
   return (
-    <Sheet as="article" className="community-sheet">
-      <BackLink href={routes.blog}>모든 글</BackLink>
-      <header className="community-article-head">
-        <h2>{missing ? '글을 찾을 수 없습니다' : post?.title}</h2>
+    <article className="blog-article">
+      <BackLink href={routes.blog}>블로그</BackLink>
+      <header className="blog-article-head">
+        <h1>{missing ? '글을 찾을 수 없습니다' : post?.title}</h1>
         {post && !missing && (
           <>
-            <p className="community-meta">
-              <span>{formatDate(post.createdAt)}</span>
-              {post.updatedAt.slice(0, 10) !== post.createdAt.slice(0, 10) && <span>{formatDate(post.updatedAt)} 고침</span>}
-              <VisibilityStamp visibility={post.visibility} locked={post.locked} />
-            </p>
-            <BlogPostActions postId={post.id} onStatus={setStatus} />
+            <div className="blog-article-meta">
+              <p>
+                {owner && <b>{owner.name}</b>}
+                <span>{formatDate(post.createdAt)}</span>
+                {edited && <span>{formatDate(post.updatedAt)} 고침</span>}
+                {post.readMinutes && <span>{post.readMinutes}분 읽기</span>}
+                <VisibilityStamp visibility={post.visibility} locked={post.locked} />
+              </p>
+              <BlogPostActions postId={post.id} onStatus={setStatus} />
+            </div>
+            <TagList tags={post.tags} />
           </>
         )}
       </header>
       {missing ? (
-        <div className="community-body">지워졌거나 지금은 읽을 수 없는 글입니다.</div>
+        <div className="blog-article-body">지워졌거나 지금은 읽을 수 없는 글입니다.</div>
       ) : post?.locked ? (
         <BlogLock postId={post.id} request={post.request} onRequested={(request) => setPost((value) => value && { ...value, request })} />
       ) : (
-        <div className="community-body">{post?.body}</div>
+        <div className="blog-article-body">{post?.body}</div>
       )}
       <FormStatus status={status} />
-    </Sheet>
+      {owner && post && !missing && (
+        <footer className="blog-article-foot">
+          <BlogOwnerCard owner={owner} />
+        </footer>
+      )}
+    </article>
   );
 }

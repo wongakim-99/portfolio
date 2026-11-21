@@ -602,6 +602,35 @@ describe('blog', () => {
     expect((await request(server).get(`/api/blog/posts/${later.id}`).set('Cookie', friend).expect(200)).body.locked).toBe(true);
     expect((await request(server).get(`/api/blog/posts/${diary.id}`).set('Cookie', friend).expect(200)).body.locked).toBe(false);
 
+    // 태그는 # 과 겹치는 것을 정리해 저장하고, 태그와 검색과 공개 범위로 목록을 거름
+    const tagged = (await request(server).post('/api/blog/posts').set('Cookie', owner)
+      .send({ title: '홈서버 가드 정리', body: '공개 본문에만 있는 낱말: 오리너구리', visibility: 'public', tags: ['#NestJS', 'nestjs', ' 홈 서버 ', ''] })
+      .expect(201)).body.post;
+    expect(tagged).toMatchObject({ tags: ['NestJS', '홈 서버'], readMinutes: 1 });
+    await request(server).post('/api/blog/posts').set('Cookie', owner)
+      .send({ title: '태그가 너무 많음', body: '본문', visibility: 'public', tags: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i'] }).expect(400);
+    const secretWord = (await write(owner, '잠긴 검색 시험', 'approved').expect(201)).body.post;
+    await request(server).patch(`/api/blog/posts/${secretWord.id}`).set('Cookie', owner)
+      .send({ title: '잠긴 검색 시험', body: '잠긴 본문에만 있는 낱말: 오리너구리', visibility: 'approved', tags: ['NestJS'] }).expect(200);
+    const titles = async (query: string, cookie?: string) => {
+      const req = request(server).get(`/api/blog/posts?${query}`);
+      return (await (cookie ? req.set('Cookie', cookie) : req).expect(200)).body.posts.map((post: { title: string }) => post.title);
+    };
+    expect(await titles('tag=NestJS')).toEqual(['잠긴 검색 시험', '홈서버 가드 정리']);
+    expect(await titles(`q=${encodeURIComponent('오리너구리')}`)).toEqual(['홈서버 가드 정리']);
+    expect(await titles(`q=${encodeURIComponent('오리너구리')}`, owner)).toEqual(['잠긴 검색 시험', '홈서버 가드 정리']);
+    expect(await titles(`q=${encodeURIComponent('(.*')}`)).toEqual([]);
+    expect(await titles('visibility=private')).toEqual([]);
+    expect(await titles('visibility=private', owner)).toEqual(['나만 보는 글']);
+    expect(await titles('tag=a&tag=b')).toContain('기술 글');
+    const lockedHit = (await request(server).get('/api/blog/posts?tag=NestJS').expect(200)).body.posts[0];
+    expect(lockedHit).toMatchObject({ locked: true, excerpt: null, readMinutes: null, tags: ['NestJS'] });
+
+    const guestSummary = (await request(server).get('/api/blog/summary').expect(200)).body;
+    expect(guestSummary).toMatchObject({ public: 2, private: null, owner: { name: '주인장' } });
+    expect(guestSummary.tags[0]).toEqual({ name: 'NestJS', count: 2 });
+    expect((await request(server).get('/api/blog/summary').set('Cookie', owner).expect(200)).body.private).toBe(1);
+
     // 공개로 바꾸면 누구나 읽고, 지우면 그 글의 허락도 같이 지움
     await request(server).patch(`/api/blog/posts/${diary2.id}`).set('Cookie', owner)
       .send({ title: '넋두리 둘', body: '이제는 공개해도 되는 이야기', visibility: 'public' }).expect(200);

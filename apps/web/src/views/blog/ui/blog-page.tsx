@@ -1,15 +1,19 @@
-import { Sheet } from '@shared/ui';
-import { BlogPostList } from '@widgets/blog-post-list';
+import { Suspense } from 'react';
+import { BlogBoard } from './blog-board';
+import './blog-page.css';
 
-/** 블로그 첫 화면. 위의 머리(글 쓰기)는 app/blog/layout.tsx 가 모든 블로그 화면에 같이 둠 */
+/** 블로그 첫 화면. 제목은 미리 그려 두고, 주소의 거르기(?tag=, ?q=)를 읽는 부분만 브라우저에서 그림 */
 export function BlogPage() {
   return (
-    <Sheet clip className="community-sheet" aria-labelledby="blog-title">
-      <div className="community-section-head">
-        <h2 id="blog-title">최근 글</h2>
-        <span className="community-meta">잠긴 글은 제목만 보입니다</span>
-      </div>
-      <BlogPostList />
-    </Sheet>
+    <div className="blog-page">
+      <header className="blog-hero">
+        <p className="hand blog-hero-hand">혼잣말과 공부한 것 사이 어딘가</p>
+        <h1>블로그</h1>
+        <p>기술 글은 누구나 읽을 수 있어요. 잠긴 글은 주인장이 허락한 분만 읽는데, 문제를 풀어도 열린다는 소문이 있습니다.</p>
+      </header>
+      <Suspense fallback={null}>
+        <BlogBoard />
+      </Suspense>
+    </div>
   );
 }
