@@ -1,4 +1,5 @@
 /* 블로그 목록 배치. 제목과 검색, 카드는 포트폴리오, 피드와 같은 920px 가운데 단에 두어 탭을 옮겨도 자리가 같음
+   1920px 이상 넓은 모니터에서는 빈 책상이 너무 넓어서 단만 카드 4장 너비로 넓힘
    사이드바는 그 단 옆에 따로 빼서 제목부터 목록 끝까지 세로로 길게 차지하고, 스크롤하면 화면 위에 붙어 따라옴. 960px 이하는 맨 아래 */
 .blog-page {
   --blog-hero-top: clamp(52px, 8vw, 100px);
@@ -31,6 +32,12 @@
 .blog-hero > p:last-child > span { display: block; text-wrap: balance; }
 /* 칸 너비를 단에 고정해서, 주인장에게 보이는 '나만 보기' 칩까지 한 줄로 늘어서도 휴대폰에서 칸이 밀려 넓어지지 않음 (칩은 옆으로 밀어 봄) */
 .blog-board-main { grid-area: main; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-content: start; min-width: 0; }
+
+/* 넓은 모니터: 단을 1236px 로 넓혀 카드를 4장씩 놓음. 카드 한 장 크기는 920px 단의 3장과 같고,
+   양옆에 사이드바(260px)와 간격이 들어갈 자리가 남는 1920px 부터 적용 */
+@media (min-width: 1920px) {
+  .blog-page { grid-template-columns: minmax(0, 1fr) minmax(0, 1236px) minmax(0, 1fr); }
+}
 
 /* 노트북 화면: 단 바깥에 사이드바 놓을 자리(220px)가 없으면 사이드바와 단을 나란히 붙여 가운데에 둠 */
 @media (max-width: 1519px) {

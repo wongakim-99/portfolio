@@ -8,7 +8,8 @@
 .blog-article-meta b { color: var(--ink); }
 .blog-article-meta .community-inline-actions.action-row { margin-top: 0; }
 .blog-article-head .blog-tags { margin-top: 20px; }
-.blog-article-body { max-width: 72ch; padding: 38px 0 48px; }
+/* 본문은 글쓰기 칸과 같은 종이 폭 전체를 씀. 폭이 같아야 쓸 때 본 줄바꿈 그대로 읽힘 */
+.blog-article-body { padding: 38px 0 48px; }
 /* 표지: 종이 위쪽에 붙인 넓은 사진 */
 .blog-article-cover { display: block; aspect-ratio: 16 / 9; margin: 0 0 clamp(24px, 4vw, 36px); overflow: hidden; border-radius: 3px; box-shadow: var(--shadow-sticker); }
 .blog-article-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
