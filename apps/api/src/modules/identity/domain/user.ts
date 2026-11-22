@@ -12,7 +12,25 @@ export interface User {
   /** 사진 저장소 avatars/ 아래 파일 이름 */
   avatar: string | null;
   verifiedAt: Date | null;
+  /** 마지막으로 로그인(세션을 연) 시각. 2026-11-22 전에는 적지 않아서 비어 있을 수 있음 */
+  lastLoginAt: Date | null;
   createdAt: Date;
+}
+
+/** 관리실 회원 목록에 보이는 것. 이메일, 가입 확인, 로그인 기록까지 */
+export interface MemberRecord {
+  id: string;
+  name: string;
+  email: string;
+  bio: string;
+  avatarUrl: string | null;
+  role: Role;
+  createdAt: Date;
+  /** null 이면 가입 확인 메일을 기다리는 중 (하루 뒤 지워짐) */
+  verifiedAt: Date | null;
+  lastLoginAt: Date | null;
+  /** 아직 열려 있는 로그인 세션 수 */
+  activeSessions: number;
 }
 
 /** 로그인한 사람. 권한은 요청마다 역할에서 다시 계산함 */

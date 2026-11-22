@@ -12,15 +12,19 @@ export type Permission =
   | 'reports:dismiss'
   | 'content:moderate' // 남의 글과 댓글 삭제 (수정은 못 함)
   | 'server:read' // 관리실의 실시간 서버 토폴로지
+  | 'members:read' // 관리실의 회원 목록 (이메일, 가입 확인, 로그인 기록 포함)
+  | 'members:role' // 회원을 관리자로 지정하거나 해제. 주인장만
   | 'blog:write' // 블로그 글 쓰기, 고치기, 지우기. 모든 공개 범위의 글을 읽음
   | 'blog:grant'; // 블로그 열람 요청을 허락, 거절하고 허락을 거둠
 
-const ADMIN: readonly Permission[] = ['messages:read', 'messages:delete', 'reports:read', 'reports:dismiss', 'content:moderate', 'server:read'];
+const ADMIN: readonly Permission[] = [
+  'messages:read', 'messages:delete', 'reports:read', 'reports:dismiss', 'content:moderate', 'server:read', 'members:read',
+];
 
 const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   member: [],
   admin: ADMIN,
-  owner: [...ADMIN, 'blog:write', 'blog:grant'],
+  owner: [...ADMIN, 'blog:write', 'blog:grant', 'members:role'],
 };
 
 export function permissionsOf(role?: string | null): Permission[] {

@@ -1,0 +1,4 @@
+/* 회원 상세의 역할 칸. 주인장에게만 보임 */
+.member-role { display: grid; justify-items: start; gap: 8px; margin-top: 22px; padding-top: 18px; border-top: 1px dashed var(--paper-rule); }
+.member-role h4 { margin: 0; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+.member-role p { margin: 0; }

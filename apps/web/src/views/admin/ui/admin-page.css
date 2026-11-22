@@ -1,7 +1,38 @@
-/* 관리실: 지금 서버, 쪽지함, 신고를 한 장에 */
+/* 관리실: 종이 한 장에 한 칸씩. 칸 고르기는 넓은 화면에서 종이 왼쪽 책상 위의 사이드 패널, 좁으면 종이 위에 붙은 색인 탭 */
 /* 피드 종이의 기본 제목(.community-sheet > h2)보다 크게 */
 .community-sheet.admin-sheet > h2 { margin: 0; font-family: var(--font-display); font-size: clamp(36px, 5.2vw, 54px); line-height: 1.2; letter-spacing: -.03em; }
 .admin-lead { margin: 10px 0 0; }
 .admin-block { padding-top: 44px; }
 .admin-block h3 { margin: 0; font-size: 24px; letter-spacing: -.02em; }
 .admin-block .community-section-head { padding-bottom: 18px; }
+
+/* 종이는 피드, 포트폴리오와 같은 920px 가운데 단 그대로. 사이드 패널만 그 왼쪽 책상 위에 놓음 (블로그 목록과 같은 배치) */
+.admin-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 920px) minmax(0, 1fr);
+  grid-template-areas: "nav sheet .";
+  column-gap: 36px;
+  scroll-margin-top: 16px;
+}
+.admin-layout > .admin-sheet { grid-area: sheet; width: 100%; }
+
+.admin-nav { grid-area: nav; justify-self: end; align-self: start; position: sticky; top: 24px; width: min(100%, 220px); padding: 22px 16px 16px; border-radius: 3px; background: var(--paper); box-shadow: var(--shadow-soft); transition: background-color .4s ease; }
+.admin-nav-hand { margin: 0 0 10px 8px; color: var(--pen); font-size: 22px; transform: rotate(-2deg); transform-origin: left; }
+.admin-nav ul { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.admin-nav a { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 10px; border-radius: 3px; color: var(--ink); font-size: 15px; text-decoration: none; transition: background-color .15s ease; }
+.admin-nav a:hover { background: color-mix(in srgb, var(--desk) 30%, var(--paper)); }
+.admin-nav a.is-active { background: color-mix(in srgb, var(--desk) 30%, var(--paper)); font-weight: 700; box-shadow: inset 3px 0 0 var(--pen); }
+.admin-nav a:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
+.admin-nav-badge { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--stamp-red); color: var(--st-white); font-family: var(--font-mono); font-size: 11px; font-weight: 600; line-height: 1; }
+
+/* 노트북과 휴대폰: 패널 대신 종이 윗변에 붙은 색인 탭. 고른 탭만 종이와 같은 색으로 이어짐 */
+@media (max-width: 1519px) {
+  .admin-layout { grid-template-columns: minmax(0, 920px); grid-template-areas: "nav" "sheet"; justify-content: center; }
+  .admin-nav { position: relative; z-index: 1; justify-self: stretch; width: auto; padding: 0 clamp(12px, 3vw, 24px); border-radius: 0; background: none; box-shadow: none; }
+  .admin-nav-hand { display: none; }
+  .admin-nav ul { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  .admin-nav li { flex: none; }
+  .admin-nav a { gap: 8px; padding: 10px 16px 9px; border-radius: 6px 6px 0 0; background: color-mix(in srgb, var(--paper) 55%, var(--desk)); font-size: 14px; box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--ink) 8%, transparent); }
+  .admin-nav a:hover { background: color-mix(in srgb, var(--paper) 80%, var(--desk)); }
+  .admin-nav a.is-active { background: var(--paper); box-shadow: 0 -2px 6px rgb(15 20 25 / .06), inset 0 2px 0 var(--pen); }
+}

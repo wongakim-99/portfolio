@@ -32,6 +32,10 @@ export class CommunityUser {
   @Prop({ type: Date, default: null })
   pendingExpiresAt: Date | null;
 
+  // 마지막으로 로그인(세션을 연) 시각. 관리실 회원 목록에 보임. 2026-11-22 전 가입자는 다음 로그인부터 채워짐
+  @Prop({ type: Date, default: null })
+  lastLoginAt: Date | null;
+
   createdAt: Date;
 }
 

@@ -763,6 +763,63 @@ describe('server', () => {
   });
 });
 
+describe('members', () => {
+  let app: INestApplication<App>;
+  beforeAll(async () => (app = await createApp()));
+  afterAll(async () => app.close());
+
+  it('관리자와 주인장은 회원 목록을 보고, 주인장만 다른 회원을 관리자로 지정하거나 해제함', async () => {
+    const server = app.getHttpServer();
+    const ip = '203.0.113.170, 172.18.0.1';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return { cookie: (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0], id: res.body.user.id as string };
+    };
+    const setRole = (email: string, role: string) => request(server).put('/api/community/admin/users/role')
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`).send({ email, role }).expect(200);
+    const owner = await join('members-owner@example.com', '주인');
+    const admin = await join('members-admin@example.com', '운영');
+    const member = await join('members-member@example.com', '회원');
+    // 가입 확인을 마치지 않은 사람도 목록에 '확인 대기'로 보임
+    await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+      .send({ email: 'members-pending@example.com', name: '대기', password: 'correct horse battery staple' }).expect(202);
+    await setRole('members-owner@example.com', 'owner');
+    await setRole('members-admin@example.com', 'admin');
+
+    await request(server).get('/api/community/admin/members').expect(401);
+    await request(server).get('/api/community/admin/members').set('Cookie', member.cookie).expect(403);
+    const listed = await request(server).get('/api/community/admin/members').set('Cookie', admin.cookie).expect(200);
+    expect(listed.headers['cache-control']).toBe('private, no-store');
+    const byEmail = new Map(listed.body.members.map((row: { email: string }) => [row.email, row]));
+    expect(byEmail.get('members-member@example.com')).toMatchObject({
+      id: member.id, name: '회원', role: 'member', activeSessions: 1, verifiedAt: expect.any(String), lastLoginAt: expect.any(String),
+    });
+    expect(byEmail.get('members-pending@example.com')).toMatchObject({ verifiedAt: null, lastLoginAt: null, activeSessions: 0 });
+    expect(byEmail.get('members-owner@example.com')).toMatchObject({ role: 'owner' });
+    expect(listed.body.members[0]).not.toHaveProperty('passwordHash');
+    expect(listed.body.limited).toBe(false);
+
+    // 관리자는 보기만, 주인장만 바꿈. 주인장 자신, 다른 주인장, 확인 대기, 없는 회원은 못 바꿈
+    const roleOf = (id: string, role: string, cookie: string) => request(server).patch(`/api/community/admin/members/${id}/role`)
+      .set('Cookie', cookie).send({ role });
+    await roleOf(member.id, 'admin', admin.cookie).expect(403);
+    await roleOf(member.id, 'owner', owner.cookie).expect(400);
+    await roleOf(owner.id, 'member', owner.cookie).expect(400);
+    await roleOf('not-an-id', 'admin', owner.cookie).expect(404);
+    const pendingId = (byEmail.get('members-pending@example.com') as { id: string }).id;
+    await roleOf(pendingId, 'admin', owner.cookie).expect(404);
+    await roleOf(member.id, 'admin', owner.cookie).set('Origin', 'https://evil.example').expect(403);
+    expect((await roleOf(member.id, 'admin', owner.cookie).expect(200)).body.member).toMatchObject({ id: member.id, role: 'admin' });
+    // 권한은 요청마다 역할에서 다시 계산하므로 이미 로그인한 세션에도 바로 반영됨
+    await request(server).get('/api/community/admin/members').set('Cookie', member.cookie).expect(200);
+    expect((await roleOf(member.id, 'member', owner.cookie).expect(200)).body.member.role).toBe('member');
+    await request(server).get('/api/community/admin/members').set('Cookie', member.cookie).expect(403);
+  });
+});
+
 describe('high-fives', () => {
   let app: INestApplication<App>;
   beforeAll(async () => (app = await createApp()));

@@ -28,10 +28,12 @@ src/
   views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin, blog, blog-post, blog-editor
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
                guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports,
-               blog-search(검색창과 분류 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 분류, 태그), blog-lock(잠긴 글 자리), admin-blog-access(열람 요청과 허락 명단)
+               blog-search(검색창과 분류 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 분류, 태그), blog-lock(잠긴 글 자리, 항복 문서), admin-blog-access(열람 요청과 허락 명단),
+               admin-members(회원 수, 가입 막대, 회원 명부와 상세)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar,
-               write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access
+               write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
+               change-member-role(관리실에서 관리자 지정, 해제)
   entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report,
                blog-post, blog-access
   shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 저장소, 한국어 줄바꿈 다듬기, 한글 글꼴 미리 받기), ui(Sheet, Dialog, FormStatus), styles(색 토큰, 바탕)
@@ -175,17 +177,21 @@ COMMUNITY_BASE_URL=https://gawon-dev.tail7c7524.ts.net
 | 역할 | 권한 |
 |---|---|
 | `member` (기본) | 없음. 글, 댓글, 신고, 내 페이지 같은 일반 기능만 씀 |
-| `admin` | `messages:read`, `messages:delete` (홈 엽서 쪽지), `reports:read`, `reports:dismiss` (신고), `content:moderate` (남의 글과 댓글 삭제), `server:read` (지금 서버 구성도) |
-| `owner` | 사이트 주인 한 사람. `admin` 권한 전부와 `blog:write` (블로그 글쓰기, 나만 보기 글까지 읽기), `blog:grant` (블로그 열람 요청 허락, 거절, 허락 거두기). 회원 페이지에 `주인장` 도장 |
+| `admin` | `messages:read`, `messages:delete` (홈 엽서 쪽지), `reports:read`, `reports:dismiss` (신고), `content:moderate` (남의 글과 댓글 삭제), `server:read` (지금 서버 구성도), `members:read` (회원 목록, 이메일 포함) |
+| `owner` | 사이트 주인 한 사람. `admin` 권한 전부와 `blog:write` (블로그 글쓰기, 나만 보기 글까지 읽기), `blog:grant` (블로그 열람 요청 허락, 거절, 허락 거두기), `members:role` (회원을 관리자로 지정, 해제). 회원 페이지에 `주인장` 도장 |
 
 - 내 글과 댓글만 고치고 지우는 규칙은 역할이 아니라 글쓴이가 누구인지로 따진다. 관리자도 남의 글 내용은 고칠 수 없고 삭제만 할 수 있다
 - 관리자로 로그인하면 피드 위에 `관리실` 버튼과 새 쪽지 수가 보이고, `/feed/admin` 에서 쪽지함과 신고를 처리한다. 쪽지함을 열면 그때까지 온 쪽지는 읽은 것으로 바뀐다
+- 관리실은 한 번에 한 칸(지금 서버, 회원, 블로그 열람, 쪽지함, 신고)만 펼친다. 칸은 넓은 화면(1520px 이상)에서 종이 왼쪽 사이드 패널, 그보다 좁으면 종이 위에 붙은 색인 탭으로 고르고, 새 쪽지, 신고, 기다리는 열람 요청 수가 빨간 숫자로 붙는다. 고른 칸은 주소의 `#server`, `#members`, `#blog-requests`, `#inbox`, `#reports` 로 남아서 블로그 머리와 알림 메일의 `/feed/admin#blog-requests` 링크가 그 칸을 바로 연다
+- `회원` 칸: 가입 확인을 마친 회원, 최근 7일 가입, 확인 대기, 운영진 수와 최근 30일 날짜별 가입 막대, 이름이나 이메일로 찾는 회원 명부(가입일, 마지막 로그인). 회원을 누르면 이메일, 소개, 가입과 확인 시각, 마지막 로그인, 로그인해 둔 브라우저 수, 피드 글과 댓글 수가 보이고, 주인장은 그 자리에서 관리자로 지정하거나 해제한다 (`GET /api/community/admin/members`, `PATCH /api/community/admin/members/<회원_ID>/role`)
+  - 마지막 로그인은 로그인할 때마다 계정 문서의 `lastLoginAt` 에 적는다. 2026-11-22 전에 로그인한 회원은 아직 열린 세션 중 가장 늦은 것의 시작 시각으로 어림한다
+  - 목록은 이메일이 들어 있어 `Cache-Control: private, no-store`. 1000명까지 한 번에 받아 화면에서 찾고 거른다
 - 관리자 계정의 회원 페이지에는 `운영자` 도장이 찍힌다
-- 관리실 맨 위 `지금 서버` 는 방문자 → Tailscale Funnel → proxy(Caddy) → api(NestJS) → mongo, minio 구성도다. 2초마다 `/api/community/admin/topology` 를 불러, 실제 요청과 DB 명령, 사진 저장소 작업을 일어난 간격 그대로 점으로 흘려보낸다. 요청은 파란 점으로 api 까지 갔다가 응답 상태 색(정상 초록, 4xx 노랑, 5xx 빨강)으로 돌아오고, 칸마다 상태 불빛과 분당 횟수, 노트북 온도와 배터리, 최근 요청 12건이 같이 바뀐다
+- 관리실의 `지금 서버` 칸은 방문자 → Tailscale Funnel → proxy(Caddy) → api(NestJS) → mongo, minio 구성도다. 2초마다 `/api/community/admin/topology` 를 불러, 실제 요청과 DB 명령, 사진 저장소 작업을 일어난 간격 그대로 점으로 흘려보낸다. 요청은 파란 점으로 api 까지 갔다가 응답 상태 색(정상 초록, 4xx 노랑, 5xx 빨강)으로 돌아오고, 칸마다 상태 불빛과 분당 횟수, 노트북 온도와 배터리, 최근 요청 12건이 같이 바뀐다
 - 이 기록은 API 메모리에 최근 400건만 두고 재시작하면 비운다 (`apps/api/src/shared/infrastructure/telemetry`). 경로는 `:id` 같은 라우트 모양으로만, 방문자는 salt 섞은 해시로만 센다. 배포 헬스체크와 관리실 자신의 새로고침은 세지 않는다. 페이지 요청은 web(Next.js) 컨테이너가 받아 API 를 거치지 않으므로 API 요청만 보인다
 - 페이지는 권한 목록으로 버튼만 보이거나 숨기고, 실제 허용 여부는 서버의 `PermissionGuard` 가 확인한다
 
-역할 지정은 서버의 `ADMIN_TOKEN` 으로만 한다. 페이지에서 스스로 관리자가 되는 길은 없다. 이메일 확인을 마친 회원만 지정할 수 있다.
+주인장(`owner`) 지정은 서버의 `ADMIN_TOKEN` 으로만 한다. 관리자(`admin`) 지정과 해제는 주인장이 관리실 회원 칸에서도 할 수 있다. 주인장 자신과 다른 주인장의 역할은 페이지에서 바꿀 수 없고, 페이지에서 스스로 역할을 올리는 길은 없다. 이메일 확인을 마친 회원만 지정할 수 있다.
 
 ```bash
 source ~/.config/portfolio/api.docker.env

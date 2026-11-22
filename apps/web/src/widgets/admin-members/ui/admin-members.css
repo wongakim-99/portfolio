@@ -1,0 +1,78 @@
+/* 관리실 회원 칸: 위에 숫자 네 칸과 가입 막대, 아래에 찾기와 회원 명부. 회원을 누르면 자세한 정보 창 */
+.members-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); margin: 0; border-block: 1px solid var(--paper-rule); }
+.members-stats div { display: grid; align-content: start; gap: 2px; padding: 16px 14px; border-left: 1px dashed var(--paper-rule); }
+.members-stats div:first-child { padding-left: 0; border-left: 0; }
+.members-stats dt { color: var(--ink-soft); font-size: 13px; font-weight: 600; }
+.members-stats dd { margin: 0; font-family: var(--font-display); font-size: 32px; font-weight: 700; line-height: 1.2; font-variant-numeric: tabular-nums; }
+.members-stats span { color: var(--ink-soft); font-size: 12px; line-height: 1.5; text-wrap: balance; }
+
+/* 가입 막대: 펜 잉크 한 색, 위쪽만 둥근 막대가 한 바닥선에서 자람. 올린 날만 진하게 */
+.members-chart { margin: 22px 0 0; }
+.members-chart figcaption { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px; color: var(--ink-soft); font-size: 13px; }
+.members-chart figcaption span:first-child { color: var(--ink); font-weight: 600; }
+.members-chart figcaption span:last-child { font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.members-bars { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px; height: 72px; border-bottom: 1px solid var(--paper-rule); }
+.members-bar-slot { display: flex; align-items: flex-end; justify-content: center; height: 100%; cursor: default; }
+.members-bar-slot i { width: min(100%, 24px); border-radius: 4px 4px 0 0; background: var(--pen); transition: opacity .15s ease; }
+.members-bars[data-hover] .members-bar-slot:not([data-active]) i { opacity: .4; }
+.members-chart-axis { display: flex; justify-content: space-between; margin-top: 4px; color: var(--ink-soft); font-family: var(--font-mono); font-size: 11px; }
+
+/* 찾기와 분류 칩 */
+.members-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; margin: 26px 0 6px; }
+.members-tools input { flex: 1 1 240px; max-width: 360px; height: 42px; padding: 0 14px; border: 0; border-radius: 3px; background: var(--paper); color: var(--ink); font: inherit; font-size: 15px; box-shadow: inset 0 0 0 1px var(--paper-rule), 0 1px 2px rgb(15 20 25 / .06); }
+.members-tools input:focus { outline: 2px solid var(--pen); outline-offset: 2px; }
+.members-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.members-chip { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); border-radius: 999px; background: none; color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.members-chip span { color: var(--ink-soft); font-family: var(--font-mono); font-size: 11px; font-weight: 400; }
+.members-chip:hover { border-color: var(--ink); }
+.members-chip.is-active { border-color: var(--ink); box-shadow: inset 0 -2px 0 var(--pen); }
+
+/* 회원 명부: 한 줄에 사진, 이름과 이메일, 가입일, 마지막 로그인 */
+.members-list { margin: 0; padding: 0; list-style: none; }
+.members-list li + li { border-top: 1px dashed var(--paper-rule); }
+.members-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) 96px 116px; align-items: center; gap: 14px; width: 100%; padding: 14px 6px; border: 0; border-radius: 3px; background: none; color: var(--ink); font: inherit; text-align: left; cursor: pointer; transition: background-color .15s ease; }
+.members-row:hover { background: color-mix(in srgb, var(--desk) 22%, transparent); }
+.members-row:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
+.members-avatar { width: 40px; height: 40px; border-radius: 50%; font-size: 22px; }
+.members-who { display: grid; min-width: 0; gap: 2px; }
+.members-name { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; min-width: 0; }
+.members-name b { overflow-wrap: anywhere; }
+.members-email { overflow: hidden; color: var(--ink-soft); font-family: var(--font-mono); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.members-when { display: grid; color: var(--ink); font-size: 13px; font-variant-numeric: tabular-nums; }
+.members-when small { color: var(--ink-soft); font-size: 11px; }
+
+/* 역할 도장. 회원 페이지의 도장(views/profile)보다 작게 */
+.member-stamps { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.member-stamp { display: inline-flex; align-items: center; padding: 0 7px; border: 2px solid var(--stamp-red); border-radius: 5px; color: var(--stamp-red); font-size: 11px; font-weight: 700; letter-spacing: .08em; line-height: 1.6; transform: rotate(-4deg); }
+.member-stamp.is-pending { border-style: dashed; border-color: var(--ink-soft); color: var(--ink-soft); transform: rotate(2deg); }
+
+/* 회원 자세히 */
+.community-dialog.member-dialog { width: min(480px, calc(100vw - 28px)); border-radius: 3px; }
+.member-card { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 18px; }
+.member-card-avatar { width: 64px; height: 64px; border-radius: 50%; font-size: 34px; }
+.member-card-text { display: grid; justify-items: start; gap: 6px; min-width: 0; }
+.member-card-email { max-width: 100%; color: var(--ink); font-family: var(--font-mono); font-size: 13px; overflow-wrap: anywhere; text-underline-offset: 3px; }
+.member-card-text p { margin: 0; color: var(--ink-soft); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.member-facts { display: grid; gap: 0; margin: 20px 0 0; }
+.member-facts div { display: grid; grid-template-columns: 120px minmax(0, 1fr); gap: 12px; padding: 9px 0; border-bottom: 1px dashed var(--paper-rule); font-size: 14px; }
+.member-facts dt { color: var(--ink-soft); }
+.member-facts dd { margin: 0; text-wrap: pretty; }
+.member-page-link { display: inline-block; margin-top: 16px; color: var(--pen); font-size: 14px; font-weight: 600; text-decoration: none; }
+.member-page-link::after { content: " \2192"; }
+.member-page-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+@media (max-width: 720px) {
+  .members-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .members-stats div:nth-child(3) { padding-left: 0; border-left: 0; }
+  .members-stats div:nth-child(n + 3) { border-top: 1px dashed var(--paper-rule); }
+  .members-stats dd { font-size: 26px; }
+  .members-tools input { max-width: none; }
+  /* 좁으면 가입일과 마지막 로그인을 이름 아래 한 줄로 */
+  .members-row { grid-template-columns: 40px minmax(0, 1fr) auto; grid-template-areas: "avatar who who" "avatar joined seen"; gap: 6px 12px; }
+  .members-avatar { grid-area: avatar; align-self: start; }
+  .members-who { grid-area: who; }
+  .members-when { display: flex; gap: 6px; align-items: baseline; font-size: 12px; }
+  .members-joined { grid-area: joined; }
+  .members-seen { grid-area: seen; justify-self: end; }
+  .member-facts div { grid-template-columns: 96px minmax(0, 1fr); }
+}

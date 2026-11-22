@@ -73,6 +73,12 @@ export class RoleDto {
   role: Role;
 }
 
+// 관리실에서 주인장이 바꾸는 역할. 주인장(owner) 지정은 서버의 ADMIN_TOKEN 으로만
+export class MemberRoleDto {
+  @IsIn(['member', 'admin'])
+  role: 'member' | 'admin';
+}
+
 export class ProfileDto {
   @Transform(oneLine)
   @IsString()

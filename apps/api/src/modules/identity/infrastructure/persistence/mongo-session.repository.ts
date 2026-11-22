@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model } from 'mongoose';
+import { isEntityId } from '../../../../shared/domain/entity-id.js';
 import { asObjectId, toObjectId } from '../../../../shared/infrastructure/mongo.js';
 import { MailTokenRepository, SessionRepository } from '../../domain/identity.ports.js';
 import type { MailTokenKind } from '../../domain/session.js';
@@ -29,6 +30,15 @@ export class MongoSessionRepository extends SessionRepository {
     await this.sessions.deleteMany({
       userId: toObjectId(userId), ...(exceptTokenHash === undefined ? {} : { tokenHash: { $ne: exceptTokenHash } }),
     });
+  }
+
+  async activity(userIds: string[], now: Date) {
+    const ids = userIds.filter(isEntityId).map(asObjectId);
+    const rows = await this.sessions.aggregate<{ _id: unknown; count: number; latestExpiresAt: Date }>([
+      { $match: { userId: { $in: ids }, expiresAt: { $gt: now } } },
+      { $group: { _id: '$userId', count: { $sum: 1 }, latestExpiresAt: { $max: '$expiresAt' } } },
+    ]);
+    return new Map(rows.map((row) => [String(row._id), { count: row.count, latestExpiresAt: row.latestExpiresAt }]));
   }
 }
 

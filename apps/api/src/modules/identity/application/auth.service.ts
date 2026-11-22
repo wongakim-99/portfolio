@@ -27,7 +27,10 @@ export class AuthService {
 
   private async openSession(userId: string): Promise<string> {
     const token = newSecretToken();
-    await this.sessions.create(hashSecretToken(token), userId, new Date(Date.now() + SESSION_AGE_MS));
+    const now = Date.now();
+    await this.sessions.create(hashSecretToken(token), userId, new Date(now + SESSION_AGE_MS));
+    // 관리실 회원 목록의 '마지막 로그인'
+    await this.users.touchLogin(userId, new Date(now));
     return token;
   }
 

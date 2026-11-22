@@ -11,7 +11,8 @@ type UserDoc = CommunityUser & { _id: unknown };
 
 const toUser = (doc: UserDoc): User => ({
   id: String(doc._id), email: doc.email, name: doc.name, passwordHash: doc.passwordHash, role: doc.role ?? 'member',
-  bio: doc.bio ?? '', avatar: doc.avatar ?? null, verifiedAt: doc.verifiedAt ?? null, createdAt: doc.createdAt,
+  bio: doc.bio ?? '', avatar: doc.avatar ?? null, verifiedAt: doc.verifiedAt ?? null, lastLoginAt: doc.lastLoginAt ?? null,
+  createdAt: doc.createdAt,
 });
 const verified = { verifiedAt: { $ne: null } };
 
@@ -98,6 +99,22 @@ export class MongoUserRepository extends UserRepository {
   async setRoleByEmail(email: string, role: Role) {
     const user = await this.users.findOneAndUpdate({ email, ...verified }, { $set: { role } }, { returnDocument: 'after' }).lean();
     return user && toUser(user);
+  }
+
+  async setRoleById(id: string, role: Exclude<Role, 'owner'>) {
+    const user = await this.users.findOneAndUpdate(
+      { _id: toObjectId(id), ...verified, role: { $ne: 'owner' } }, { $set: { role } }, { returnDocument: 'after' },
+    ).lean();
+    return user && toUser(user);
+  }
+
+  async listAll(limit: number) {
+    const users = await this.users.find().sort({ _id: -1 }).limit(limit).lean();
+    return users.map(toUser);
+  }
+
+  async touchLogin(id: string, at: Date) {
+    await this.users.updateOne({ _id: toObjectId(id) }, { $set: { lastLoginAt: at } });
   }
 
   async setAvatar(id: string, avatar: string | null) {

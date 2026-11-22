@@ -24,6 +24,11 @@ export abstract class UserRepository {
   abstract setPasswordHash(id: string, passwordHash: string, verifiedOnly?: boolean): Promise<void>;
   abstract updateProfile(id: string, profile: { name: string; bio: string }): Promise<void>;
   abstract setRoleByEmail(email: string, role: Role): Promise<User | null>;
+  /** 관리실에서 바꾸는 역할. 확인된 회원만, 주인장(owner)은 건드리지 않음. 못 바꾸면 null */
+  abstract setRoleById(id: string, role: Exclude<Role, 'owner'>): Promise<User | null>;
+  /** 확인 대기 가입까지 모든 계정. 최근 가입 순 */
+  abstract listAll(limit: number): Promise<User[]>;
+  abstract touchLogin(id: string, at: Date): Promise<void>;
   /** 바꾸기 전 사진 파일 이름을 돌려줌 */
   abstract setAvatar(id: string, avatar: string | null): Promise<string | null>;
 }
@@ -35,6 +40,8 @@ export abstract class SessionRepository {
   abstract delete(tokenHash: string): Promise<void>;
   /** exceptTokenHash 를 주면 그 세션만 남김 (비밀번호를 바꾼 지금 창) */
   abstract deleteAllFor(userId: string, exceptTokenHash?: string): Promise<void>;
+  /** 회원마다 아직 열린 세션 수와 그중 가장 늦게 끝나는 시각. 로그인 기록이 없는 옛 회원의 마지막 로그인을 어림할 때 씀 */
+  abstract activity(userIds: string[], now: Date): Promise<Map<string, { count: number; latestExpiresAt: Date }>>;
 }
 
 export abstract class MailTokenRepository {
