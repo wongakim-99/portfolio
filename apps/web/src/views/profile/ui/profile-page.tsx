@@ -5,6 +5,7 @@ import { routes } from '@shared/config';
 import { cx, formatDate, useDocumentTitle } from '@shared/lib';
 import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
 import { PostList } from '@widgets/post-list';
+import { RockySetting } from '@widgets/rocky';
 import { useLogout } from '@features/auth';
 import { AvatarActions } from '@features/change-avatar';
 import { PasswordForm } from '@features/change-password';
@@ -12,7 +13,7 @@ import { ProfileForm } from '@features/edit-profile';
 import { Avatar, getProfile, useSession, type Profile } from '@entities/user';
 import './profile-page.css';
 
-/** 회원 페이지. 내 페이지면 사진, 이름, 소개를 고치고 비밀번호 변경과 로그아웃을 함 */
+/** 회원 페이지. 내 페이지면 사진, 이름, 소개를 고치고 비밀번호 변경, 로그아웃, 화면 설정(로키 보이기)을 함 */
 export function ProfilePage({ userId }: { userId: string }) {
   const { user, setUser, config } = useSession();
   const logout = useLogout();
@@ -99,6 +100,10 @@ export function ProfilePage({ userId }: { userId: string }) {
             <button className="text-btn profile-logout" type="button" onClick={() => logout((message) => setAccountStatus({ message, tone: 'error' }))}>
               로그아웃
             </button>
+          </section>
+          <section className="profile-block" aria-labelledby="screen-settings-title">
+            <h3 id="screen-settings-title">화면 설정</h3>
+            <RockySetting />
           </section>
         </div>
       )}

@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react';
 import { cx } from '@shared/lib';
 import type { Point } from '../lib/motion';
+import { restRocky, useRockyMode } from '../lib/preference';
 import { RockyEngine } from '../lib/rocky-engine';
 import { speak } from '../lib/speak';
 import { BUMP_LINE, chordsFor, DIZZY_LINES, ROCKY_LINES } from '../lib/voice';
@@ -10,8 +11,6 @@ import { RockyArt } from './rocky-art';
 import './rocky.css';
 
 const SIZE = 92;
-// '잠깐 쉬기' 를 누르면 이 창을 닫을 때까지 나오지 않음
-const REST_KEY = 'gawon:rocky-resting';
 // 이만큼 움직이면 누르기가 아니라 끌기
 const DRAG_START = 5;
 // 저절로 뜬 말풍선(어지러움)은 잠깐 뒤에 닫음
@@ -19,14 +18,6 @@ const AUTO_CLOSE_MS = 3200;
 // 노트북, 데스크톱(마우스나 트랙패드, 1024px 이상)에서만. 휴대폰, 태블릿은 빈 책상도 좁고 손가락으로 잡기 어려워서 띄우지 않음 (rocky.css 와 같은 조건)
 const DESKTOP = '(hover: hover) and (pointer: fine) and (min-width: 1024px)';
 const ARROWS: Record<string, Point> = { ArrowLeft: { x: -80, y: 0 }, ArrowRight: { x: 80, y: 0 }, ArrowUp: { x: 0, y: -80 }, ArrowDown: { x: 0, y: 80 } };
-
-const resting = () => {
-  try {
-    return sessionStorage.getItem(REST_KEY) === '1';
-  } catch {
-    return false;
-  }
-};
 
 interface Drag {
   pointer: number;
@@ -50,13 +41,14 @@ export function Rocky() {
   const [bubble, setBubble] = useState<Bubble | null>(null);
   const [spoken, setSpoken] = useState(0);
   const [dizzy, setDizzy] = useState(0);
-  const [gone, setGone] = useState(false);
+  // 내 페이지 설정에서 끄거나, 이 탭에서 '잠깐 쉬기' 를 누르면 나오지 않음
+  const shown = useRockyMode() === 'on';
   const bubbleId = useId();
 
   // 화면이 조건에 맞을 때만 엔진을 돌림. 창 크기를 바꿔 조건이 바뀌면 멈추거나 다시 시작함
   useEffect(() => {
     const el = root.current;
-    if (!el || resting()) return;
+    if (!el || !shown) return;
     const desktop = matchMedia(DESKTOP);
     const sync = () => {
       if (desktop.matches && !engine.current) {
@@ -78,8 +70,10 @@ export function Rocky() {
       desktop.removeEventListener('change', sync);
       engine.current?.stop();
       engine.current = null;
+      setVisible(false);
+      setBubble(null);
     };
-  }, []);
+  }, [shown]);
 
   // 세게 던지면 어지럽다고 한마디. 화음도 낮게 한 번
   useEffect(() => {
@@ -126,15 +120,6 @@ export function Rocky() {
     say(text, 'talk', 'hop');
   }
 
-  function rest() {
-    try {
-      sessionStorage.setItem(REST_KEY, '1');
-    } catch {
-      // 저장하지 못해도 이번 화면에서는 숨김
-    }
-    engine.current?.stop();
-    setGone(true);
-  }
 
   // 누르면 말하기, 끌면 잡아서 옮기기, 놓으면 손의 속도로 던지기
   function down(event: PointerEvent<HTMLButtonElement>) {
@@ -208,7 +193,7 @@ export function Rocky() {
     engine.current?.nudge(arrow.x, arrow.y);
   }
 
-  if (gone) return null;
+  if (!shown) return null;
   return (
     <div ref={root} className={cx('rocky', visible && 'is-visible')} aria-hidden={visible ? undefined : true}>
       <button
@@ -237,11 +222,11 @@ export function Rocky() {
                 <button className="tape" type="button" onClick={() => say(BUMP_LINE, 'bump', 'bump')}>
                   주먹 맞대기
                 </button>
-                <button className="text-btn" type="button" onClick={rest}>
+                <button className="text-btn" type="button" onClick={restRocky}>
                   잠깐 쉬기
                 </button>
               </div>
-              <p className="rocky-hint">공을 잡아서 던져 볼 수도 있어요. 살살.</p>
+              <p className="rocky-hint">공을 잡아서 던져 볼 수도 있어요. 살살. 내 페이지의 화면 설정에서 끄고 켤 수 있어요.</p>
             </>
           )}
         </div>
