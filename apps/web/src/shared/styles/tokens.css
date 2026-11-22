@@ -25,6 +25,13 @@
   --sticky-4: #ffc8dc;
   --sticky-ink: #1d1e20;
   --stamp-red: #d6352b;
+  /* 빈 책상을 굴러다니는 로키(widgets/rocky): 황토빛 바윗덩이 몸, 주름진 관절, 초록빛 도는 제노나이트 공 */
+  --rock: #9a7446;
+  --rock-deep: #4b3520;
+  --rock-fleck: #c9a271;
+  --rock-joint: #6b4d30;
+  --xenonite: rgb(205 232 218 / .32);
+  --xenonite-line: rgb(60 120 95 / .32);
   --st-white: #ffffff;
   --st-black: #17191c;
   --st-red: #e0234e;
@@ -81,6 +88,12 @@
     --sticky-3: #9db4dc;
     --sticky-4: #d4a6b8;
     --stamp-red: #ff6b5f;
+    --rock: #a8845a;
+    --rock-deep: #5a4330;
+    --rock-fleck: #d2b08a;
+    --rock-joint: #7a5c40;
+    --xenonite: rgb(120 190 160 / .14);
+    --xenonite-line: rgb(140 205 175 / .3);
     --shadow-soft: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px rgb(0 0 0 / .5);
     --shadow-sticker: 0 1px 1px rgb(0 0 0 / .5), 0 3px 8px rgb(0 0 0 / .4);
     color-scheme: dark;
@@ -107,6 +120,12 @@
   --sticky-3: #9db4dc;
   --sticky-4: #d4a6b8;
   --stamp-red: #ff6b5f;
+  --rock: #a8845a;
+  --rock-deep: #5a4330;
+  --rock-fleck: #d2b08a;
+  --rock-joint: #7a5c40;
+  --xenonite: rgb(120 190 160 / .14);
+  --xenonite-line: rgb(140 205 175 / .3);
   --shadow-soft: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px rgb(0 0 0 / .5);
   --shadow-sticker: 0 1px 1px rgb(0 0 0 / .5), 0 3px 8px rgb(0 0 0 / .4);
   color-scheme: dark;

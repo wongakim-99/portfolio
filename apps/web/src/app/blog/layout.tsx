@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AccountMenu } from '@widgets/account-menu';
+import { Rocky } from '@widgets/rocky';
 import { SiteFooter } from '@widgets/site-footer';
 import { SiteHeader } from '@widgets/site-header';
 import { AuthDialog } from '@features/auth';
@@ -23,6 +24,8 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
         {children}
       </main>
       <SiteFooter />
+      {/* 빈 책상을 굴러다니는 로키 공 (이스터에그) */}
+      <Rocky />
       <AuthDialog />
     </SessionProvider>
   );

@@ -1,0 +1,115 @@
+/* 빈 책상을 굴러다니는 로키 공. 자리는 엔진(lib/rocky-engine.ts)이 transform 으로 정하고, 여기서는 생김새와 움직임만 */
+.rocky { position: fixed; left: 0; top: 0; z-index: 6; width: 92px; height: 92px; opacity: 0; pointer-events: none; transition: opacity .6s ease; will-change: transform; }
+.rocky.is-visible { opacity: 1; }
+.rocky.is-visible .rocky-ball { pointer-events: auto; }
+.rocky-ball { display: block; width: 100%; height: 100%; padding: 0; border: 0; border-radius: 50%; background: none; cursor: grab; filter: drop-shadow(0 7px 7px rgb(15 20 25 / .24)); touch-action: none; transition: transform .2s ease, filter .2s ease; }
+.rocky-ball:hover { transform: scale(1.06); }
+.rocky-ball:focus-visible { outline: 2px solid var(--pen); outline-offset: 4px; }
+
+.rocky-art { display: block; width: 100%; height: 100%; overflow: visible; }
+.rocky-glass { fill: var(--xenonite); stroke: color-mix(in srgb, var(--ink) 28%, transparent); stroke-width: 1.4; }
+.rocky-geo { transform: rotate(var(--rocky-roll, 0deg)); transform-box: view-box; transform-origin: 60px 60px; }
+.rocky-geo ellipse { fill: none; stroke: var(--xenonite-line); stroke-width: .8; }
+.rocky-ground { fill: color-mix(in srgb, var(--rock-deep) 22%, transparent); }
+.rocky-shine { fill: none; stroke: var(--st-white); stroke-width: 3; stroke-linecap: round; opacity: .7; }
+
+/* 로키: 가는 쪽을 보도록 좌우를 뒤집음(creature). 폴짝, 어지러움, 같이 구르기는 그 안쪽 묶음(motion)이 맡음 */
+.rocky-creature, .rocky-motion, .rocky-torso, .rocky-leg { transform-box: view-box; }
+.rocky-creature { transform-origin: 60px 60px; transition: transform .35s ease; }
+.rocky[data-facing="left"] .rocky-creature { transform: scaleX(-1); }
+.rocky-motion { transform-origin: 60px 100px; }
+.rocky-torso { transform-origin: 60px 76px; }
+.rocky-body, .rocky-plate { fill: var(--rock); stroke: var(--rock-deep); stroke-width: 1.6; stroke-linejoin: round; }
+.rocky-plate { fill: color-mix(in srgb, var(--rock) 85%, var(--rock-deep)); }
+.rocky-highlight { fill: var(--rock-fleck); opacity: .75; }
+.rocky-crack { fill: none; stroke: var(--rock-deep); stroke-width: 1; stroke-linecap: round; stroke-linejoin: round; opacity: .8; }
+.rocky-leg path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.rocky-leg-edge { stroke: var(--rock-deep); stroke-width: 11.5; }
+.rocky-leg-stone { stroke: var(--rock); stroke-width: 8.5; }
+.rocky-back .rocky-leg-stone { stroke: color-mix(in srgb, var(--rock) 70%, var(--rock-deep)); }
+.rocky-joint { fill: var(--rock-joint); stroke: var(--rock-deep); stroke-width: 1; }
+.rocky-joint-ridge { stroke: var(--rock-deep); stroke-width: .9; }
+.rocky-fingers { stroke: var(--rock-deep); stroke-width: 2.6; }
+
+/* 가만히: 숨 쉬듯 오르내리고, 가끔 앞다리로 바닥을 톡톡 */
+.rocky[data-state="idle"] .rocky-torso { animation: rocky-breathe 3.2s ease-in-out infinite; }
+.rocky[data-state="idle"] .rocky-leg.is-bump { animation: rocky-tap 5.5s ease-in-out infinite; }
+/* 마우스가 가까이 오면 그쪽으로 몸을 살짝 들어 기울임 */
+.rocky[data-state="idle"][data-curious="true"] .rocky-motion { transform: translateY(-3px) rotate(4deg); transition: transform .3s ease; }
+/* 걷기: 다리 다섯 개를 두 무리로 나눠 들었다 디디고, 몸이 들썩이며 좌우로 흔들림 */
+.rocky[data-state="walking"] .rocky-leg.is-a { animation: rocky-step .34s ease-in-out infinite alternate; }
+.rocky[data-state="walking"] .rocky-leg.is-b { animation: rocky-step .34s ease-in-out -.34s infinite alternate; }
+.rocky[data-state="walking"] .rocky-torso { animation: rocky-sway .34s ease-in-out infinite alternate; }
+/* 잡혔을 때: 공이 커지고 다리를 버둥거림 */
+.rocky[data-state="held"], .rocky[data-state="rolling"] { z-index: 40; }
+.rocky[data-state="held"] .rocky-ball { cursor: grabbing; transform: scale(1.1); filter: drop-shadow(0 16px 14px rgb(15 20 25 / .28)); }
+.rocky[data-state="held"] .rocky-leg { animation: rocky-flail .14s ease-in-out infinite alternate; }
+.rocky[data-state="held"] .rocky-leg.is-b { animation-delay: -.14s; }
+/* 굴러갈 때: 로키도 공과 같이 데굴데굴 */
+.rocky[data-state="rolling"] .rocky-motion { transform: rotate(var(--rocky-roll, 0deg)); transform-origin: 60px 60px; }
+.rocky[data-state="rolling"] .rocky-leg { animation: rocky-flail .2s ease-in-out infinite alternate; }
+/* 세게 던진 뒤: 비틀비틀 */
+.rocky[data-state="dizzy"] .rocky-motion { animation: rocky-dizzy .5s ease-in-out infinite alternate; transform-origin: 60px 100px; }
+/* 말할 때 폴짝, 주먹 맞대기 때 앞다리를 들어 공 벽에 주먹을 댐 */
+.rocky[data-action="hop"] .rocky-motion { animation: rocky-hop .6s cubic-bezier(.3, 1.6, .5, 1); }
+.rocky[data-action="bump"] .rocky-leg.is-bump { animation: rocky-bump 1.05s ease-in-out; }
+.rocky[data-action="bump"] .rocky-motion { animation: rocky-hop .5s cubic-bezier(.3, 1.6, .5, 1) .35s; }
+
+@keyframes rocky-breathe {
+  50% { transform: translateY(-1.2px) scale(1.015); }
+}
+@keyframes rocky-tap {
+  0%, 82%, 100% { transform: rotate(0); }
+  86%, 94% { transform: rotate(-12deg); }
+  90%, 98% { transform: rotate(0); }
+}
+@keyframes rocky-step {
+  from { transform: rotate(-10deg) translateY(0); }
+  50% { transform: rotate(0) translateY(-2.5px); }
+  to { transform: rotate(10deg) translateY(0); }
+}
+@keyframes rocky-sway {
+  from { transform: translateY(0) rotate(-2.5deg); }
+  to { transform: translateY(-2.5px) rotate(2.5deg); }
+}
+@keyframes rocky-flail {
+  from { transform: rotate(-16deg); }
+  to { transform: rotate(16deg); }
+}
+@keyframes rocky-dizzy {
+  from { transform: rotate(-9deg) translateX(-2px); }
+  to { transform: rotate(9deg) translateX(2px); }
+}
+@keyframes rocky-hop {
+  0%, 100% { transform: translateY(0); }
+  35% { transform: translateY(-9px) scale(1.02, .98); }
+  70% { transform: translateY(0) scale(1.03, .96); }
+}
+@keyframes rocky-bump {
+  0%, 100% { transform: rotate(0); }
+  25%, 70% { transform: rotate(-38deg); }
+  45% { transform: rotate(-31deg); }
+}
+
+/* 말풍선: 공 위에, 화면 위쪽이면 아래에. 화면 가장자리에서는 안쪽으로 붙임 */
+.rocky-bubble { position: absolute; bottom: calc(100% + 14px); left: 50%; width: 236px; padding: 12px 14px 8px; border-radius: 10px; background: var(--paper); color: var(--ink); box-shadow: var(--shadow-sticker); transform: translateX(-50%); pointer-events: auto; }
+.rocky-bubble::after { content: ""; position: absolute; top: 100%; left: 50%; border: 8px solid transparent; border-top-color: var(--paper); transform: translateX(-50%); }
+.rocky[data-below="true"] .rocky-bubble { top: calc(100% + 14px); bottom: auto; }
+.rocky[data-below="true"] .rocky-bubble::after { top: auto; bottom: 100%; border-top-color: transparent; border-bottom-color: var(--paper); }
+.rocky[data-edge="right"] .rocky-bubble { left: auto; right: 0; transform: none; }
+.rocky[data-edge="right"] .rocky-bubble::after { left: auto; right: 30px; transform: none; }
+.rocky[data-edge="left"] .rocky-bubble { left: 0; transform: none; }
+.rocky[data-edge="left"] .rocky-bubble::after { left: 30px; transform: none; }
+.rocky-bubble .hand { margin: 0; font-size: 23px; line-height: 1.3; text-wrap: balance; }
+.rocky-bubble-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-top: 10px; }
+.rocky-bubble .tape { min-height: 32px; padding: 3px 12px; font-size: 13px; }
+.rocky-bubble .text-btn { font-size: 12px; }
+.rocky-hint { margin: 8px 0 0; color: var(--ink-soft); font-size: 11px; line-height: 1.5; }
+
+@media (prefers-reduced-motion: reduce) {
+  .rocky-creature, .rocky-ball { transition: none; }
+  .rocky .rocky-leg, .rocky .rocky-torso, .rocky .rocky-motion { animation: none !important; }
+}
+@media print {
+  .rocky { display: none; }
+}

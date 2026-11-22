@@ -29,7 +29,7 @@ src/
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
                guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports,
                blog-search(검색창과 분류 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 분류, 태그), blog-lock(잠긴 글 자리, 항복 문서), admin-blog-access(열람 요청과 허락 명단),
-               admin-members(회원 수, 가입 막대, 회원 명부와 상세)
+               admin-members(회원 수, 가입 막대, 회원 명부와 상세), rocky(빈 책상을 굴러다니는 로키 공)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar,
                write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
@@ -137,6 +137,11 @@ src/
 - 본문은 API 가 허락된 계정에게만 내려 줌. 블로그 읽기 응답은 보는 사람마다 달라서 `Cache-Control: private, no-store`. 글 화면은 미리 그리지 않고 브라우저에서 로그인 상태를 확인한 뒤 받음
 - 글을 공개나 나만 보기로 바꾸면 그 글에 온 요청은 지우고, 글을 지우면 그 글의 요청과 허락도 같이 지움
 - 데이터는 `blog_posts`, `blog_access_requests`, `blog_grants` 컬렉션 (`apps/api/src/modules/blog`)
+- 블로그 화면의 빈 책상에는 이스터에그로 소설 속 외계인 로키를 직접 그린 공이 굴러다님 (`widgets/rocky`, `app/blog/layout.tsx`)
+  - 종이, 카드, 사이드바가 없는 자리만 골라 걸어 다니고, 스크롤로 종이가 밑으로 들어오면 빈 곳으로 비킴. 빈 자리가 없는 좁은 화면에서는 숨음
+  - 누르면 화음(브라우저에서 직접 합성)과 함께 로키 말투의 대사를 하고, 말풍선의 '주먹 맞대기' 를 누르면 앞다리를 들어 공 벽에 주먹을 댐. '잠깐 쉬기' 를 누르면 그 창을 닫을 때까지 나오지 않음
+  - 공을 잡아 끌고 던지면 화면 가장자리에 튕기며 구르고, 세게 던지면 로키가 공 안에서 같이 굴러 어지러워함. 화살표 키로도 밈. 마우스가 가까이 오면 그쪽을 돌아봄
+  - 움직임 줄이기 설정을 켠 사람에게는 걷지 않고 빈 자리에 가만히 있음. 영화 이미지나 소리 같은 공식 자료는 쓰지 않음
 
 ## 피드 계정과 운영
 
