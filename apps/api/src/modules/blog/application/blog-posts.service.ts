@@ -4,7 +4,9 @@ import { UserDirectory, type Identity } from '../../identity/index.js';
 import {
   canRead, EXCERPT_LENGTH, isVisible, POSTS_PER_PAGE, readMinutes, retryAt, VISIBILITIES, type BlogPost, type Visibility,
 } from '../domain/blog.js';
+import { blogImageUrl, firstImage, plainText } from '../domain/blog-image.js';
 import { AccessRequestRepository, BlogPostRepository, GrantRepository } from '../domain/blog.ports.js';
+import { BlogImagesService } from './blog-images.service.js';
 import { readerOf, ReaderAccess } from './reader-access.js';
 
 const POST_MISSING = '글을 찾을 수 없습니다.';
@@ -23,6 +25,14 @@ export interface BlogPostInput {
   body: string;
   visibility: Visibility;
   tags?: string[];
+  /** 표지 사진 파일. 없으면 본문 첫 사진을 썸네일로 씀 */
+  cover?: string | null;
+}
+
+// 썸네일 주소. 고른 표지가 없으면 본문 첫 사진인데, 잠긴 글은 본문을 못 읽으니 고른 표지만 보여 줌
+function coverUrl(post: BlogPost, readable: boolean): string | null {
+  const file = post.cover ?? (readable ? firstImage(post.body) : null);
+  return file && blogImageUrl(file);
 }
 
 // 블로그 글 읽기, 쓰기. 잠긴 글도 목록에는 제목과 태그가 보이고 본문만 숨김
@@ -34,6 +44,7 @@ export class BlogPostsService {
     private readonly grants: GrantRepository,
     private readonly access: ReaderAccess,
     private readonly directory: UserDirectory,
+    private readonly images: BlogImagesService,
   ) {}
 
   // 검색은 잠긴 글이면 제목과 태그만 뒤지고 본문은 보지 않음
@@ -53,8 +64,8 @@ export class BlogPostsService {
       posts: page.map((post) => {
         const readable = canRead(post, reader, grants);
         return {
-          id: post.id, title: post.title, visibility: post.visibility, locked: !readable, tags: post.tags,
-          excerpt: readable ? post.body.slice(0, EXCERPT_LENGTH) : null, readMinutes: readable ? readMinutes(post.body) : null,
+          id: post.id, title: post.title, visibility: post.visibility, locked: !readable, tags: post.tags, cover: coverUrl(post, readable),
+          excerpt: readable ? plainText(post.body).slice(0, EXCERPT_LENGTH) : null, readMinutes: readable ? readMinutes(post.body) : null,
           createdAt: post.createdAt, updatedAt: post.updatedAt,
         };
       }),
@@ -91,6 +102,7 @@ export class BlogPostsService {
     const readable = canRead(post, reader, await this.access.grantsOf(reader));
     return {
       id: post.id, title: post.title, visibility: post.visibility, locked: !readable, tags: post.tags,
+      cover: coverUrl(post, readable), coverFile: post.cover,
       body: readable ? post.body : null, readMinutes: readable ? readMinutes(post.body) : null,
       createdAt: post.createdAt, updatedAt: post.updatedAt,
       request: !readable && reader ? await this.requestState(reader.id, post.id) : null,
@@ -104,22 +116,26 @@ export class BlogPostsService {
 
   async create(input: BlogPostInput, author: Identity) {
     const post = await this.posts.create({
-      title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [], authorId: author.id,
+      title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [], cover: input.cover ?? null, authorId: author.id,
     });
+    await this.images.syncPost(post.id, post.body, post.cover);
     return this.get(post.id, author);
   }
 
   async edit(id: string, input: BlogPostInput, author: Identity) {
     const post = await this.find(id);
-    await this.posts.update(post.id, { title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [] });
+    const cover = input.cover ?? null;
+    await this.posts.update(post.id, { title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [], cover });
+    // 본문이나 표지에서 뺀 사진은 사진 저장소에서도 지움
+    await this.images.syncPost(post.id, input.body, cover);
     // 공개하거나 나만 보기로 돌리면 이 글에 온 요청은 더 기다릴 일이 없음
     if (input.visibility !== 'approved') await this.requests.deleteForPost(post.id);
     return this.get(post.id, author);
   }
 
-  // 글을 지우면 그 글에 온 요청과 그 글만 허락한 것도 같이 지움
+  // 글을 지우면 그 글에 온 요청과 그 글만 허락한 것, 그 글의 사진도 같이 지움
   async remove(id: string): Promise<void> {
     if (!(await this.posts.delete(requireEntityId(id, POST_MISSING)))) throw new NotFoundException(POST_MISSING);
-    await Promise.all([this.requests.deleteForPost(id), this.grants.deleteForPost(id)]);
+    await Promise.all([this.requests.deleteForPost(id), this.grants.deleteForPost(id), this.images.removeForPost(id)]);
   }
 }

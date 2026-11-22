@@ -9,7 +9,7 @@
 
 ```
 apps/web/        Next.js 16 (App Router) 페이지. 홈, 포트폴리오, 블로그, 피드
-apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지, 서버 상태, 하이파이브, 피드, 블로그, 프로필 사진)
+apps/api/        NestJS 12 + Mongoose API (방문 수, 메시지, 서버 상태, 하이파이브, 피드, 블로그와 글 사진, 프로필 사진)
 scripts/         포트폴리오 PDF 생성기와 테스트, PDF 용 글꼴(IBM Plex Sans KR, OFL), 로컬 개발 실행기
 deploy/          배포 스크립트, compose, Caddyfile, Actions runner 사용자 유닛, 1회성 서버 설정
 .github/workflows/deploy.yml
@@ -32,10 +32,10 @@ src/
                admin-members(회원 수, 가입 막대, 회원 명부와 상세), rocky(빈 책상을 굴러다니는 로키 공)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar,
-               write-blog-post(공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
+               write-blog-post(마크다운 편집기, 사진 올리기, 표지 고르기, 노션 붙여넣기, 공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
                change-member-role(관리실에서 관리자 지정, 해제)
   entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report,
-               blog-post, blog-access
+               blog-post(글 API, 마크다운 그리기, 콜아웃), blog-access
   shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 저장소, 한국어 줄바꿈 다듬기, 한글 글꼴 미리 받기), ui(Sheet, Dialog, FormStatus), styles(색 토큰, 바탕)
 ```
 
@@ -136,7 +136,24 @@ src/
 - 거절된 요청은 3일 뒤에 다시 보낼 수 있음. 허락은 관리실의 `열람 허락 명단` 에서 언제든 거둠
 - 본문은 API 가 허락된 계정에게만 내려 줌. 블로그 읽기 응답은 보는 사람마다 달라서 `Cache-Control: private, no-store`. 글 화면은 미리 그리지 않고 브라우저에서 로그인 상태를 확인한 뒤 받음
 - 글을 공개나 나만 보기로 바꾸면 그 글에 온 요청은 지우고, 글을 지우면 그 글의 요청과 허락도 같이 지움
-- 데이터는 `blog_posts`, `blog_access_requests`, `blog_grants` 컬렉션 (`apps/api/src/modules/blog`)
+- 데이터는 `blog_posts`, `blog_images`, `blog_access_requests`, `blog_grants` 컬렉션 (`apps/api/src/modules/blog`)
+
+### 글 쓰기 (마크다운, 사진, 표지)
+
+- 본문은 마크다운으로 씀. 노션에서 쓰던 제목, 굵게, 기울임, 취소선, 인라인 코드, 링크, 목록, 번호 목록, 체크리스트, 인용, 표, 코드 블록, 구분선, 사진을 그대로 그림 (`entities/blog-post/ui/blog-markdown.tsx`, react-markdown + remark-gfm)
+  - 이모지로 시작하는 인용(`> 💡 내용`)은 노션 콜아웃처럼 포스트잇 상자로 그림 (`entities/blog-post/lib/remark-callout.ts`)
+  - 코드 블록은 숨은 터미널과 같은 어두운 판에 언어 이름, 복사 단추, 문법 색을 붙임 (rehype-highlight)
+  - 본문의 `#` 은 글 제목 아래 단계 제목으로 그림. 줄바꿈은 쓴 그대로 살려서 예전 줄글도 그대로 보임
+  - 글 안의 HTML 은 그리지 않고 글자로만 둠. 링크의 `javascript:` 같은 주소도 걸러짐
+- 글쓰기 화면은 도구 막대(제목, 굵게, 코드, 링크, 인용, 콜아웃, 목록, 할 일, 코드 블록, 표, 구분선, 사진)와 쓰기, 미리보기 탭이 있는 편집기. ⌘B, ⌘I, ⌘E, ⌘K 단축키, 목록에서 Enter 를 누르면 다음 항목이 이어짐
+- 사진은 '사진' 단추, 붙여넣기, 끌어다 놓기로 올림. 브라우저가 긴 변 2000px 이하 WebP(안 되면 JPG)로 다시 그려 올려서 촬영 위치 같은 사진 속 정보(EXIF)가 빠짐. 올리는 동안은 본문에 자리 글이 남고 저장 단추가 막힘
+- 노션에서 복사해 붙이면 HTML 을 마크다운으로 바꿔 넣음 (turndown). 노션 사진 주소는 시간이 지나면 막혀서 빼고, 그 자리에 '사진을 다시 올려 주세요' 콜아웃을 남김
+- API 는 `POST /api/blog/images` (`blog:write` 권한, 같은 출처만, 1시간 120장) 로 받아 파일 내용으로 JPG, PNG, WebP 인지와 5MB, 가로세로 4096px 이하인지 다시 확인하고 MinIO `community-media` 의 `blog/` 에 임의 파일 이름으로 저장함
+- 사진은 `/api/blog/images/<파일>` 로 내보냄. 파일 이름이 바뀌지 않으므로 1년 캐시하고, 다른 사이트가 끌어다 쓰지 못하게 같은 출처에서만 읽힘
+- 글을 저장하면 본문과 표지에 남은 사진만 그 글에 붙여 두고, 글에서 뺀 사진과 지운 글의 사진은 버킷에서도 지움. 올려 놓고 글에 쓰지 않은 사진은 7일 뒤 다음 사진을 올릴 때 치움
+- 표지(썸네일)는 글쓰기에서 따로 고르고, 안 고르면 본문 첫 사진을 씀. 목록 카드 위에 16:9 로 보이고, 글 화면 맨 위에는 따로 고른 표지만 크게 놓음
+- 잠긴 글은 본문 첫 사진을 표지로 쓰지 않음 (본문 일부가 새지 않게). 따로 고른 표지는 흐리게 보여 줌
+- 사진 때문에 API 의 파일 받기 한도를 6MB 로 올렸고, 프로필 사진은 서비스에서 따로 1MB 로 막음
 - 블로그 화면의 빈 책상에는 이스터에그로 소설 속 외계인 로키를 직접 그린 공이 굴러다님 (`widgets/rocky`, `app/blog/layout.tsx`)
   - 노트북, 데스크톱(마우스나 트랙패드, 1024px 이상)에서만 나옴. 휴대폰, 태블릿은 빈 책상이 좁고 손가락으로 잡기 어려워 엔진을 돌리지 않음
   - 종이, 카드, 사이드바가 없는 자리만 골라 걸어 다니고, 스크롤로 종이가 밑으로 들어오면 빈 곳으로 비킴. 빈 자리가 없으면 숨음
@@ -248,7 +265,7 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
                      ├─ /      → web 컨테이너 :3001      (Next.js standalone, apps/web/Dockerfile, PDF 포함)
                      └─ /api/* → api 컨테이너 :3000      (apps/api/Dockerfile)
                                   ├─ mongo 컨테이너 :27017 (mongo:8.0, 볼륨 portfolio_mongo-data)
-                                  └─ minio 컨테이너 :9000  (pgsty/minio, 볼륨 portfolio_minio-data, 프로필 사진)
+                                  └─ minio 컨테이너 :9000  (pgsty/minio, 볼륨 portfolio_minio-data, 프로필 사진과 블로그 글 사진)
 ```
 
 - 호스트에 열리는 포트는 `127.0.0.1:8090` 하나뿐. Docker 로 연 포트는 UFW 를 거치지 않아서 반드시 127.0.0.1 로 묶음
@@ -288,7 +305,7 @@ docker compose -f deploy/docker-compose.yml exec minio sh -c \
 - tailnet 밖에서는 SSH 터널로: `ssh -L 4100:127.0.0.1:4100 homeserver` 후 `http://127.0.0.1:4100`
 - 할 수 있는 것: 컨테이너 상태와 시작, 중지, 로그, 서버 CPU, 메모리, 디스크, Docker 정리, 웹 터미널(`docker` 명령), 감사 로그
 - 백업: 대상 `portfolio` 를 매일 04:00 에 덤프, 14일 보관. 읽기 전용 계정(`portfolio-backup`)으로 내부 망(`portfolio_data`)에 붙어서 뜸. 파일은 서버 `~/backups/mongodb/portfolio/`
-- MinIO 볼륨(`portfolio_minio-data`, 프로필 사진)은 아직 백업 대상이 아님. 사진을 잃으면 각자 다시 올리면 되는 정도라 두었고, 필요해지면 따로 추가
+- MinIO 볼륨(`portfolio_minio-data`, 프로필 사진과 블로그 글 사진)은 아직 백업 대상이 아님. 프로필 사진은 각자 다시 올리면 되지만, 블로그 글 사진은 다시 구하기 어려우니 따로 백업을 추가할 것
 - 관리자 비밀번호 변경: 관리 패널의 `권한 관리 → 사용자 목록 → 본인 계정의 열쇠 아이콘 → 변경`
 
 새 서비스(예: gawon-log 블로그)를 올릴 때도 같은 방식으로 함: 자기 저장소에 compose 를 두고, 포트는 `127.0.0.1` 로만 열고, DB 는 내부 망에 둠. 패널은 서버의 모든 컨테이너를 자동으로 보여 줌.
@@ -325,7 +342,7 @@ npm run dev        # PDF 생성 후 API(메모리 Mongo, :3000)와 Next 개발 �
 npm run typecheck  # API, 페이지 타입 검사
 npm run lint       # 페이지 ESLint (Next 권장 규칙, FSD 레이어 경계)
 npm run build      # 포트폴리오 PDF 생성 + API 빌드 + Next 빌드
-npm test           # API e2e 23건(메모리 Mongo, MinIO 는 메모리 가짜) + 페이지 단위 14건 + PDF 생성기 7건
+npm test           # API 34건(e2e 는 메모리 Mongo, MinIO 는 메모리 가짜) + 페이지 단위 33건 + PDF 생성기 7건
 ```
 
 ## 배포 흐름

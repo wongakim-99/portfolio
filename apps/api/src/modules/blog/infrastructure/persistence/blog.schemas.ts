@@ -22,6 +22,10 @@ export class BlogPost {
   @Prop({ type: [String], default: [] })
   tags: string[];
 
+  // 글쓴이가 고른 표지 사진 파일(blog_images 의 file). 없으면 본문 첫 사진을 썸네일로 씀
+  @Prop({ type: String, default: null })
+  cover: string | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -69,3 +73,23 @@ export class BlogGrant {
 
 export const BlogGrantSchema = SchemaFactory.createForClass(BlogGrant);
 BlogGrantSchema.index({ userId: 1, postId: 1 }, { unique: true });
+
+// 블로그에 올린 사진. 파일은 사진 저장소 blog/ 아래에 있고, 여기는 어느 글에 붙었는지만 적음
+@Schema({ collection: 'blog_images', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })
+export class BlogImage {
+  @Prop({ type: String, required: true, unique: true })
+  file: string;
+
+  @Prop({ type: Number, required: true })
+  size: number;
+
+  // 아직 글을 저장하지 않았으면 null
+  @Prop({ type: SchemaTypes.ObjectId, default: null })
+  postId: Types.ObjectId | null;
+
+  createdAt: Date;
+}
+
+export const BlogImageSchema = SchemaFactory.createForClass(BlogImage);
+BlogImageSchema.index({ postId: 1 });
+BlogImageSchema.index({ postId: 1, createdAt: 1 });

@@ -14,12 +14,19 @@
   "dependencies": {
     "next": "16.4.6",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
+    "rehype-highlight": "7.0.2",
+    "remark-breaks": "4.0.0",
+    "remark-gfm": "4.0.1",
+    "turndown": "7.2.5",
+    "turndown-plugin-gfm": "1.0.2"
   },
   "devDependencies": {
     "@types/node": "^24.19.2",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/turndown": "5.0.6",
     "eslint": "^9.39.5",
     "eslint-config-next": "16.4.6",
     "eslint-plugin-boundaries": "^7.4.4",

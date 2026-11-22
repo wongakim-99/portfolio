@@ -1,5 +1,5 @@
 import { blogRequest } from '@shared/api';
-import type { AccessRequestState, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
+import type { AccessRequestState, BlogImage, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
 
 /** 최근 글 10개씩. 잠긴 글은 제목과 태그만, 나만 보기 글은 주인장에게만 옴 */
 export function listBlogPosts({ before, tag, q, visibility }: BlogListQuery & { before?: string | null } = {}) {
@@ -20,6 +20,16 @@ export const createBlogPost = (input: BlogPostInput) => blogRequest<{ post: Blog
 export const updateBlogPost = (id: string, input: BlogPostInput) =>
   blogRequest<{ post: BlogPost }>(`/posts/${encodeURIComponent(id)}`, { method: 'PATCH', body: input });
 export const deleteBlogPost = (id: string) => blogRequest(`/posts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+/** 글에 넣을 사진. 주인장만. 브라우저에서 줄여 만든 파일을 본문 그대로 보냄 */
+export const uploadBlogImage = (photo: Blob) => blogRequest<{ image: BlogImage }>('/images', { method: 'POST', file: photo });
+
+/** 블로그 사진 파일 이름과 주소 (/api/blog/images/<파일>) */
+export const blogImageUrl = (file: string) => `/api/blog/images/${file}`;
+export const blogImageFile = (url: string) => /\/api\/blog\/images\/([a-f\d]{24}\.(?:jpg|png|webp))$/.exec(url)?.[1] ?? null;
+
+/** 본문에 처음 나오는 블로그 사진 주소. 표지를 고르지 않은 글의 썸네일 (API 의 firstImage 와 같은 규칙) */
+export const firstImageUrl = (body: string) => /\/api\/blog\/images\/[a-f\d]{24}\.(?:jpg|png|webp)/.exec(body)?.[0] ?? null;
 
 /** 잠긴 글의 '주인장에게 요청하기'. 로그인한 회원만 */
 export const requestBlogAccess = (id: string, message: string) =>

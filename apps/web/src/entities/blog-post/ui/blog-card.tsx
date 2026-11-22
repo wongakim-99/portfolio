@@ -12,10 +12,17 @@ interface BlogCardProps {
   lockedNote: string;
 }
 
-/** 블로그 목록의 카드 한 장. 제목 링크가 카드 전체를 덮고, 태그만 따로 눌림 */
+/** 블로그 목록의 카드 한 장. 위에 썸네일, 제목 링크가 카드 전체를 덮고, 태그만 따로 눌림 */
 export function BlogCard({ post, lockedNote }: BlogCardProps) {
   return (
     <article className="blog-card" data-locked={post.locked || undefined}>
+      {post.cover && (
+        <span className="blog-card-cover" aria-hidden="true">
+          {/* 글 사진은 API 가 줄여 둔 파일이라 next/image 최적화를 거치지 않음 */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={post.cover} alt="" loading="lazy" decoding="async" />
+        </span>
+      )}
       <p className="blog-card-meta">
         <span>{formatDate(post.createdAt)}</span>
         <VisibilityStamp visibility={post.visibility} locked={post.locked} />

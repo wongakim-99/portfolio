@@ -4,7 +4,7 @@ import { performance } from 'node:perf_hooks';
 import type { Readable } from 'node:stream';
 import { TelemetryService } from '../telemetry/telemetry.service.js';
 
-// 파일을 넣는 MinIO 버킷. 지금은 프로필 사진만 둠 (identity 영역의 avatars/)
+// 파일을 넣는 MinIO 버킷. 프로필 사진(identity 영역의 avatars/)과 블로그 사진(blog 영역의 blog/)을 둠
 // 버킷과 API 전용 계정은 deploy/minio-ensure-bucket.sh 가 만들고, 버킷은 공개하지 않음
 @Injectable()
 export class ObjectStorage {

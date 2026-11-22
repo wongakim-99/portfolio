@@ -1,4 +1,4 @@
-/* 블로그 글 한 편: 피드 글처럼 책상 위 종이 한 장에 큰 제목, 날짜와 읽는 시간, 태그, 본문. 줄바꿈은 쓴 그대로 */
+/* 블로그 글 한 편: 피드 글처럼 책상 위 종이 한 장에 표지 사진, 큰 제목, 날짜와 읽는 시간, 태그, 마크다운 본문 */
 .sheet.blog-article { margin-top: clamp(32px, 5vw, 64px); }
 .blog-article .back-link { margin-bottom: clamp(28px, 4vw, 40px); }
 .blog-article-head { padding-bottom: 28px; border-bottom: 1px solid var(--paper-rule); }
@@ -8,12 +8,15 @@
 .blog-article-meta b { color: var(--ink); }
 .blog-article-meta .community-inline-actions.action-row { margin-top: 0; }
 .blog-article-head .blog-tags { margin-top: 20px; }
-.blog-article-body { max-width: 68ch; padding: 38px 0 48px; font-size: 17px; line-height: 1.9; white-space: pre-wrap; overflow-wrap: anywhere; text-wrap: pretty; }
+.blog-article-body { max-width: 72ch; padding: 38px 0 48px; }
+/* 표지: 종이 위쪽에 붙인 넓은 사진 */
+.blog-article-cover { display: block; aspect-ratio: 16 / 9; margin: 0 0 clamp(24px, 4vw, 36px); overflow: hidden; border-radius: 3px; box-shadow: var(--shadow-sticker); }
+.blog-article-cover img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .blog-article-foot { margin-top: 12px; padding-top: 30px; border-top: 1px solid var(--paper-rule); }
 .blog-article-foot .blog-owner { padding: 22px; border-radius: 3px; background: var(--blog-tint); }
 
 @media (max-width: 720px) {
   .sheet.blog-article { padding: 40px 22px 50px; }
-  .blog-article-body { padding-top: 30px; font-size: 16px; }
+  .blog-article-body { padding-top: 30px; }
   .blog-article-foot .blog-owner { padding: 18px; }
 }

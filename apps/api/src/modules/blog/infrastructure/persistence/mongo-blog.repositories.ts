@@ -3,14 +3,16 @@ import { InjectModel } from '@nestjs/mongoose';
 import type { Model, QueryFilter } from 'mongoose';
 import { asObjectId, isDuplicateKey, toObjectId } from '../../../../shared/infrastructure/mongo.js';
 import type { AccessRequest, BlogPost, Grant, Visibility } from '../../domain/blog.js';
-import { AccessRequestRepository, BlogPostRepository, GrantRepository, type BlogListFilter } from '../../domain/blog.ports.js';
-import { BlogAccessRequest, BlogGrant, BlogPost as BlogPostDoc } from './blog.schemas.js';
+import {
+  AccessRequestRepository, BlogImageRepository, BlogPostRepository, GrantRepository, type BlogListFilter,
+} from '../../domain/blog.ports.js';
+import { BlogAccessRequest, BlogGrant, BlogImage, BlogPost as BlogPostDoc } from './blog.schemas.js';
 
 type Doc<T> = T & { _id: unknown };
 
 const toPost = (doc: Doc<BlogPostDoc>): BlogPost => ({
   id: String(doc._id), authorId: String(doc.authorId), title: doc.title, body: doc.body, visibility: doc.visibility,
-  tags: doc.tags ?? [], createdAt: doc.createdAt, updatedAt: doc.updatedAt,
+  tags: doc.tags ?? [], cover: doc.cover ?? null, createdAt: doc.createdAt, updatedAt: doc.updatedAt,
 });
 const toRequest = (doc: Doc<BlogAccessRequest>): AccessRequest => ({
   id: String(doc._id), userId: String(doc.userId), postId: String(doc.postId), message: doc.message ?? '', status: doc.status,
@@ -72,7 +74,7 @@ export class MongoBlogPostRepository extends BlogPostRepository {
     return toPost(post.toObject());
   }
 
-  async update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags'>) {
+  async update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover'>) {
     await this.posts.updateOne({ _id: toObjectId(id) }, { $set: input });
   }
 
@@ -153,5 +155,36 @@ export class MongoGrantRepository extends GrantRepository {
 
   async delete(id: string) {
     return (await this.grants.deleteOne({ _id: toObjectId(id) })).deletedCount > 0;
+  }
+}
+
+@Injectable()
+export class MongoBlogImageRepository extends BlogImageRepository {
+  constructor(@InjectModel(BlogImage.name) private readonly images: Model<BlogImage>) {
+    super();
+  }
+
+  async create(input: { file: string; size: number }) {
+    await this.images.create({ ...input, postId: null });
+  }
+
+  async attach(files: string[], postId: string) {
+    if (!files.length) return;
+    const post = asObjectId(postId);
+    await this.images.updateMany({ file: { $in: files }, $or: [{ postId: null }, { postId: post }] }, { $set: { postId: post } });
+  }
+
+  async filesForPost(postId: string) {
+    const post = toObjectId(postId);
+    if (!post) return [];
+    return (await this.images.find({ postId: post }, { file: 1 }).lean()).map((image) => image.file);
+  }
+
+  async orphans(before: Date) {
+    return (await this.images.find({ postId: null, createdAt: { $lt: before } }, { file: 1 }).limit(100).lean()).map((image) => image.file);
+  }
+
+  async delete(files: string[]) {
+    if (files.length) await this.images.deleteMany({ file: { $in: files } });
   }
 }

@@ -1,10 +1,12 @@
-import { BadRequestException, Injectable, NotFoundException, ServiceUnavailableException, UnsupportedMediaTypeException } from '@nestjs/common';
+import {
+  BadRequestException, Injectable, NotFoundException, PayloadTooLargeException, ServiceUnavailableException, UnsupportedMediaTypeException,
+} from '@nestjs/common';
 import { randomBytes } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { DomainEvents } from '../../../shared/events/domain-events.js';
 import { ObjectStorage } from '../../../shared/infrastructure/storage/object-storage.js';
-import { AVATAR_FILE, AVATAR_MAX_SIDE, avatarKey, avatarUrl } from '../domain/avatar.js';
-import { imageInfo } from '../domain/avatar-image.js';
+import { AVATAR_FILE, AVATAR_MAX_BYTES, AVATAR_MAX_SIDE, avatarKey, avatarUrl } from '../domain/avatar.js';
+import { imageInfo } from '../../../shared/domain/image-info.js';
 import { UserRepository } from '../domain/identity.ports.js';
 import type { Role } from '../domain/role.js';
 import type { Identity } from '../domain/user.js';
@@ -38,6 +40,7 @@ export class ProfileService {
   // 파일 내용으로 형식과 크기를 확인함. 확장자나 Content-Type 은 믿지 않음
   async setAvatar(identity: Identity, body: unknown) {
     if (!this.storage.ready) throw new ServiceUnavailableException('사진 저장소를 준비 중입니다.');
+    if (Buffer.isBuffer(body) && body.length > AVATAR_MAX_BYTES) throw new PayloadTooLargeException('프로필 사진은 1MB 까지 올릴 수 있습니다.');
     const image = Buffer.isBuffer(body) ? imageInfo(body) : null;
     if (!image) throw new UnsupportedMediaTypeException('JPG, PNG, WebP 사진만 올릴 수 있습니다.');
     if (image.width < 1 || image.height < 1 || image.width > AVATAR_MAX_SIDE || image.height > AVATAR_MAX_SIDE) {

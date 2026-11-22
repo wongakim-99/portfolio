@@ -1,4 +1,4 @@
-/* 블로그 글쓰기. 테두리 없는 큰 제목, 태그 줄, 공개 범위 도장 세 개, 넓은 본문, 아래에 붙은 올리기 막대 */
+/* 블로그 글쓰기. 테두리 없는 큰 제목, 태그 줄, 공개 범위 도장 세 개, 썸네일, 마크다운 편집기, 아래에 붙은 올리기 막대 */
 .blog-form { display: grid; gap: 22px; }
 .blog-form-title { width: 100%; padding: 6px 0 14px; border: 0; border-bottom: 1px solid var(--paper-rule); background: none; color: var(--ink); font-family: var(--font-display); font-size: clamp(28px, 4.4vw, 40px); font-weight: 700; line-height: 1.3; letter-spacing: -.03em; }
 .blog-form-title::placeholder, .blog-form-body::placeholder, .tag-input input::placeholder { color: color-mix(in srgb, var(--ink-soft) 70%, transparent); }
@@ -23,7 +23,35 @@
 .blog-visibility-option.is-checked b { border-color: var(--stamp-red); color: var(--stamp-red); transform: rotate(-4deg); }
 .blog-visibility-option:has(input:focus-visible) { outline: 3px solid var(--pen); outline-offset: 2px; }
 
-.blog-form-body { width: 100%; min-height: 50vh; padding: 18px 0; border: 0; border-top: 1px solid var(--paper-rule); background: none; color: var(--ink); font: inherit; font-size: 18px; line-height: 1.9; resize: vertical; }
+.blog-form-body { width: 100%; min-height: 50vh; padding: 18px 0; border: 0; background: none; color: var(--ink); font: inherit; font-size: 17px; line-height: 1.85; resize: vertical; tab-size: 2; }
+
+/* 썸네일: 왼쪽 16:9 사진 틀, 오른쪽 설명과 단추. 표지를 안 고르고 본문 첫 사진을 쓸 때는 사진을 조금 흐리게 */
+.blog-cover { display: grid; grid-template-columns: 176px minmax(0, 1fr); gap: 18px; align-items: center; }
+.blog-cover-frame { display: grid; place-items: center; aspect-ratio: 16 / 9; overflow: hidden; border-radius: 3px; background: color-mix(in srgb, var(--desk) 40%, var(--paper)); color: var(--ink-soft); font-size: 12px; box-shadow: var(--shadow-sticker); }
+.blog-cover-frame img { width: 100%; height: 100%; object-fit: cover; }
+.blog-cover-frame[data-fallback] img { opacity: .75; }
+.blog-cover-text h2 { margin: 0; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+.blog-cover-text p { margin: 4px 0 6px; color: var(--ink-soft); font-size: 14px; line-height: 1.6; }
+.blog-cover-actions { display: flex; flex-wrap: wrap; gap: 4px 16px; }
+.blog-cover-actions .text-btn { font-size: 14px; }
+
+/* 편집기: 위에 붙어 따라오는 도구 막대, 쓰기와 미리보기 */
+.md-editor { border-top: 1px solid var(--paper-rule); }
+.md-editor.is-dropping .blog-form-body { outline: 2px dashed var(--pen); outline-offset: 6px; border-radius: 4px; }
+.md-toolbar { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0; border-bottom: 1px dashed var(--paper-rule); background: var(--paper); }
+.md-modes { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--desk) 35%, var(--paper)); }
+.md-mode { height: 30px; padding: 0 14px; border: 0; border-radius: 999px; background: none; color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.md-mode.is-active { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgb(15 20 25 / .12); }
+.md-tools { display: flex; flex-wrap: wrap; gap: 4px 10px; min-width: 0; }
+.md-tool-group { display: inline-flex; flex-wrap: wrap; gap: 2px; }
+.md-tool-group + .md-tool-group { padding-left: 10px; border-left: 1px dashed var(--paper-rule); }
+.md-tool { height: 30px; padding: 0 8px; border: 0; border-radius: 4px; background: none; color: var(--ink-soft); font: inherit; font-size: 13px; cursor: pointer; transition: background-color .15s ease, color .15s ease; }
+.md-tool:hover { background: var(--blog-tint); color: var(--ink); }
+.md-tool:focus-visible, .md-mode:focus-visible { outline: 2px solid var(--pen); outline-offset: 1px; }
+.md-tool-photo { color: var(--pen); font-weight: 700; }
+.md-uploading { color: var(--pen); font-family: var(--font-mono); font-size: 12px; }
+.md-uploading::after { content: "..."; }
+.md-preview { min-height: 50vh; padding: 22px 0; }
 
 .blog-form-bar { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0 calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--paper-rule); background: var(--paper); color: var(--ink-soft); font-family: var(--font-mono); font-size: 12px; }
 /* 본문 끝에서 입력해도 커서가 아래 막대에 가리지 않게 그만큼 띄워서 스크롤함 */
@@ -33,5 +61,10 @@ html:has(.blog-form-bar) { scroll-padding-bottom: 96px; }
 
 @media (max-width: 720px) {
   .blog-visibility { grid-template-columns: minmax(0, 1fr); }
-  .blog-form-body { font-size: 17px; }
+  .blog-form-body { font-size: 16px; }
+  .blog-cover { grid-template-columns: 120px minmax(0, 1fr); gap: 14px; }
+  /* 휴대폰에서는 도구를 한 줄로 두고 옆으로 밀어 봄 */
+  .md-tools { flex-wrap: nowrap; width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .md-tool-group { flex-wrap: nowrap; }
+  .md-tool { white-space: nowrap; }
 }

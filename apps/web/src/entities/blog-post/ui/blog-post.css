@@ -2,6 +2,11 @@
 .blog-card { position: relative; display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 26px 26px 18px; border-radius: 3px; background: var(--paper); box-shadow: var(--shadow-soft); transition: box-shadow .2s ease, transform .2s ease, background-color .4s ease; }
 .blog-card:hover { box-shadow: 0 2px 4px rgb(15 20 25 / .1), 0 16px 36px rgb(15 20 25 / .16); transform: translateY(-3px); }
 .blog-card:focus-within { outline: 2px solid var(--pen); outline-offset: 3px; }
+/* 썸네일: 카드 위쪽을 꽉 채우는 16:9 사진. 잠긴 글은 흐리게 */
+.blog-card-cover { display: block; aspect-ratio: 16 / 9; margin: -26px -26px 4px; overflow: hidden; border-radius: 3px 3px 0 0; background: color-mix(in srgb, var(--desk) 40%, var(--paper)); }
+.blog-card-cover img { display: block; width: 100%; height: 100%; object-fit: cover; transition: transform .4s ease; }
+.blog-card:hover .blog-card-cover img { transform: scale(1.03); }
+.blog-card[data-locked] .blog-card-cover img { filter: blur(6px) saturate(.8); transform: scale(1.08); }
 .blog-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin: 0; color: var(--ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
 .blog-card-title { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.45; letter-spacing: -.02em; overflow-wrap: anywhere; text-wrap: balance; }
 .blog-card-title a { color: var(--ink); text-decoration: none; }
@@ -26,11 +31,12 @@
 .blog-stamp-private { color: var(--ink-soft); border-style: dashed; }
 
 @media (prefers-reduced-motion: reduce) {
-  .blog-card, .blog-card-foot svg { transition: none; }
+  .blog-card, .blog-card-foot svg, .blog-card-cover img { transition: none; }
   .blog-card:hover { transform: none; }
 }
 
 @media (max-width: 720px) {
   .blog-card { padding: 22px 20px 16px; }
+  .blog-card-cover { margin: -22px -20px 4px; }
   .blog-card-title { font-size: 19px; }
 }

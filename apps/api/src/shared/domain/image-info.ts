@@ -1,4 +1,4 @@
-// 올라온 파일의 앞부분만 읽어 형식과 가로세로 크기를 알아냄. 확장자나 Content-Type 은 믿지 않음
+// 올라온 사진 파일의 앞부분만 읽어 형식과 가로세로 크기를 알아냄. 확장자나 Content-Type 은 믿지 않음 (프로필 사진, 블로그 사진이 같이 씀)
 // 크기를 미리 보는 건 작은 파일로 아주 큰 그림을 만들어 보는 사람의 브라우저를 멈추게 하는 걸 막으려는 것
 export type ImageInfo = { type: 'image/jpeg' | 'image/png' | 'image/webp'; ext: 'jpg' | 'png' | 'webp'; width: number; height: number };
 

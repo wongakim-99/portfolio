@@ -7,7 +7,7 @@ import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui'
 import { BlogLock } from '@widgets/blog-lock';
 import { BlogOwnerCard } from '@widgets/blog-sidebar';
 import { BlogPostActions } from '@features/manage-blog-post';
-import { getBlogPost, getBlogSummary, TagList, VisibilityStamp, type BlogPost, type BlogSummary } from '@entities/blog-post';
+import { BlogMarkdown, getBlogPost, getBlogSummary, TagList, VisibilityStamp, type BlogPost, type BlogSummary } from '@entities/blog-post';
 import { useSession } from '@entities/user';
 import './blog-post-page.css';
 
@@ -50,6 +50,13 @@ export function BlogPostPage({ postId }: { postId: string }) {
   return (
     <Sheet as="article" className="blog-article">
       <BackLink href={routes.blog}>블로그</BackLink>
+      {/* 따로 고른 표지만 맨 위에. 본문 첫 사진이 썸네일인 글은 본문에 이미 있으니 겹쳐 두지 않음 */}
+      {post?.coverFile && post.cover && !missing && (
+        <span className="blog-article-cover">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={post.cover} alt="" decoding="async" />
+        </span>
+      )}
       <header className="blog-article-head">
         <h1>{missing ? '글을 찾을 수 없습니다' : post?.title}</h1>
         {post && !missing && (
@@ -73,7 +80,7 @@ export function BlogPostPage({ postId }: { postId: string }) {
       ) : post?.locked ? (
         <BlogLock postId={post.id} request={post.request} onRequested={(request) => setPost((value) => value && { ...value, request })} />
       ) : (
-        <div className="blog-article-body">{post?.body}</div>
+        <div className="blog-article-body">{post?.body && <BlogMarkdown source={post.body} />}</div>
       )}
       <FormStatus status={status} />
       {owner && post && !missing && (

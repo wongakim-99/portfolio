@@ -661,6 +661,70 @@ describe('blog', () => {
     expect((await request(server).get('/api/blog/admin/grants').set('Cookie', owner).expect(200)).body.grants).toEqual([]);
   });
 
+  it('주인장은 사진을 올려 본문과 표지에 쓰고, 글에서 빠지거나 글을 지우면 사진도 지움', async () => {
+    const server = app.getHttpServer();
+    const ip = '203.0.113.180, 172.18.0.1';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    };
+    const owner = await join('photo-owner@example.com', '사진 주인');
+    const member = await join('photo-member@example.com', '구경꾼');
+    await request(server).put('/api/community/admin/users/role').set('Authorization', `Bearer ${ADMIN_TOKEN}`)
+      .send({ email: 'photo-owner@example.com', role: 'owner' }).expect(200);
+    const upload = (cookie: string | null, body: Buffer, type = 'image/png') => {
+      const req = request(server).post('/api/blog/images').set('X-Forwarded-For', ip).set('Content-Type', type);
+      return (cookie ? req.set('Cookie', cookie) : req).send(body);
+    };
+
+    await upload(null, png(800, 600)).expect(401);
+    await upload(member, png(800, 600)).expect(403);
+    await upload(owner, Buffer.from('사진이 아닌 글자'), 'image/png').expect(415);
+    await upload(owner, png(5000, 10)).expect(400);
+    await upload(owner, Buffer.alloc(5 * 1024 * 1024 + 1), 'image/png').expect(413);
+    const first = (await upload(owner, png(800, 600)).expect(201)).body.image;
+    const second = (await upload(owner, jpeg(640, 480), 'image/jpeg').expect(201)).body.image;
+    const hidden = (await upload(owner, png(320, 240)).expect(201)).body.image;
+    expect(first).toMatchObject({ url: `/api/blog/images/${first.file}`, width: 800, height: 600 });
+    const served = await request(server).get(first.url).expect(200);
+    expect(served.headers).toMatchObject({ 'content-type': 'image/png', 'cache-control': 'public, max-age=31536000, immutable' });
+    await request(server).get('/api/blog/images/0123456789abcdef01234567.png').expect(404);
+    await request(server).get('/api/blog/images/evil.svg').expect(404);
+
+    // 표지를 고르면 그것이, 안 고르면 본문 첫 사진이 썸네일. 미리보기 글에는 마크다운 기호가 없음
+    const body = `# 사진 일기\n\n**굵게** 쓴 본문과 [링크](https://example.com)\n\n![첫 사진](${first.url})\n\n![둘째 사진](${second.url} "캡션")`;
+    const write = (input: object, id?: string) => (id
+      ? request(server).patch(`/api/blog/posts/${id}`)
+      : request(server).post('/api/blog/posts')).set('Cookie', owner).send({ title: '사진 글', visibility: 'public', ...input });
+    const post = (await write({ body, cover: second.file }).expect(201)).body.post;
+    expect(post).toMatchObject({ cover: second.url, coverFile: second.file });
+    const listed = (await request(server).get('/api/blog/posts').expect(200)).body.posts.find((item: { id: string }) => item.id === post.id);
+    expect(listed).toMatchObject({ cover: second.url, excerpt: '사진 일기 굵게 쓴 본문과 링크' });
+    await write({ body, cover: '../../etc/passwd' }, post.id).expect(400);
+
+    // 잠긴 글은 본문 첫 사진을 썸네일로 쓰지 않음 (본문을 못 읽는 사람에게 사진 주소가 나가지 않게)
+    const locked = (await write({ body: `![숨긴 사진](${hidden.url})`, visibility: 'approved' }).expect(201)).body.post;
+    const lockedFor = async (cookie?: string) => {
+      const req = request(server).get('/api/blog/posts');
+      return (await (cookie ? req.set('Cookie', cookie) : req).expect(200)).body.posts.find((item: { id: string }) => item.id === locked.id);
+    };
+    expect((await lockedFor()).cover).toBeNull();
+    expect((await lockedFor(owner)).cover).toBe(hidden.url);
+
+    // 본문과 표지에서 둘째 사진을 빼면 저장소에서도 지우고, 썸네일은 본문 첫 사진으로 돌아감
+    const edited = (await write({ body: `본문\n\n![첫 사진](${first.url})`, cover: null }, post.id).expect(200)).body.post;
+    expect(edited).toMatchObject({ cover: first.url, coverFile: null });
+    await request(server).get(second.url).expect(404);
+    await request(server).get(first.url).expect(200);
+
+    await request(server).delete(`/api/blog/posts/${post.id}`).set('Cookie', owner).expect(204);
+    await request(server).get(first.url).expect(404);
+    await request(server).get(hidden.url).expect(200);
+  });
+
   it('잠긴 글의 증명은 채점평만 글자 그대로 흘려보내고, AI 를 못 쓰면 503', async () => {
     const server = app.getHttpServer();
     const posts = app.get(getConnectionToken()).collection('blog_posts');

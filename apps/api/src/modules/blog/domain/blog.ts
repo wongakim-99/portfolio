@@ -1,3 +1,5 @@
+import { plainText } from './blog-image.js';
+
 // 블로그 영역: 주인장만 쓰는 글. 글마다 공개 범위를 고르고, 잠긴 글은 열람 요청을 허락받아야 읽음
 
 // public 은 누구나, approved 는 주인장이 허락한 회원만, private 은 주인장만 읽음
@@ -11,6 +13,8 @@ export interface BlogPost {
   body: string;
   visibility: Visibility;
   tags: string[];
+  /** 글쓴이가 고른 표지 사진 파일. 없으면 본문 첫 사진을 썸네일로 씀 */
+  cover: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -70,7 +74,8 @@ export function canRead(post: Pick<BlogPost, 'id' | 'visibility'>, reader: Reade
 /** 나만 보기 글은 주인장이 아니면 목록에도 없고 주소로 열어도 없는 글 */
 export const isVisible = (post: Pick<BlogPost, 'visibility'>, reader: Reader) => post.visibility !== 'private' || Boolean(reader?.owner);
 
-export const readMinutes = (body: string) => Math.max(1, Math.round(body.length / CHARS_PER_MINUTE));
+/** 마크다운 기호와 사진을 뺀 글자 수로 셈 */
+export const readMinutes = (body: string) => Math.max(1, Math.round(plainText(body).length / CHARS_PER_MINUTE));
 
 /** 거절된 요청을 다시 보낼 수 있는 때. 기다리는 요청이면 null */
 export const retryAt = (request: Pick<AccessRequest, 'status' | 'decidedAt'>) =>

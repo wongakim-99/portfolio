@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Header, HttpCode, Patch, Post, Query, Req, Res, ServiceUnavailableException,
+  Body, Controller, Delete, Get, Header, HttpCode, NotFoundException, Patch, Post, Query, Req, Res, ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
@@ -10,8 +10,10 @@ import { assertSameOrigin } from '../../../shared/http/same-origin.js';
 import { ipHash } from '../../../shared/http/visitor-hash.js';
 import { CurrentUser, RequirePermission } from '../../identity/index.js';
 import { BlogAccessService } from '../application/blog-access.service.js';
+import { BlogImagesService } from '../application/blog-images.service.js';
 import { BlogPostsService } from '../application/blog-posts.service.js';
 import { ProofGradingService } from '../application/proof-grading.service.js';
+import { BLOG_IMAGE_FILE, BLOG_IMAGE_TYPES } from '../domain/blog-image.js';
 import { AccessRequestDto, ProofDto, WriteBlogPostDto } from './blog.dto.js';
 
 // ?tag=a&tag=b 처럼 같은 이름을 여러 번 보내면 배열로 오므로 글자 하나일 때만 씀
@@ -24,6 +26,7 @@ export class BlogController {
   constructor(
     private readonly posts: BlogPostsService,
     private readonly access: BlogAccessService,
+    private readonly images: BlogImagesService,
     private readonly proofs: ProofGradingService,
     private readonly currentUser: CurrentUser,
     private readonly config: ConfigService<Env, true>,
@@ -72,6 +75,32 @@ export class BlogController {
     assertSameOrigin(req);
     jsonOnly(req);
     return { post: await this.posts.edit(req.params.id as string, dto, await this.currentUser.require(req)) };
+  }
+
+  // 글에 넣을 사진. 본문은 사진 파일 그대로 받음 (setup.ts 의 raw 본문 파서). 브라우저가 줄이고 위치 정보를 뺀 뒤 올림
+  @Post('images')
+  @RequirePermission('blog:write')
+  @Throttle({ default: { limit: 120, ttl: 60 * 60_000 } })
+  async uploadImage(@Req() req: Request) {
+    assertSameOrigin(req);
+    return { image: await this.images.upload(req.body) };
+  }
+
+  // 사진은 파일 이름이 바뀌지 않으므로 1년 캐시함. 이름이 무작위라 본문을 받은 사람만 주소를 앎
+  @Get('images/:file')
+  @SkipThrottle()
+  async image(@Req() req: Request, @Res() res: Response) {
+    const file = req.params.file as string;
+    if (!BLOG_IMAGE_FILE.test(file)) throw new NotFoundException('사진을 찾을 수 없습니다.');
+    const body = await this.images.read(file);
+    res.set({
+      'Content-Type': BLOG_IMAGE_TYPES[file.split('.').pop() as keyof typeof BLOG_IMAGE_TYPES],
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'Content-Security-Policy': "default-src 'none'",
+      'Cross-Origin-Resource-Policy': 'same-origin',
+    });
+    body.on('error', () => res.destroy());
+    body.pipe(res);
   }
 
   @Delete('posts/:id')

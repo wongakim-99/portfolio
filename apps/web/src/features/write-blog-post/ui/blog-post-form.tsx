@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { errorMessage } from '@shared/api';
 import { routes } from '@shared/config';
 import { cx, formatCount } from '@shared/lib';
@@ -17,11 +17,15 @@ import {
   type BlogPostInput,
   type Visibility,
 } from '@entities/blog-post';
+import { CoverPicker } from './cover-picker';
+import { MarkdownEditor } from './markdown-editor';
 import { TagInput } from './tag-input';
 import './blog-post-form.css';
 
 // 실수로 넋두리를 공개하는 쪽이 기술 글을 잠그는 쪽보다 곤란하므로 새 글은 '허락한 사람만'으로 시작함
-const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved', tags: [] };
+const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved', tags: [], cover: null };
+// 편집기가 사진을 올리는 동안 본문에 넣어 두는 자리 글 (markdown-editor.tsx)
+const UPLOADING = /!\[사진 올리는 중 \d+\]\(\)/;
 
 const VISIBILITY_HINT: Record<Visibility, string> = {
   public: '누구나 읽습니다. 기술 글이나 남에게도 쓸모 있는 글',
@@ -51,14 +55,22 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(initialStatus);
 
-  function change(next: BlogPostInput) {
-    setDraft(next);
-    if (!postId) saveBlogDraft(next);
+  // 새 글은 고칠 때마다 이 브라우저에 임시로 남김. 사진을 올리는 중에도 본문이 바뀌므로 저장은 여기 한곳에서
+  useEffect(() => {
+    if (!postId) saveBlogDraft(draft);
+  }, [draft, postId]);
+
+  function change(next: Partial<BlogPostInput>) {
+    setDraft((current) => ({ ...current, ...next }));
   }
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!event.currentTarget.reportValidity()) return;
+    if (UPLOADING.test(draft.body)) {
+      setStatus({ message: '사진을 다 올린 뒤에 저장해 주세요.', tone: 'error' });
+      return;
+    }
     setBusy(true);
     setStatus({ message: postId ? '고치는 중입니다.' : '글을 올리는 중입니다.' });
     try {
@@ -86,12 +98,12 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
           maxLength={BLOG_LIMITS.titleMax}
           placeholder="제목을 입력하세요"
           value={draft.title}
-          onChange={(event) => change({ ...draft, title: event.target.value })}
+          onChange={(event) => change({ title: event.target.value })}
         />
         <label className="sr" htmlFor="blog-tags">
           태그
         </label>
-        <TagInput tags={draft.tags} onChange={(tags) => change({ ...draft, tags })} />
+        <TagInput tags={draft.tags} onChange={(tags) => change({ tags })} />
         <fieldset className="blog-visibility">
           <legend>누가 읽을 수 있나요</legend>
           {(Object.keys(VISIBILITY_LABEL) as Visibility[]).map((visibility) => (
@@ -101,27 +113,18 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
                 name="visibility"
                 value={visibility}
                 checked={draft.visibility === visibility}
-                onChange={() => change({ ...draft, visibility })}
+                onChange={() => change({ visibility })}
               />
               <b>{VISIBILITY_LABEL[visibility]}</b>
               <span>{VISIBILITY_HINT[visibility]}</span>
             </label>
           ))}
         </fieldset>
-        <label className="sr" htmlFor="blog-body">
-          본문
-        </label>
-        <textarea
-          id="blog-body"
-          className="blog-form-body"
-          name="body"
-          required
-          minLength={BLOG_LIMITS.bodyMin}
-          maxLength={BLOG_LIMITS.bodyMax}
-          rows={18}
-          placeholder="이야기를 적어 보세요. 줄바꿈은 쓴 그대로 보입니다."
+        <CoverPicker cover={draft.cover} body={draft.body} onChange={(cover) => change({ cover })} onStatus={setStatus} />
+        <MarkdownEditor
           value={draft.body}
-          onChange={(event) => change({ ...draft, body: event.target.value })}
+          onChange={(update) => setDraft((current) => ({ ...current, body: update(current.body) }))}
+          onStatus={setStatus}
         />
         {/* 글이 길어도 올리기 버튼이 늘 화면 아래에 보이게 붙여 둠 */}
         <div className="blog-form-bar">

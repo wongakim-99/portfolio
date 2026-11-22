@@ -11,8 +11,9 @@ export function configureApp(app: NestExpressApplication): void {
   app.set('trust proxy', ['loopback', 'uniquelocal']);
   app.setGlobalPrefix('api');
   app.use(app.get(TelemetryService).middleware(app.get(ConfigService<Env, true>).get('HASH_SALT', { infer: true })));
-  // 프로필 사진 업로드는 사진 파일을 본문 그대로 받음. 형식은 API 가 파일 내용으로 다시 확인함
-  app.useBodyParser('raw', { type: ['image/jpeg', 'image/png', 'image/webp'], limit: '1mb' });
+  // 프로필 사진과 블로그 사진은 파일을 본문 그대로 받음. 형식은 API 가 파일 내용으로 다시 확인함
+  // 한도는 큰 쪽(블로그 사진 5MB)에 맞추고, 프로필 사진은 서비스에서 1MB 로 다시 막음
+  app.useBodyParser('raw', { type: ['image/jpeg', 'image/png', 'image/webp'], limit: '6mb' });
   app.useGlobalPipes(
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );

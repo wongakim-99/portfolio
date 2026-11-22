@@ -26,7 +26,7 @@ export function BlogEditorPage({ postId }: { postId?: string }) {
     if (!owner || !postId) return;
     let active = true;
     getBlogPost(postId).then(
-      (post) => active && setLoaded({ title: post.title, body: post.body ?? '', visibility: post.visibility, tags: post.tags }),
+      (post) => active && setLoaded({ title: post.title, body: post.body ?? '', visibility: post.visibility, tags: post.tags, cover: post.coverFile }),
       () => active && setLoadStatus({ message: '글을 불러오지 못했습니다.', tone: 'error' }),
     );
     return () => {

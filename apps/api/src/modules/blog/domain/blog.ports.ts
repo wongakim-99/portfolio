@@ -23,7 +23,7 @@ export abstract class BlogPostRepository {
   abstract findById(id: string): Promise<BlogPost | null>;
   abstract findMany(ids: string[]): Promise<BlogPost[]>;
   abstract create(input: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>): Promise<BlogPost>;
-  abstract update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags'>): Promise<void>;
+  abstract update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover'>): Promise<void>;
   abstract delete(id: string): Promise<boolean>;
 }
 
@@ -53,6 +53,17 @@ export abstract class GrantRepository {
 export abstract class BlogNotifier {
   abstract requestReceived(requesterName: string, postTitle: string): void;
   abstract granted(userId: string, grantedPostTitle: string | null, requestedPostId: string): void;
+}
+
+// 올린 블로그 사진의 기록. 어느 글에 붙었는지 적어 두고, 글에서 빠지거나 글이 지워지면 사진 저장소에서도 지움
+export abstract class BlogImageRepository {
+  abstract create(input: { file: string; size: number }): Promise<void>;
+  /** 아직 아무 글에도 붙지 않았거나 이 글에 붙은 사진만 이 글에 붙임 */
+  abstract attach(files: string[], postId: string): Promise<void>;
+  abstract filesForPost(postId: string): Promise<string[]>;
+  /** 글에 붙지 않은 채 before 보다 먼저 올린 사진 */
+  abstract orphans(before: Date): Promise<string[]>;
+  abstract delete(files: string[]): Promise<void>;
 }
 
 // 잠긴 글의 증명을 읽고 빨간 펜 채점평을 한 조각씩 흘려보냄. 채점기를 못 쓰면(키 없음, 바깥 오류) null

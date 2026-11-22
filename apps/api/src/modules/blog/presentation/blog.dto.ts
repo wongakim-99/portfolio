@@ -1,7 +1,8 @@
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, Length, Max, MaxLength, Min } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsIn, IsInt, IsOptional, IsString, Length, Matches, Max, MaxLength, Min } from 'class-validator';
 import { oneLine, trim } from '../../../shared/http/transforms.js';
 import { normalizeTags, TAG_MAX, VISIBILITIES, type Visibility } from '../domain/blog.js';
+import { BLOG_IMAGE_FILE } from '../domain/blog-image.js';
 import { PROOF_MAX, PROOF_PROBLEM_IDS } from '../domain/proof.js';
 
 const tagList = ({ value }: { value: unknown }) => (Array.isArray(value) ? normalizeTags(value) : value);
@@ -28,6 +29,11 @@ export class WriteBlogPostDto {
   @IsString({ each: true })
   @Length(1, 20, { each: true })
   tags?: string[];
+
+  // 이 블로그에 올린 사진 파일 이름만. null 이면 표지를 빼고 본문 첫 사진을 씀
+  @IsOptional()
+  @Matches(BLOG_IMAGE_FILE)
+  cover?: string | null;
 }
 
 export class AccessRequestDto {

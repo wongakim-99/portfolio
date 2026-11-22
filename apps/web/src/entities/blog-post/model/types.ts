@@ -10,7 +10,9 @@ export interface BlogPostSummary {
   /** 지금 보는 사람이 본문을 못 읽으면 true. 제목과 태그만 보임 */
   locked: boolean;
   tags: string[];
-  /** 본문 앞 220자. 잠긴 글이면 null */
+  /** 썸네일 주소. 고른 표지가 없으면 본문 첫 사진. 잠긴 글은 고른 표지만 */
+  cover: string | null;
+  /** 본문 앞 220자 (마크다운 기호를 뺀 글자). 잠긴 글이면 null */
   excerpt: string | null;
   /** 읽는 데 걸리는 분. 잠긴 글이면 null */
   readMinutes: number | null;
@@ -26,8 +28,10 @@ export interface AccessRequestState {
 }
 
 export interface BlogPost extends Omit<BlogPostSummary, 'excerpt'> {
-  /** 잠긴 글이면 null */
+  /** 마크다운 본문. 잠긴 글이면 null */
   body: string | null;
+  /** 글쓴이가 고른 표지 사진 파일. 고르지 않았으면 null */
+  coverFile: string | null;
   /** 잠긴 글을 로그인한 회원이 볼 때만. 아직 요청하지 않았으면 null */
   request: AccessRequestState | null;
 }
@@ -42,6 +46,16 @@ export interface BlogPostInput {
   body: string;
   visibility: Visibility;
   tags: string[];
+  /** 표지 사진 파일. null 이면 본문 첫 사진을 썸네일로 씀 */
+  cover: string | null;
+}
+
+/** 블로그에 올린 사진 한 장 */
+export interface BlogImage {
+  file: string;
+  url: string;
+  width: number;
+  height: number;
 }
 
 /** 목록 거르기. 블로그 주소의 ?tag=, ?q=, ?visibility= 와 같음 */
