@@ -40,6 +40,7 @@ export class RockyEngine {
   private timer: number | undefined;
   private actionTimer: number | undefined;
   private checkQueued = false;
+  private watch: number | undefined;
   private pointerQueued = false;
   private pointer: Point | null = null;
   private held = false;
@@ -61,6 +62,8 @@ export class RockyEngine {
     window.addEventListener('scroll', this.queueCheck, { passive: true });
     window.addEventListener('resize', this.queueCheck);
     window.addEventListener('pointermove', this.queuePointer, { passive: true });
+    // 자리 잡은 뒤에 카드나 사진이 늦게 불러와져 그 자리를 덮을 수 있어서 가만히 있을 때도 가끔 다시 봄
+    this.watch = window.setInterval(this.queueCheck, 1500);
     // 페이지가 다 그려진 뒤에 첫 자리를 찾음
     this.timer = window.setTimeout(this.wander, 1200);
   }
@@ -70,6 +73,7 @@ export class RockyEngine {
     window.removeEventListener('scroll', this.queueCheck);
     window.removeEventListener('resize', this.queueCheck);
     window.removeEventListener('pointermove', this.queuePointer);
+    window.clearInterval(this.watch);
     window.clearTimeout(this.timer);
     window.clearTimeout(this.actionTimer);
     if (this.frame !== null) cancelAnimationFrame(this.frame);
