@@ -8,7 +8,8 @@ interface MdNode {
   data?: { hName?: string; hProperties?: Record<string, unknown> };
 }
 
-const LEADING_EMOJI = /^\s*(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|\p{Emoji_Modifier})*)\s*/u;
+// 글쓰기 편집기도 같은 기준으로 콜아웃을 알아봄
+export const LEADING_EMOJI = /^\s*(\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic}|\p{Emoji_Modifier})*)\s*/u;
 
 function markCallout(quote: MdNode) {
   const text = quote.children?.[0]?.type === 'paragraph' ? quote.children[0].children?.[0] : undefined;

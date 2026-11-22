@@ -24,6 +24,7 @@ src/
   app/         라우팅만. layout, page, 메타데이터, 옛 주소 리다이렉트 (community.html/route.ts)
     (site)/    홈(/), 포트폴리오(/portfolio). 상단 바만 있는 틀
     feed/      피드(/feed/*). 로그인 상태(SessionProvider), 계정 칸, 로그인 창, 메일 링크 창을 여기서 한 번 둠
+               (board)/ 에 묶인 피드 화면에만 피드 머리를 두고, 관리실(/feed/admin)은 머리 없이 뜸
     blog/      블로그(/blog/*). 피드와 같은 로그인 상태, 계정 칸, 로그인 창
   views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin, blog, blog-post, blog-editor
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
@@ -32,7 +33,7 @@ src/
                admin-members(회원 수, 가입 막대, 회원 명부와 상세), rocky(빈 책상을 굴러다니는 로키 공)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar,
-               write-blog-post(마크다운 편집기, 사진 올리기, 표지 고르기, 노션 붙여넣기, 공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
+               write-blog-post(노션처럼 바로 바뀌는 편집기, 사진 올리기, 표지 고르기, 노션 붙여넣기, 공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
                change-member-role(관리실에서 관리자 지정, 해제)
   entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report,
                blog-post(글 API, 마크다운 그리기, 콜아웃), blog-access
@@ -145,9 +146,17 @@ src/
   - 코드 블록은 숨은 터미널과 같은 어두운 판에 언어 이름, 복사 단추, 문법 색을 붙임 (rehype-highlight)
   - 본문의 `#` 은 글 제목 아래 단계 제목으로 그림. 줄바꿈은 쓴 그대로 살려서 예전 줄글도 그대로 보임
   - 글 안의 HTML 은 그리지 않고 글자로만 둠. 링크의 `javascript:` 같은 주소도 걸러짐
-- 글쓰기 화면은 도구 막대(제목, 굵게, 코드, 링크, 인용, 콜아웃, 목록, 할 일, 코드 블록, 표, 구분선, 사진)와 쓰기, 미리보기 탭이 있는 편집기. ⌘B, ⌘I, ⌘E, ⌘K 단축키, 목록에서 Enter 를 누르면 다음 항목이 이어짐
-- 사진은 '사진' 단추, 붙여넣기, 끌어다 놓기로 올림. 브라우저가 긴 변 2000px 이하 WebP(안 되면 JPG)로 다시 그려 올려서 촬영 위치 같은 사진 속 정보(EXIF)가 빠짐. 올리는 동안은 본문에 자리 글이 남고 저장 단추가 막힘
-- 노션에서 복사해 붙이면 HTML 을 마크다운으로 바꿔 넣음 (turndown). 노션 사진 주소는 시간이 지나면 막혀서 빼고, 그 자리에 '사진을 다시 올려 주세요' 콜아웃을 남김
+- 글쓰기 편집기는 노션처럼 치는 대로 바로 모양이 바뀜 (Tiptap, `features/write-blog-post/ui/rich-editor.tsx`). 저장은 지금처럼 마크다운이라 읽는 화면과 예전 글은 그대로
+  - `# ` 제목, `- ` 목록, `1. ` 번호, `[ ] ` 할 일, `> ` 인용, `> 💡 ` 콜아웃, ```` ```ts ```` 코드 블록, `---` 구분선, `**굵게**`, `*기울임*`, `` `코드` ``, `[글](주소)` 링크
+  - 편집기 안에서도 읽는 화면과 같은 `.md` 스타일을 써서 쓰는 모양이 올린 모양과 같음. 코드 블록은 쓰는 동안에도 문법 색이 붙음
+  - 위에 붙어 따라오는 도구 막대로도 같은 일을 하고, 커서가 있는 곳의 모양은 켜진 단추로 보임. 표 안에서는 줄, 칸 추가와 지우기 단추가 더 나옴. ⌘B, ⌘I, ⌘E, ⌘⇧S, ⌘K(링크)
+  - '마크다운' 탭에서 원문을 바로 고칠 수도 있음
+- 사진은 ⌘V 붙여넣기, 끌어다 놓기, '사진' 단추로 올림. 붙이는 순간 그 자리에 보이고(브라우저 안 임시 주소), 긴 변 2000px 이하 WebP(안 되면 JPG)로 다시 그려 올린 뒤 진짜 주소로 바뀜. 촬영 위치 같은 사진 속 정보(EXIF)가 빠짐. 커서는 사진 아래 줄로 옮겨서 바로 이어 씀
+  - 올리는 동안의 임시 사진은 마크다운에 넣지 않고, 저장 단추도 막음
+- 붙여넣기는 내용을 보고 바로 모양을 입힘
+  - 노션 같은 웹 글(HTML)은 마크다운으로 바꿔 넣음 (turndown). 노션 사진 주소는 시간이 지나면 막혀서 빼고, 그 자리에 '사진을 다시 올려 주세요' 콜아웃을 남김
+  - 마크다운 글(text)은 제목, 목록, 표 등으로 바로 바뀜. VS Code 에서 복사한 여러 줄 코드는 그 언어의 코드 블록이 됨
+  - 글을 고른 채 주소를 붙이면 링크가 걸림
 - API 는 `POST /api/blog/images` (`blog:write` 권한, 같은 출처만, 1시간 120장) 로 받아 파일 내용으로 JPG, PNG, WebP 인지와 5MB, 가로세로 4096px 이하인지 다시 확인하고 MinIO `community-media` 의 `blog/` 에 임의 파일 이름으로 저장함
 - 사진은 `/api/blog/images/<파일>` 로 내보냄. 파일 이름이 바뀌지 않으므로 1년 캐시하고, 다른 사이트가 끌어다 쓰지 못하게 같은 출처에서만 읽힘
 - 글을 저장하면 본문과 표지에 남은 사진만 그 글에 붙여 두고, 글에서 뺀 사진과 지운 글의 사진은 버킷에서도 지움. 올려 놓고 글에 쓰지 않은 사진은 7일 뒤 다음 사진을 올릴 때 치움

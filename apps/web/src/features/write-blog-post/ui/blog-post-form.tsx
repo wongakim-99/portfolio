@@ -18,14 +18,12 @@ import {
   type Visibility,
 } from '@entities/blog-post';
 import { CoverPicker } from './cover-picker';
-import { MarkdownEditor } from './markdown-editor';
+import { RichEditor } from './rich-editor';
 import { TagInput } from './tag-input';
 import './blog-post-form.css';
 
 // 실수로 넋두리를 공개하는 쪽이 기술 글을 잠그는 쪽보다 곤란하므로 새 글은 '허락한 사람만'으로 시작함
 const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved', tags: [], cover: null };
-// 편집기가 사진을 올리는 동안 본문에 넣어 두는 자리 글 (markdown-editor.tsx)
-const UPLOADING = /!\[사진 올리는 중 \d+\]\(\)/;
 
 const VISIBILITY_HINT: Record<Visibility, string> = {
   public: '누구나 읽습니다. 기술 글이나 남에게도 쓸모 있는 글',
@@ -54,6 +52,7 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
   const [draft, setDraft] = useState(() => startingDraft(initial, restoreDraft));
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(initialStatus);
+  const [uploading, setUploading] = useState(0);
 
   // 새 글은 고칠 때마다 이 브라우저에 임시로 남김. 사진을 올리는 중에도 본문이 바뀌므로 저장은 여기 한곳에서
   useEffect(() => {
@@ -67,7 +66,16 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!event.currentTarget.reportValidity()) return;
-    if (UPLOADING.test(draft.body)) {
+    // 본문은 textarea 가 아니라 브라우저 확인을 거치지 않으므로 여기서 길이를 봄
+    if (draft.body.trim().length < BLOG_LIMITS.bodyMin) {
+      setStatus({ message: '본문을 적어 주세요.', tone: 'error' });
+      return;
+    }
+    if (draft.body.length > BLOG_LIMITS.bodyMax) {
+      setStatus({ message: `본문은 ${BLOG_LIMITS.bodyMax.toLocaleString('ko-KR')}자까지 쓸 수 있습니다.`, tone: 'error' });
+      return;
+    }
+    if (uploading > 0) {
       setStatus({ message: '사진을 다 올린 뒤에 저장해 주세요.', tone: 'error' });
       return;
     }
@@ -121,9 +129,11 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
           ))}
         </fieldset>
         <CoverPicker cover={draft.cover} body={draft.body} onChange={(cover) => change({ cover })} onStatus={setStatus} />
-        <MarkdownEditor
+        <RichEditor
           value={draft.body}
-          onChange={(update) => setDraft((current) => ({ ...current, body: update(current.body) }))}
+          onChange={(body) => change({ body })}
+          uploading={uploading}
+          onUploading={(delta) => setUploading((count) => count + delta)}
           onStatus={setStatus}
         />
         {/* 글이 길어도 올리기 버튼이 늘 화면 아래에 보이게 붙여 둠 */}
