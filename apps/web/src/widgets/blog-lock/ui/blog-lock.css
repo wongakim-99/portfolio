@@ -11,7 +11,8 @@
 }
 
 /* 항복 문서: 문제를 끝까지 넘기면 뜨는 종이 한 장. 오른쪽 위에 빨간 '항복' 도장이 쾅 찍힘 */
-.community-dialog.surrender { position: relative; width: min(540px, calc(100vw - 28px)); padding: 30px 30px 24px; border-radius: 3px; }
+/* 모달은 기본이 화면에 고정(position: fixed)이고 도장의 기준점도 됨. position 을 덮어쓰면 페이지와 같이 스크롤돼서 두지 않음 */
+.community-dialog.surrender { width: min(540px, calc(100vw - 28px)); padding: 30px 30px 24px; border-radius: 3px; }
 .surrender-stamp { position: absolute; right: 28px; top: 74px; margin: 0; padding: 4px 14px 4px 18px; border: 3px double var(--stamp-red); border-radius: 8px; color: var(--stamp-red); font-size: 26px; font-weight: 700; letter-spacing: .3em; opacity: .85; transform: rotate(-12deg); pointer-events: none; animation: surrender-stamp .4s cubic-bezier(.2, 1.4, .4, 1) .35s both; }
 .surrender-hand { margin: 14px 0 0; padding-right: 120px; color: var(--pen); font-size: 25px; line-height: 1.3; text-wrap: balance; transform: rotate(-1.5deg); transform-origin: left; }
 .surrender-body { margin: 16px 0 0; line-height: 1.8; text-wrap: pretty; }
