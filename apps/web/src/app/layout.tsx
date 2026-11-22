@@ -1,9 +1,13 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { GuestTerminal } from '@widgets/guest-terminal';
+import { AuthDialog } from '@features/auth';
 import { portfolio } from '@entities/portfolio';
+import { SessionProvider } from '@entities/user';
 import '@shared/styles/tokens.css';
 import '@shared/styles/base.css';
+// 로그인 창(AuthDialog)이 피드 공용 스타일을 씀. 모든 화면 상단에 계정 칸이 있어서 여기서 불러옴
+import '@shared/styles/community.css';
 
 export const metadata: Metadata = {
   metadataBase: new URL(portfolio.siteUrl),
@@ -46,7 +50,11 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <a className="skip" href="#main">
           본문 바로가기
         </a>
-        {children}
+        {/* 로그인 상태는 여기서 한 번만 확인함. 페이지를 옮겨도 다시 받지 않아 상단 계정 칸이 깜빡이지 않음 */}
+        <SessionProvider>
+          {children}
+          <AuthDialog />
+        </SessionProvider>
         {/* 숨은 터미널은 페이지를 옮겨도 기록과 위치가 이어지도록 여기 하나만 둠 */}
         <GuestTerminal />
       </body>

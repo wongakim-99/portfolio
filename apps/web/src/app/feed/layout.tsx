@@ -3,9 +3,7 @@ import type { ReactNode } from 'react';
 import { AccountMenu } from '@widgets/account-menu';
 import { SiteFooter } from '@widgets/site-footer';
 import { SiteHeader } from '@widgets/site-header';
-import { AuthDialog, MailLinkDialogs } from '@features/auth';
-import { SessionProvider } from '@entities/user';
-import '@shared/styles/community.css';
+import { MailLinkDialogs } from '@features/auth';
 
 export const metadata: Metadata = {
   title: '피드',
@@ -14,18 +12,17 @@ export const metadata: Metadata = {
   referrer: 'no-referrer',
 };
 
-// 피드 화면(/feed/*)과 관리실이 같이 쓰는 틀. 로그인 상태는 여기서 한 번 확인하고 아래 화면들이 나눠 씀
+// 피드 화면(/feed/*)과 관리실이 같이 쓰는 틀. 로그인 상태와 로그인 창은 app/layout.tsx 에 있음
 // 피드 머리는 (board)/layout.tsx 에 있음
 export default function FeedLayout({ children }: { children: ReactNode }) {
   return (
-    <SessionProvider>
+    <>
       <SiteHeader account={<AccountMenu />} />
       <main className="community-main" id="main">
         {children}
       </main>
       <SiteFooter />
-      <AuthDialog />
       <MailLinkDialogs />
-    </SessionProvider>
+    </>
   );
 }

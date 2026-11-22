@@ -9,7 +9,7 @@ import { getAdminSummary, setUnreadMessages, useUnreadMessages } from '@entities
 import { Avatar, useSession } from '@entities/user';
 import './account-menu.css';
 
-// 피드 상단 오른쪽 계정 칸. 로그인 전에는 로그인, 뒤에는 (관리자면) 관리실, 프로필 사진(내 페이지), 로그아웃
+// 모든 화면 상단 바 오른쪽 계정 칸. 로그인 전에는 로그인, 뒤에는 (관리자면) 관리실, 프로필 사진(내 페이지), 로그아웃
 export function AccountMenu() {
   const pathname = usePathname();
   const { user, can, requestLogin } = useSession();

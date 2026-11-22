@@ -22,10 +22,11 @@ gadoc, GoLe 와 같은 FSD 레이어로 나눈다. 위 레이어는 아래 레�
 ```
 src/
   app/         라우팅만. layout, page, 메타데이터, 옛 주소 리다이렉트 (community.html/route.ts)
-    (site)/    홈(/), 포트폴리오(/portfolio). 상단 바만 있는 틀
-    feed/      피드(/feed/*). 로그인 상태(SessionProvider), 계정 칸, 로그인 창, 메일 링크 창을 여기서 한 번 둠
+               맨 바깥 layout 에서 로그인 상태(SessionProvider)와 로그인 창을 한 번만 둠. 페이지를 옮겨도 다시 받지 않음
+    (site)/    홈(/), 포트폴리오(/portfolio). 다른 화면과 같은 상단 바(계정 칸 포함)
+    feed/      피드(/feed/*). 가입 확인, 비밀번호 재설정 메일 링크 창을 여기 둠
                (board)/ 에 묶인 피드 화면에만 피드 머리를 두고, 관리실(/feed/admin)은 머리 없이 뜸
-    blog/      블로그(/blog/*). 피드와 같은 로그인 상태, 계정 칸, 로그인 창
+    blog/      블로그(/blog/*). 피드 계정으로 로그인, 빈 책상의 로키
   views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin, blog, blog-post, blog-editor
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
                guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports,
@@ -84,7 +85,7 @@ src/
 
 ## 페이지
 
-상단의 홈, 포트폴리오, 블로그, 피드 탭으로 페이지를 이동한다. 각 페이지는 책상을 위에서 내려다본 디자인을 공유한다.
+상단의 홈, 포트폴리오, 블로그, 피드 탭으로 페이지를 이동한다. 각 페이지는 책상을 위에서 내려다본 디자인을 공유한다. 상단 바 오른쪽의 계정 칸(로그인 전에는 로그인, 뒤에는 관리실, 내 페이지, 로그아웃)은 모든 화면에 있다.
 
 - `/` 홈: 스티커 붙은 홈서버 노트북, 페이지 안내, 배포 영수증과 엽서
 - `/portfolio`: 소개, 경력, 프로젝트, 기술, 이력을 담은 종이 포트폴리오. 목차는 이 페이지 안에서만 이동

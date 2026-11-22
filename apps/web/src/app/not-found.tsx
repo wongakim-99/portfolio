@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { routes } from '@shared/config';
 import { Sheet } from '@shared/ui';
+import { AccountMenu } from '@widgets/account-menu';
 import { SiteFooter } from '@widgets/site-footer';
 import { SiteHeader } from '@widgets/site-header';
 
 export default function NotFound() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader account={<AccountMenu />} />
       <main className="not-found" id="main">
         <Sheet clip>
           <p className="hand">여기는 비어 있어요</p>
