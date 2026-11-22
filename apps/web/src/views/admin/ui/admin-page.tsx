@@ -92,7 +92,7 @@ export function AdminPage() {
       <Sheet className="community-sheet admin-sheet" aria-labelledby="admin-title">
         <BackLink href={routes.feed}>모든 글</BackLink>
         <p className="hand profile-hand">운영자에게만 보이는 곳</p>
-        <h2 id="admin-title">관리실</h2>
+        <h1 id="admin-title">관리실</h1>
         <p className="community-meta admin-lead">
           {user && !active ? '관리자 권한이 있는 계정만 볼 수 있습니다.' : '지금 서버 상태와 회원, 홈 엽서로 받은 쪽지, 피드 신고를 봅니다.'}
         </p>

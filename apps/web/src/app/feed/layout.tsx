@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { AccountMenu } from '@widgets/account-menu';
-import { FeedHeader } from '@widgets/feed-header';
 import { SiteFooter } from '@widgets/site-footer';
 import { SiteHeader } from '@widgets/site-header';
 import { AuthDialog, MailLinkDialogs } from '@features/auth';
@@ -15,13 +14,13 @@ export const metadata: Metadata = {
   referrer: 'no-referrer',
 };
 
-// 피드 화면(/feed/*)이 같이 쓰는 틀. 로그인 상태는 여기서 한 번 확인하고 아래 화면들이 나눠 씀
+// 피드 화면(/feed/*)과 관리실이 같이 쓰는 틀. 로그인 상태는 여기서 한 번 확인하고 아래 화면들이 나눠 씀
+// 피드 머리는 (board)/layout.tsx 에 있음
 export default function FeedLayout({ children }: { children: ReactNode }) {
   return (
     <SessionProvider>
       <SiteHeader account={<AccountMenu />} />
       <main className="community-main" id="main">
-        <FeedHeader />
         {children}
       </main>
       <SiteFooter />
