@@ -14,7 +14,21 @@
 .blog-card-title a::after { content: ""; position: absolute; inset: 0; border-radius: inherit; }
 .blog-card-title a:focus-visible { outline: none; }
 .blog-card-excerpt { display: -webkit-box; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: 15px; line-height: 1.75; overflow-wrap: anywhere; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
-.blog-card-locked { margin: 0; color: var(--stamp-red); font-size: 22px; line-height: 1.35; text-wrap: balance; transform: rotate(-1deg); transform-origin: left; }
+/* 잠긴 글: 본문 자리를 매직으로 지운 기밀 문서처럼. 마우스를 올리면 아래 '열어 보기' 가 빨간 펜 한마디로 바뀜 */
+.blog-card-redacted { display: grid; gap: 12px; padding: 6px 0 4px; }
+.blog-card-redacted-line { display: flex; gap: 7px; height: 13px; }
+/* 막대 폭은 줄 폭의 %. 막대 사이 간격만큼은 줄어들어 줄 밖으로 나가지 않음 */
+.blog-card-redacted-line > span { flex: 0 1 auto; min-width: 14px; height: 100%; border-radius: 2px; background: color-mix(in srgb, var(--ink) 78%, var(--paper)); transition: background-color .4s ease; }
+.blog-card-foot-label { display: grid; align-items: center; }
+.blog-card-foot-label > * { grid-area: 1 / 1; transition: opacity .25s ease, transform .25s ease; }
+.blog-card-whisper { color: var(--stamp-red); font-size: 20px; line-height: 1; white-space: nowrap; opacity: 0; transform: translateY(4px) rotate(-2deg); transform-origin: left; }
+.blog-card:hover .blog-card-foot-label > :first-child, .blog-card:focus-within .blog-card-foot-label > :first-child { opacity: 0; }
+.blog-card:hover .blog-card-whisper, .blog-card:focus-within .blog-card-whisper { opacity: 1; transform: rotate(-2deg); }
+/* 마우스가 없는 기기는 처음부터 한마디를 보여 줌 */
+@media (hover: none) {
+  .blog-card-foot-label > :first-child { opacity: 0; }
+  .blog-card-whisper { opacity: 1; transform: rotate(-2deg); }
+}
 .blog-card .blog-tags { position: relative; z-index: 1; }
 .blog-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: auto 0 0; padding-top: 14px; border-top: 1px solid var(--paper-rule); color: var(--ink-soft); font-size: 13px; }
 .blog-card-foot svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s ease; }
