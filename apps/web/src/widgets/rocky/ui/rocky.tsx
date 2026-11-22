@@ -16,6 +16,8 @@ const REST_KEY = 'gawon:rocky-resting';
 const DRAG_START = 5;
 // 저절로 뜬 말풍선(어지러움)은 잠깐 뒤에 닫음
 const AUTO_CLOSE_MS = 3200;
+// 노트북, 데스크톱(마우스나 트랙패드, 1024px 이상)에서만. 휴대폰, 태블릿은 빈 책상도 좁고 손가락으로 잡기 어려워서 띄우지 않음 (rocky.css 와 같은 조건)
+const DESKTOP = '(hover: hover) and (pointer: fine) and (min-width: 1024px)';
 const ARROWS: Record<string, Point> = { ArrowLeft: { x: -80, y: 0 }, ArrowRight: { x: 80, y: 0 }, ArrowUp: { x: 0, y: -80 }, ArrowDown: { x: 0, y: 80 } };
 
 const resting = () => {
@@ -51,16 +53,32 @@ export function Rocky() {
   const [gone, setGone] = useState(false);
   const bubbleId = useId();
 
+  // 화면이 조건에 맞을 때만 엔진을 돌림. 창 크기를 바꿔 조건이 바뀌면 멈추거나 다시 시작함
   useEffect(() => {
     const el = root.current;
     if (!el || resting()) return;
-    const instance = new RockyEngine(el, SIZE, {
-      onVisible: setVisible,
-      onDizzy: () => setDizzy((count) => count + 1),
-    });
-    engine.current = instance;
-    instance.start();
-    return () => instance.stop();
+    const desktop = matchMedia(DESKTOP);
+    const sync = () => {
+      if (desktop.matches && !engine.current) {
+        engine.current = new RockyEngine(el, SIZE, {
+          onVisible: setVisible,
+          onDizzy: () => setDizzy((count) => count + 1),
+        });
+        engine.current.start();
+      } else if (!desktop.matches && engine.current) {
+        engine.current.stop();
+        engine.current = null;
+        setVisible(false);
+        setBubble(null);
+      }
+    };
+    sync();
+    desktop.addEventListener('change', sync);
+    return () => {
+      desktop.removeEventListener('change', sync);
+      engine.current?.stop();
+      engine.current = null;
+    };
   }, []);
 
   // 세게 던지면 어지럽다고 한마디. 화음도 낮게 한 번

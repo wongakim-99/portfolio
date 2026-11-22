@@ -43,6 +43,8 @@ export class RockyEngine {
   private pointerQueued = false;
   private pointer: Point | null = null;
   private held = false;
+  // 멈춘 뒤에도 이미 예약된 프레임, 타이머가 한 번 돌 수 있어서 그때 아무것도 하지 않게 함
+  private stopped = false;
   // 공이 굴러간 만큼 돌린 각도(도)
   private rolled = 0;
   private readonly still: boolean;
@@ -64,6 +66,7 @@ export class RockyEngine {
   }
 
   stop(): void {
+    this.stopped = true;
     window.removeEventListener('scroll', this.queueCheck);
     window.removeEventListener('resize', this.queueCheck);
     window.removeEventListener('pointermove', this.queuePointer);
@@ -128,7 +131,7 @@ export class RockyEngine {
   }
 
   private queueCheck = () => {
-    if (this.checkQueued) return;
+    if (this.checkQueued || this.stopped) return;
     this.checkQueued = true;
     requestAnimationFrame(() => {
       this.checkQueued = false;
@@ -143,6 +146,7 @@ export class RockyEngine {
     this.pointerQueued = true;
     requestAnimationFrame(() => {
       this.pointerQueued = false;
+      if (this.stopped) return;
       const position = this.position;
       const pointer = this.pointer;
       const near = this.state === 'idle' && position && pointer && Math.hypot(pointer.x - position.x, pointer.y - position.y) < CURIOUS_RADIUS;
@@ -153,6 +157,7 @@ export class RockyEngine {
 
   // 지금 자리에 종이가 들어왔으면 가장 가까운 빈 자리로 서둘러 비킴. 빈 자리가 아예 없으면 숨음
   private check(): void {
+    if (this.stopped) return;
     if (this.state === 'held' || this.state === 'rolling' || this.state === 'dizzy') return;
     if (this.target && this.speed === ESCAPE_SPEED) return;
     if (this.position && this.state !== 'hidden' && this.isFree(this.position)) return;
@@ -170,7 +175,7 @@ export class RockyEngine {
   }
 
   private wander = () => {
-    if (this.held || this.state === 'held' || this.state === 'rolling' || this.state === 'dizzy') return;
+    if (this.stopped || this.held || this.state === 'held' || this.state === 'rolling' || this.state === 'dizzy') return;
     const next = pickWanderSpot(this.freeSpots(), this.position);
     if (!next) {
       this.hide();
@@ -224,7 +229,7 @@ export class RockyEngine {
 
   private tick = (now: number) => {
     this.frame = null;
-    if (!this.position) return;
+    if (!this.position || this.stopped) return;
     // 탭을 다녀오면 시간이 크게 벌어지므로 한 프레임에 너무 멀리 가지 않게 자름
     const seconds = Math.min(0.05, Math.max(0, now - this.last) / 1000);
     this.last = now;

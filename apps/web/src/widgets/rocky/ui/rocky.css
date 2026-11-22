@@ -110,6 +110,7 @@
   .rocky-creature, .rocky-ball { transition: none; }
   .rocky .rocky-leg, .rocky .rocky-torso, .rocky .rocky-motion { animation: none !important; }
 }
-@media print {
+/* 노트북, 데스크톱(마우스나 트랙패드, 1024px 이상)에서만. 휴대폰, 태블릿과 인쇄에서는 그리지 않음 (ui/rocky.tsx 의 DESKTOP) */
+@media print, not all and (hover: hover) and (pointer: fine) and (min-width: 1024px) {
   .rocky { display: none; }
 }
