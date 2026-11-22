@@ -1,30 +1,45 @@
 /* 블로그 목록 배치. 제목과 검색, 카드는 포트폴리오, 피드와 같은 920px 가운데 단에 두어 탭을 옮겨도 자리가 같음
-   사이드바만 그 단 왼쪽 책상 위에 따로 놓고, 자리가 모자라면 단 안 왼쪽으로, 더 좁으면 맨 아래로 내림 */
+   사이드바는 그 단 옆에 따로 빼서 제목부터 목록 끝까지 세로로 길게 차지하고, 스크롤하면 화면 위에 붙어 따라옴. 960px 이하는 맨 아래 */
 .blog-page {
+  --blog-hero-top: clamp(52px, 8vw, 100px);
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 920px) minmax(0, 1fr);
-  grid-template-areas: ". hero ." "side main .";
+  grid-template-areas: "side hero ." "side main .";
   column-gap: 36px;
   max-width: var(--chrome);
   margin: 0 auto;
 }
-.blog-page > .blog-sidebar { grid-area: side; justify-self: end; width: min(100%, 260px); position: sticky; top: 24px; align-self: start; }
-.blog-hero { grid-area: hero; padding: clamp(52px, 8vw, 100px) clamp(4px, 2vw, 16px) clamp(40px, 5vw, 64px); }
+/* 사이드바 칸이 제목 줄까지 길게 잡혀 있어서 글이 적어도 붙어 따라올 자리가 있음. 화면보다 길면 사이드바 안에서 스크롤 */
+.blog-page > .blog-sidebar {
+  grid-area: side;
+  justify-self: end;
+  align-self: start;
+  position: sticky;
+  top: 24px;
+  width: min(100%, 260px);
+  max-height: calc(100dvh - 48px);
+  margin-top: var(--blog-hero-top);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.blog-hero { grid-area: hero; padding: var(--blog-hero-top) clamp(4px, 2vw, 16px) clamp(40px, 5vw, 64px); }
 .blog-hero-hand { margin: 0 0 -8px; color: var(--pen); font-size: clamp(25px, 3vw, 34px); transform: rotate(-2deg); transform-origin: left; }
 .blog-hero h1 { margin: 0; font-family: var(--font-display); font-size: clamp(76px, 10vw, 112px); font-weight: 700; line-height: 1.12; letter-spacing: -.035em; }
 .blog-hero > p:last-child { max-width: 58ch; margin: 12px 0 0; font-size: clamp(16px, 1.8vw, 19px); line-height: 1.7; text-wrap: pretty; }
 /* 두 문장은 각자 한 줄에서 시작하고, 좁아서 접힐 때는 쉼표 근처에서 고르게 나뉘게 함 */
 .blog-hero > p:last-child > span { display: block; text-wrap: balance; }
-.blog-board-main { grid-area: main; display: grid; gap: 28px; align-content: start; min-width: 0; }
+/* 칸 너비를 단에 고정해서, 주인장에게 보이는 '나만 보기' 칩까지 한 줄로 늘어서도 휴대폰에서 칸이 밀려 넓어지지 않음 (칩은 옆으로 밀어 봄) */
+.blog-board-main { grid-area: main; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-content: start; min-width: 0; }
 
-/* 노트북 화면: 단 바깥에 사이드바 놓을 자리(220px)가 없으면 920px 단 안 왼쪽에 둠 */
+/* 노트북 화면: 단 바깥에 사이드바 놓을 자리(220px)가 없으면 사이드바와 단을 나란히 붙여 가운데에 둠 */
 @media (max-width: 1519px) {
-  .blog-page { grid-template-columns: clamp(200px, 20vw, 230px) minmax(0, 1fr); grid-template-areas: "hero hero" "side main"; column-gap: 28px; max-width: 920px; }
+  .blog-page { grid-template-columns: clamp(200px, 20vw, 240px) minmax(0, 920px); grid-template-areas: "side hero" "side main"; justify-content: center; column-gap: 28px; }
   .blog-page > .blog-sidebar { justify-self: stretch; width: auto; }
 }
 @media (max-width: 960px) {
   .blog-page { grid-template-columns: minmax(0, 1fr); grid-template-areas: "hero" "main" "side"; row-gap: 40px; }
-  .blog-page > .blog-sidebar { position: static; }
+  .blog-page > .blog-sidebar { position: static; max-height: none; margin-top: 0; overflow: visible; }
   .blog-hero { padding-bottom: 0; }
 }
 @media (max-width: 720px) {
