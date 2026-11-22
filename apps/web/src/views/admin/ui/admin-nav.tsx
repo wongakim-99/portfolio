@@ -13,7 +13,7 @@ interface AdminNavProps {
   onSelect: (key: string) => void;
 }
 
-/** 관리실 칸 고르기. 넓은 화면에서는 종이 왼쪽의 사이드 패널, 좁으면 종이 위에 붙은 색인 탭 (admin-page.css) */
+/** 관리실 칸 고르기. 종이 왼쪽의 사이드 패널, 휴대폰에서는 종이 위 카드 (admin-page.css) */
 export function AdminNav({ items, active, onSelect }: AdminNavProps) {
   return (
     <nav className="admin-nav" aria-label="관리실 칸">
