@@ -23,6 +23,8 @@ export function imagesIn(body: string, cover: string | null = null): string[] {
 /** 본문에 처음 나오는 블로그 사진. 표지를 따로 고르지 않은 글의 썸네일로 씀 */
 export const firstImage = (body: string): string | null => imagesIn(body)[0] ?? null;
 
+const ENTITIES: Record<string, string> = { nbsp: ' ', lt: '<', gt: '>', amp: '&', quot: '"', '#39': "'" };
+
 // 목록 미리보기와 읽는 시간에 쓸 글자만 남김. 마크다운 기호, 사진, 코드 울타리, 링크 주소를 걷어냄
 export function plainText(markdown: string): string {
   return markdown
@@ -33,9 +35,14 @@ export function plainText(markdown: string): string {
     .replace(/^\s{0,3}(?:#{1,6}\s+|>\s?|[-*+]\s+(?:\[[ xX]\]\s+)?|\d+[.)]\s+)/gm, '')
     .replace(/^\s*\|?(?:\s*:?-{3,}:?\s*\|)+\s*:?-{0,}:?\s*$/gm, ' ')
     .replace(/\|/g, ' ')
-    .replace(/(\*\*|__|~~|`)/g, '')
-    .replace(/(^|\s)[*_](\S[^*_]*\S|\S)[*_](?=\s|$)/g, '$1$2')
     .replace(/^\s*(?:---|\*\*\*|___)\s*$/gm, ' ')
+    .replace(/(\*\*|__|~~|`)/g, '')
+    // *기울임* 은 뒤에 조사나 문장부호가 붙어도 기울임 (_기울임_ 은 낱말 경계에서만)
+    .replace(/\*(?![\s*])([^*\n]*?[^\s*\\])\*/g, '$1')
+    .replace(/(^|[^\p{L}\p{N}_])_(?![\s_])([^_\n]*?[^\s_])_(?![\p{L}\p{N}_])/gu, '$1$2')
+    // 편집기가 글자 그대로 쓴 기호(\*)와 빈 줄(&nbsp;) 같은 표기를 글자로 되돌림
+    .replace(/\\([\\`*_{}[\]()#+\-.!|~>])/g, '$1')
+    .replace(/&(nbsp|lt|gt|amp|quot|#39);/g, (_entity, name: string) => ENTITIES[name] ?? ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }

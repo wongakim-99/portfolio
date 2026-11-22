@@ -28,4 +28,10 @@ describe('블로그 본문 마크다운', () => {
     ].join('\n');
     expect(plainText(body)).toBe('인증과 인가 💡 인증은 너 누구야, 인가는 해도 돼? 끝낸 일 첫째 상태 뜻 401 인증 안 됨 노션 링크 const role = "owner";');
   });
+
+  it('기울임 뒤에 조사나 문장부호가 붙어도 걷어내고, 편집기가 쓴 이스케이프와 빈 줄 표기는 글자로 되돌림', () => {
+    expect(plainText('*기울임*, *기울임*과 _밑줄 기울임_ 끝')).toBe('기울임, 기울임과 밑줄 기울임 끝');
+    expect(plainText('곱하기 2 * 3 * 4 와 snake_case_name')).toBe('곱하기 2 * 3 * 4 와 snake_case_name');
+    expect(plainText('\\*별표\\* 와 &lt;b&gt;태그&lt;/b&gt;\n\n&nbsp;\n\n다음 줄')).toBe('*별표* 와 <b>태그</b> 다음 줄');
+  });
 });
