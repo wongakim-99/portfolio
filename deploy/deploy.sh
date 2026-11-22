@@ -4,6 +4,7 @@
 # 2) docker compose 로 교체하고, Caddy 를 거쳐 새 커밋이 응답하는지까지 확인
 # 3) 실패하면 직전 태그와 그때의 compose 파일로 되돌림
 # 4) 결과를 API 의 배포 기록(/api/deploys)에 남김. 홈의 영수증과 숨은 터미널 git log 가 보여 줌
+# 5) 사진 저장소(MinIO) 매일 백업 타이머를 설치하거나 갱신함 (deploy/minio-backup.sh)
 set -euo pipefail
 
 CONFIG="$HOME/.config/portfolio"
@@ -109,8 +110,14 @@ compose "$SHA" up -d --wait --wait-timeout 90 mongo
 mongo_root 'mongosh --quiet --norc --file /dev/stdin' < deploy/mongo-ensure-user.js
 
 echo "[deploy] 사진 저장소 준비"
+# 사진 백업 계정(portfolio-backup) 비밀번호. 없으면 만들어 둠 (권한 600, git 에 없음)
+if [[ ! -f "$CONFIG/minio-backup.env" ]]; then
+  (umask 077 && printf 'MINIO_BACKUP_SECRET_KEY=%s\n' "$(openssl rand -hex 24)" > "$CONFIG/minio-backup.env")
+  echo "[deploy] 만듦: $CONFIG/minio-backup.env"
+fi
 compose "$SHA" up -d --wait --wait-timeout 90 minio
-compose "$SHA" exec -T minio sh -s < deploy/minio-ensure-bucket.sh
+# 백업 계정 비밀번호는 명령 인자가 아니라 표준 입력으로 스크립트 앞에 붙여 넘겨서 프로세스 목록에 남지 않게 함
+{ sed 's/^/export /' "$CONFIG/minio-backup.env"; cat deploy/minio-ensure-bucket.sh; } | compose "$SHA" exec -T minio sh -s
 
 echo "[deploy] 컨테이너 교체"
 if ! compose "$SHA" up -d --wait --wait-timeout 90 --remove-orphans || ! serving "$SHA"; then
@@ -129,6 +136,25 @@ echo "$SHA" > "$STATE"
 cp deploy/docker-compose.yml "$STATE_COMPOSE"
 record_deploy success
 echo "[deploy] 방문 수 확인: $(curl -fsS "$PROXY_URL/api/views")"
+
+# 사진 백업 타이머 설치(또는 갱신). 사이트는 이미 새 버전으로 떴으므로 여기서 실패해도 배포는 성공으로 두고 크게 알림
+install_photo_backup() {
+  local units="$HOME/.config/systemd/user" bin="$HOME/.local/share/portfolio"
+  mkdir -p "$units" "$bin" || return 1
+  install -m 700 deploy/minio-backup.sh "$bin/minio-backup.sh" || return 1
+  install -m 644 deploy/portfolio-minio-backup.service deploy/portfolio-minio-backup.timer "$units/" || return 1
+  systemctl --user daemon-reload || return 1
+  systemctl --user enable --now portfolio-minio-backup.timer 2>/dev/null || return 1
+  # 아직 백업이 하나도 없으면 바로 한 번 뜸
+  if ! compgen -G "$HOME/backups/minio/portfolio/20*" >/dev/null; then
+    systemctl --user start --no-block portfolio-minio-backup.service || return 1
+  fi
+}
+if install_photo_backup; then
+  echo "[deploy] 사진 백업 타이머: 다음 $(systemctl --user show -p NextElapseUSecRealtime --value portfolio-minio-backup.timer)"
+else
+  echo "[deploy] 경고: 사진 백업 타이머를 설치하지 못함. systemctl --user status portfolio-minio-backup.timer 로 확인할 것" >&2
+fi
 
 # 최근 이미지 3개만 남기고 빌드 중간 산출물 정리
 for repo in portfolio-api portfolio-web portfolio-proxy; do

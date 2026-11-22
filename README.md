@@ -296,7 +296,8 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
 | 지금 돌고 있는 버전 | `~/portfolio/docker-release` (커밋 태그). 이미지는 `portfolio-api:<커밋>`, `portfolio-web:<커밋>`, `portfolio-proxy:<커밋>` 최근 3개 보관. 그 버전의 compose 파일은 `~/portfolio/docker-compose.release.yml` |
 | API 환경변수 | `~/.config/portfolio/api.docker.env` (권한 600, git 에 없음. `MINIO_*` 포함) |
 | Mongo 계정 | `~/.config/portfolio/mongo.env` (root 와 앱 계정 비밀번호, 권한 600) |
-| MinIO 계정 | `~/.config/portfolio/minio.env` (root 와 `portfolio-api` 계정 비밀번호, 권한 600) |
+| MinIO 계정 | `~/.config/portfolio/minio.env` (root 와 `portfolio-api` 계정 비밀번호, 권한 600), `~/.config/portfolio/minio-backup.env` (사진 백업용 읽기 전용 `portfolio-backup` 계정 비밀번호, 권한 600, 없으면 deploy.sh 가 만듦) |
+| 사진 백업 | `~/backups/minio/portfolio/<UTC 시각>/community-media/`, 매일 04:30(한국 시간) 사용자 타이머 `portfolio-minio-backup.timer`. 아래 '사진 백업' 참고 |
 | 접속 로그 | `docker logs portfolio-proxy-1` (Caddy, JSON, 10MB 5개까지 보관). 페이지 서버 로그는 `docker logs portfolio-web-1` |
 | Actions runner | `~/actions-runner`, `github-runner.service` (사용자 유닛, docker 그룹) |
 | 예전 방식 | Docker 이전의 `portfolio-api.service`, `caddy.service`, `~/portfolio/site` 는 더 쓰지 않음. 배포 코드에서도 지움. 서버에서 정리하려면 `systemctl --user disable --now portfolio-api caddy && rm ~/.config/systemd/user/{portfolio-api,caddy}.service && rm -rf ~/portfolio/site` |
@@ -313,6 +314,28 @@ docker compose -f deploy/docker-compose.yml exec minio sh -c \
   'MC_HOST_local="http://$MINIO_ROOT_USER:$MINIO_ROOT_PASSWORD@127.0.0.1:9000" mc ls -r local/community-media'
 ```
 
+### 사진 백업
+
+- 블로그 글 사진과 프로필 사진(MinIO `community-media` 버킷)은 매일 04:30(한국 시간) 사용자 타이머 `portfolio-minio-backup.timer` 가 `~/backups/minio/portfolio/<UTC 시각>/` 에 통째로 받아 둠 (`deploy/minio-backup.sh`). Mongo 백업(관리 패널, 04:00)과 따로 돎
+- 읽기 전용 계정 `portfolio-backup`(버킷 목록 보기와 읽기만)으로 내부 망 `portfolio_data` 의 minio 에 붙고, 지금 도는 minio 이미지 안의 `mc mirror` 를 씀. 따로 받는 이미지가 없음
+- 사진 파일은 이름이 바뀌지 않아서 직전 백업과 같은 파일은 하드 링크로 나눠 씀. 날마다 전체가 들어 있지만 디스크는 새로 올린 사진만큼만 늘어남. 지운 사진은 그 뒤 백업에서만 빠지고 앞선 백업에는 남음
+- 14일이 지난 백업은 지우고(가장 최근 것은 늘 남김), 노트북이 꺼져 있어 놓친 날은 다시 켜졌을 때 바로 백업함 (`Persistent=true`)
+- 타이머와 스크립트는 배포 때마다 deploy.sh 가 `~/.config/systemd/user/`, `~/.local/share/portfolio/` 에 설치하고, 백업이 하나도 없으면 바로 한 번 받음
+- 관리 패널(gawon-control)의 백업 모듈은 원본(kscold-control)을 따라가는 코드라 MongoDB 만 다루고, 사진 백업은 MinIO 를 가진 이 저장소가 맡음
+
+```bash
+systemctl --user list-timers portfolio-minio-backup.timer   # 다음 백업 시각
+systemctl --user start portfolio-minio-backup               # 지금 바로 백업
+journalctl --user -u portfolio-minio-backup -n 20           # 지난 백업 기록
+ls ~/backups/minio/portfolio/                               # 백업 목록
+
+# 되살리기: 고른 백업을 버킷에 다시 올림 (root 계정, 이미 있는 사진은 건너뜀)
+SNAP=~/backups/minio/portfolio/<고른 시각>/community-media
+docker run --rm --network portfolio_data --env-file ~/.config/portfolio/minio.env -v "$SNAP:/restore:ro" \
+  --entrypoint sh "$(docker inspect -f '{{.Config.Image}}' portfolio-minio-1)" -c \
+  'MC_HOST_local="http://$MINIO_ROOT_USER:$MINIO_ROOT_PASSWORD@minio:9000" mc --config-dir /tmp/mc mirror /restore local/community-media'
+```
+
 ## 관리 패널 (gawon-control)
 
 서버의 컨테이너는 관리 패널 [gawon-control](https://github.com/wongakim-99/gawon-control) 에서 봄 (kscold-control 기반, 비공개 저장소).
@@ -321,7 +344,7 @@ docker compose -f deploy/docker-compose.yml exec minio sh -c \
 - tailnet 밖에서는 SSH 터널로: `ssh -L 4100:127.0.0.1:4100 homeserver` 후 `http://127.0.0.1:4100`
 - 할 수 있는 것: 컨테이너 상태와 시작, 중지, 로그, 서버 CPU, 메모리, 디스크, Docker 정리, 웹 터미널(`docker` 명령), 감사 로그
 - 백업: 대상 `portfolio` 를 매일 04:00 에 덤프, 14일 보관. 읽기 전용 계정(`portfolio-backup`)으로 내부 망(`portfolio_data`)에 붙어서 뜸. 파일은 서버 `~/backups/mongodb/portfolio/`
-- MinIO 볼륨(`portfolio_minio-data`, 프로필 사진과 블로그 글 사진)은 아직 백업 대상이 아님. 프로필 사진은 각자 다시 올리면 되지만, 블로그 글 사진은 다시 구하기 어려우니 따로 백업을 추가할 것
+- MinIO 볼륨(`portfolio_minio-data`, 프로필 사진과 블로그 글 사진)은 패널이 아니라 이 저장소의 사진 백업 타이머가 매일 백업함 (위 '사진 백업')
 - 관리자 비밀번호 변경: 관리 패널의 `권한 관리 → 사용자 목록 → 본인 계정의 열쇠 아이콘 → 변경`
 
 새 서비스(예: gawon-log 블로그)를 올릴 때도 같은 방식으로 함: 자기 저장소에 compose 를 두고, 포트는 `127.0.0.1` 로만 열고, DB 는 내부 망에 둠. 패널은 서버의 모든 컨테이너를 자동으로 보여 줌.

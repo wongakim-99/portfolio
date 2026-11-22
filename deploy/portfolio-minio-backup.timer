@@ -1,0 +1,12 @@
+# 매일 04:30(한국 시간)에 사진 저장소를 백업함. Mongo 백업(관리 패널, 04:00) 뒤
+# Persistent: 노트북이 꺼져 있어 놓친 백업은 다시 켜졌을 때 바로 함
+[Unit]
+Description=Daily portfolio MinIO photo backup
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 Asia/Seoul
+Persistent=true
+RandomizedDelaySec=5min
+
+[Install]
+WantedBy=timers.target

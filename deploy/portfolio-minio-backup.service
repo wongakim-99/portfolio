@@ -1,0 +1,13 @@
+# 사진 저장소(MinIO) 백업 한 번. portfolio-minio-backup.timer 가 매일 부름. deploy.sh 가 ~/.config/systemd/user/ 에 설치함
+# 직접 돌리기: systemctl --user start portfolio-minio-backup, 기록 보기: journalctl --user -u portfolio-minio-backup
+[Unit]
+Description=Portfolio MinIO photo backup
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/share/portfolio/minio-backup.sh
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+# 사이트가 느려지지 않게 CPU, 디스크를 양보함
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=30min
