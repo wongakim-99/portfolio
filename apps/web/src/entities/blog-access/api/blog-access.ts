@@ -1,5 +1,5 @@
 import { blogRequest } from '@shared/api';
-import type { AccessGrant, AccessRequest, GrantScope } from '../model/types';
+import type { AccessGrant, AccessRequest, GrantScope, ProofUsage } from '../model/types';
 
 export const listAccessRequests = () => blogRequest<{ requests: AccessRequest[] }>('/admin/requests');
 export const approveAccessRequest = (id: string, scope: GrantScope) =>
@@ -8,3 +8,5 @@ export const rejectAccessRequest = (id: string) => blogRequest(`/admin/requests/
 
 export const listAccessGrants = () => blogRequest<{ grants: AccessGrant[] }>('/admin/grants');
 export const revokeAccessGrant = (id: string) => blogRequest(`/admin/grants/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+export const getProofUsage = () => blogRequest<ProofUsage>('/admin/proof-usage');

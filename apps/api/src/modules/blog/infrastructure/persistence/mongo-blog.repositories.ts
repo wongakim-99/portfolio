@@ -4,9 +4,9 @@ import type { Model, QueryFilter } from 'mongoose';
 import { asObjectId, isDuplicateKey, toObjectId } from '../../../../shared/infrastructure/mongo.js';
 import type { AccessRequest, BlogPost, Grant, Visibility } from '../../domain/blog.js';
 import {
-  AccessRequestRepository, BlogImageRepository, BlogPostRepository, GrantRepository, type BlogListFilter,
+  AccessRequestRepository, BlogImageRepository, BlogPostRepository, GrantRepository, ProofUsageRepository, type BlogListFilter,
 } from '../../domain/blog.ports.js';
-import { BlogAccessRequest, BlogGrant, BlogImage, BlogPost as BlogPostDoc } from './blog.schemas.js';
+import { BlogAccessRequest, BlogGrant, BlogImage, BlogPost as BlogPostDoc, BlogProofUsage } from './blog.schemas.js';
 
 type Doc<T> = T & { _id: unknown };
 
@@ -186,5 +186,41 @@ export class MongoBlogImageRepository extends BlogImageRepository {
 
   async delete(files: string[]) {
     if (files.length) await this.images.deleteMany({ file: { $in: files } });
+  }
+}
+
+const DAY_MS = 86_400_000;
+
+@Injectable()
+export class MongoProofUsageRepository extends ProofUsageRepository {
+  constructor(@InjectModel(BlogProofUsage.name) private readonly usage: Model<BlogProofUsage>) {
+    super();
+  }
+
+  // 방문자 한도를 먼저 보고, 남았을 때만 사이트 전체를 셈. 전체 한도가 찬 날 쓴 방문자 횟수는 돌려주지 않음(그날은 어차피 못 씀)
+  async take(day: string, visitor: string, limits: { total: number; perVisitor: number }) {
+    const expireAt = new Date(Date.parse(`${day}T00:00:00+09:00`) + 2 * DAY_MS);
+    if ((await this.bump(`${day}:${visitor}`, limits.perVisitor, expireAt)) === null) return null;
+    return this.bump(day, limits.total, expireAt);
+  }
+
+  async total(day: string) {
+    return (await this.usage.findById(day, { count: 1 }).lean())?.count ?? 0;
+  }
+
+  // 한도보다 적을 때만 하나 올림. 한도에 닿은 문서는 조건에 안 맞아 새로 만들려다 같은 _id 로 막힘(E11000) = 한도 넘음
+  // 그날 첫 요청 두 개가 동시에 문서를 만들면 하나가 E11000 을 받으므로 한 번 더 해 봄
+  private async bump(id: string, limit: number, expireAt: Date): Promise<number | null> {
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        const doc = await this.usage
+          .findOneAndUpdate({ _id: id, count: { $lt: limit } }, { $inc: { count: 1 }, $setOnInsert: { expireAt } }, { upsert: true, returnDocument: 'after' })
+          .lean();
+        return doc?.count ?? null;
+      } catch (error) {
+        if (!isDuplicateKey(error)) throw error;
+      }
+    }
+    return null;
   }
 }

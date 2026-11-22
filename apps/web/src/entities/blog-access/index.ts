@@ -1,2 +1,2 @@
-export { approveAccessRequest, listAccessGrants, listAccessRequests, rejectAccessRequest, revokeAccessGrant } from './api/blog-access';
-export type { AccessGrant, AccessRequest, GrantScope } from './model/types';
+export { approveAccessRequest, getProofUsage, listAccessGrants, listAccessRequests, rejectAccessRequest, revokeAccessGrant } from './api/blog-access';
+export type { AccessGrant, AccessRequest, GrantScope, ProofUsage } from './model/types';

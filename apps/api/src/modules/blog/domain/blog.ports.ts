@@ -53,6 +53,8 @@ export abstract class GrantRepository {
 export abstract class BlogNotifier {
   abstract requestReceived(requesterName: string, postTitle: string): void;
   abstract granted(userId: string, grantedPostTitle: string | null, requestedPostId: string): void;
+  /** 증명 채점의 오늘 AI 한도를 다 썼을 때 주인장에게 한 번 알림 */
+  abstract proofLimitReached(limit: number): void;
 }
 
 // 올린 블로그 사진의 기록. 어느 글에 붙었는지 적어 두고, 글에서 빠지거나 글이 지워지면 사진 저장소에서도 지움
@@ -70,4 +72,11 @@ export abstract class BlogImageRepository {
 // 채점기는 글 내용을 모르고, 무엇을 돌려주든 글이 열리지 않음
 export abstract class ProofGrader {
   abstract grade(submission: ProofSubmission, signal: AbortSignal): Promise<AsyncIterable<string> | null>;
+}
+
+// 증명 채점에서 바깥 AI 를 부른 횟수. 날마다 방문자별, 사이트 전체로 세고 DB 에 남겨 배포해도 이어서 셈
+export abstract class ProofUsageRepository {
+  /** 두 한도 안이면 한 번 쓰고 오늘 사이트 전체 횟수를, 하나라도 넘었으면 null */
+  abstract take(day: string, visitor: string, limits: { total: number; perVisitor: number }): Promise<number | null>;
+  abstract total(day: string): Promise<number>;
 }

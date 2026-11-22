@@ -7,15 +7,16 @@ import { BlogPostsService } from './application/blog-posts.service.js';
 import { ProofGradingService } from './application/proof-grading.service.js';
 import { ReaderAccess } from './application/reader-access.js';
 import {
-  AccessRequestRepository, BlogImageRepository, BlogNotifier, BlogPostRepository, GrantRepository, ProofGrader,
+  AccessRequestRepository, BlogImageRepository, BlogNotifier, BlogPostRepository, GrantRepository, ProofGrader, ProofUsageRepository,
 } from './domain/blog.ports.js';
 import { MailBlogNotifier } from './infrastructure/mail-blog-notifier.js';
 import { OpenAiProofGrader } from './infrastructure/openai-proof-grader.js';
 import {
   BlogAccessRequest, BlogAccessRequestSchema, BlogGrant, BlogGrantSchema, BlogImage, BlogImageSchema, BlogPost, BlogPostSchema,
+  BlogProofUsage, BlogProofUsageSchema,
 } from './infrastructure/persistence/blog.schemas.js';
 import {
-  MongoAccessRequestRepository, MongoBlogImageRepository, MongoBlogPostRepository, MongoGrantRepository,
+  MongoAccessRequestRepository, MongoBlogImageRepository, MongoBlogPostRepository, MongoGrantRepository, MongoProofUsageRepository,
 } from './infrastructure/persistence/mongo-blog.repositories.js';
 import { BlogAdminController } from './presentation/blog-admin.controller.js';
 import { BlogController } from './presentation/blog.controller.js';
@@ -27,6 +28,7 @@ import { BlogController } from './presentation/blog.controller.js';
     { name: BlogAccessRequest.name, schema: BlogAccessRequestSchema },
     { name: BlogGrant.name, schema: BlogGrantSchema },
     { name: BlogImage.name, schema: BlogImageSchema },
+    { name: BlogProofUsage.name, schema: BlogProofUsageSchema },
   ])],
   controllers: [BlogController, BlogAdminController],
   providers: [
@@ -37,6 +39,7 @@ import { BlogController } from './presentation/blog.controller.js';
     { provide: BlogImageRepository, useClass: MongoBlogImageRepository },
     { provide: BlogNotifier, useClass: MailBlogNotifier },
     { provide: ProofGrader, useClass: OpenAiProofGrader },
+    { provide: ProofUsageRepository, useClass: MongoProofUsageRepository },
   ],
 })
 export class BlogModule {}

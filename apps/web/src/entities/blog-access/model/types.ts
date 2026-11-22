@@ -25,3 +25,11 @@ export interface AccessGrant {
 
 /** post 는 그 글만, all 은 허락한 사람만 보는 글 전부 */
 export type GrantScope = 'post' | 'all';
+
+/** 오늘(한국 시간) 잠긴 글 증명 채점에서 바깥 AI 를 부른 횟수와 하루 한도 (apps/api 의 proof-grading.service.ts) */
+export interface ProofUsage {
+  day: string;
+  total: number;
+  limit: number;
+  perVisitor: number;
+}

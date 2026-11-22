@@ -75,6 +75,23 @@ export const BlogGrantSchema = SchemaFactory.createForClass(BlogGrant);
 BlogGrantSchema.index({ userId: 1, postId: 1 }, { unique: true });
 
 // 블로그에 올린 사진. 파일은 사진 저장소 blog/ 아래에 있고, 여기는 어느 글에 붙었는지만 적음
+// 증명 채점에서 바깥 AI 를 부른 횟수. _id 는 '2026-11-22'(사이트 전체) 또는 '2026-11-22:<방문자 IP 해시>'
+// 한도는 그날만 세므로 이틀 뒤 저절로 지워짐 (expireAt TTL)
+@Schema({ collection: 'blog_proof_usage', versionKey: false })
+export class BlogProofUsage {
+  @Prop({ type: String, required: true })
+  _id: string;
+
+  @Prop({ type: Number, required: true, default: 0 })
+  count: number;
+
+  @Prop({ type: Date, required: true })
+  expireAt: Date;
+}
+
+export const BlogProofUsageSchema = SchemaFactory.createForClass(BlogProofUsage);
+BlogProofUsageSchema.index({ expireAt: 1 }, { expireAfterSeconds: 0 });
+
 @Schema({ collection: 'blog_images', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })
 export class BlogImage {
   @Prop({ type: String, required: true, unique: true })

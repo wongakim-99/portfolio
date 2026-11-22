@@ -11,8 +11,10 @@ import { Readable } from 'node:stream';
 import request from 'supertest';
 import { vi } from 'vitest';
 import type { App } from 'supertest/types.js';
-import { ProofGrader } from '../src/modules/blog/domain/blog.ports.js';
-import { PROOF_PROBLEMS, type ProofSubmission } from '../src/modules/blog/domain/proof.js';
+import { ProofGrader, ProofUsageRepository } from '../src/modules/blog/domain/blog.ports.js';
+import {
+  PROOF_DAILY_PER_VISITOR, PROOF_DAILY_TOTAL, PROOF_GRADER_CHARS, PROOF_MAX, PROOF_PROBLEMS, proofDay, type ProofSubmission,
+} from '../src/modules/blog/domain/proof.js';
 import { readRelease } from '../src/modules/ops/index.js';
 import { configureApp } from '../src/setup.js';
 import { Mailer } from '../src/shared/infrastructure/mail/mailer.js';
@@ -21,7 +23,7 @@ import { ObjectStorage } from '../src/shared/infrastructure/storage/object-stora
 const ADMIN_TOKEN = 'test-admin-token-0123456789abcdef';
 let mongo: MongoMemoryServer;
 // 보낸 메일을 종류별로 모아 둠. 가입 확인, 재설정은 링크의 토큰을, 블로그 알림은 토큰 대신 글 제목을 남김
-const sentMail: { kind: 'verify' | 'reset' | 'blog-request' | 'blog-granted'; to: string; token: string }[] = [];
+const sentMail: { kind: 'verify' | 'reset' | 'blog-request' | 'blog-granted' | 'proof-limit'; to: string; token: string }[] = [];
 const fakeMail = {
   ready: true,
   link: (path: string) => `https://test.example${path}`,
@@ -31,6 +33,7 @@ const fakeMail = {
     else if (subject.includes('비밀번호 재설정')) sentMail.push({ kind: 'reset', to, token: token(/#reset=([\w-]+)/) });
     else if (subject.includes('허락되었습니다')) sentMail.push({ kind: 'blog-granted', to, token: token(/'(.+)' 글을/) || '*' });
     else if (subject.includes('열람 요청')) sentMail.push({ kind: 'blog-request', to, token: token(/'(.+)' 글을/) });
+    else if (subject.includes('증명 채점 한도')) sentMail.push({ kind: 'proof-limit', to, token: token(/AI 를 (\d+)번/) });
   },
 };
 // MinIO 대신 메모리에 사진을 보관함
@@ -759,6 +762,55 @@ describe('blog', () => {
     await prove(locked, proof).expect(503);
     fakeGrader.reply = [];
     await prove(locked, proof).expect(503);
+  });
+
+  it('증명 채점 AI 는 답안 앞 600자만 받고, 하루 한도는 DB 에 남겨 IP 당 10번, 전체 200번에서 멈추며 다 쓰면 주인장에게 알림', async () => {
+    const server = app.getHttpServer();
+    const db = app.get(getConnectionToken());
+    const locked = String((await db.collection('blog_posts').insertOne({
+      authorId: new Types.ObjectId(), title: '한도 시험', body: '본문', visibility: 'approved', tags: [], createdAt: new Date(), updatedAt: new Date(),
+    })).insertedId);
+    let ip = 100;
+    const prove = (proof: string) => request(server).post(`/api/blog/posts/${locked}/proofs`)
+      .set('X-Forwarded-For', `198.51.100.${ip++}, 172.18.0.1`).send({ problem: 'riemann', proof });
+
+    // 한도에 닿을 때 알림을 받을 주인장
+    const ownerIp = '198.51.100.250';
+    await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ownerIp)
+      .send({ email: 'proof-owner@example.com', name: '채점 주인', password: 'correct horse battery staple' }).expect(202);
+    const verify = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === 'proof-owner@example.com')!.token;
+    const verified = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ownerIp).send({ token: verify }).expect(200);
+    const owner = (verified.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    await request(server).put('/api/community/admin/users/role').set('Authorization', `Bearer ${ADMIN_TOKEN}`)
+      .send({ email: 'proof-owner@example.com', role: 'owner' }).expect(200);
+
+    // 꽉 채운 답안도 AI 에게는 앞 600자만
+    fakeGrader.reply = ['아닙니다.'];
+    await prove('가'.repeat(PROOF_MAX)).expect(200);
+    expect(gradedProofs.at(-1)!.proof).toBe(`${'가'.repeat(PROOF_GRADER_CHARS)}\n(뒷부분 생략)`);
+
+    // IP 당 하루 10번. 같은 IP 는 1분 6번 제한에 먼저 걸리므로 횟수 저장소를 바로 부름. 이틀 뒤 지워지게 expireAt 이 붙음
+    const usage = app.get(ProofUsageRepository);
+    const day = proofDay();
+    const wide = { total: 1_000_000, perVisitor: PROOF_DAILY_PER_VISITOR };
+    for (let used = 0; used < PROOF_DAILY_PER_VISITOR; used += 1) expect(await usage.take(day, 'same-visitor', wide)).not.toBeNull();
+    expect(await usage.take(day, 'same-visitor', wide)).toBeNull();
+    expect((await db.collection('blog_proof_usage').findOne({ _id: `${day}:same-visitor` }))?.expireAt).toBeInstanceOf(Date);
+
+    // 사이트 전체 200번째에서 주인장에게 알리고, 그 뒤로는 AI 를 부르지 않음. 횟수는 DB 값을 이어서 셈 (배포해도 그대로)
+    await db.collection('blog_proof_usage').updateOne({ _id: day }, { $set: { count: PROOF_DAILY_TOTAL - 1 } });
+    const limitMails = () => sentMail.filter((mail) => mail.kind === 'proof-limit' && mail.to === 'proof-owner@example.com');
+    await prove('마지막 한 번').expect(200);
+    await vi.waitFor(() => expect(limitMails()).toEqual([{ kind: 'proof-limit', to: 'proof-owner@example.com', token: String(PROOF_DAILY_TOTAL) }]));
+    const graded = gradedProofs.length;
+    await prove('한도 넘은 답안').expect(503);
+    expect(gradedProofs).toHaveLength(graded);
+    expect(limitMails()).toHaveLength(1);
+
+    // 관리실에서 오늘 사용량을 봄 (blog:grant)
+    await request(server).get('/api/blog/admin/proof-usage').expect(401);
+    expect((await request(server).get('/api/blog/admin/proof-usage').set('Cookie', owner).expect(200)).body)
+      .toEqual({ day, total: PROOF_DAILY_TOTAL, limit: PROOF_DAILY_TOTAL, perVisitor: PROOF_DAILY_PER_VISITOR });
   });
 });
 

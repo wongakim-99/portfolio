@@ -5,12 +5,24 @@ import { jsonOnly } from '../../../shared/http/json-only.js';
 import { assertSameOrigin } from '../../../shared/http/same-origin.js';
 import { RequirePermission } from '../../identity/index.js';
 import { BlogAccessService } from '../application/blog-access.service.js';
+import { ProofGradingService } from '../application/proof-grading.service.js';
 import { ApproveDto } from './blog.dto.js';
 
-// 관리실의 블로그 열람 요청과 허락 명단 (blog:grant)
+// 관리실의 블로그 열람 요청과 허락 명단, 오늘 증명 채점 사용량 (blog:grant)
 @Controller('blog/admin')
 export class BlogAdminController {
-  constructor(private readonly access: BlogAccessService) {}
+  constructor(
+    private readonly access: BlogAccessService,
+    private readonly proofs: ProofGradingService,
+  ) {}
+
+  @Get('proof-usage')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermission('blog:grant')
+  async proofUsage() {
+    return this.proofs.today();
+  }
 
   @Get('requests')
   @SkipThrottle()

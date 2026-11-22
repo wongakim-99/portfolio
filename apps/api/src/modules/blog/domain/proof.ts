@@ -3,6 +3,21 @@
 
 export const PROOF_MAX = 4000;
 
+// 바깥 AI 를 부르는 하루(한국 시간) 한도. IP 를 바꿔 가며 두드리는 봇도 사이트 전체 한도에서 멈춤. 넘으면 화면이 미리 적어 둔 채점평을 씀
+export const PROOF_DAILY_TOTAL = 200;
+export const PROOF_DAILY_PER_VISITOR = 10;
+// AI 에게는 답안 앞부분만 보냄. 장난 답안은 짧고, 4000자를 꽉 채운 답안이 와도 한 번 비용이 늘지 않게 함
+export const PROOF_GRADER_CHARS = 600;
+
+/** 한도를 세는 날 (한국 시간 YYYY-MM-DD) */
+export const proofDay = (now = new Date()) => new Date(now.getTime() + 9 * 3_600_000).toISOString().slice(0, 10);
+
+/** 채점기에게 보낼 답안. 길면 앞부분만 자르고 잘렸다고 적음 (이모지가 반으로 갈리지 않게 글자 단위로 자름) */
+export function proofForGrader(proof: string): string {
+  const chars = [...proof];
+  return chars.length > PROOF_GRADER_CHARS ? `${chars.slice(0, PROOF_GRADER_CHARS).join('')}\n(뒷부분 생략)` : proof;
+}
+
 /** 문제 id 와 채점기에게 알려 줄 문제 설명. 실제로 풀리는 문제는 '풀었는데 왜 안 열림' 소리가 나와서 넣지 않음 */
 export const PROOF_PROBLEMS: Readonly<Record<string, string>> = {
   'p-vs-np': 'P = NP 문제. 다항 시간에 검증되는 모든 문제가 다항 시간에 풀리는지 증명하거나 반증. 밀레니엄 난제, 미해결',

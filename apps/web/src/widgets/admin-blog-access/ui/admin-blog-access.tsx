@@ -8,6 +8,7 @@ import { formatDateTime } from '@shared/lib';
 import type { Status } from '@shared/ui';
 import {
   approveAccessRequest,
+  getProofUsage,
   listAccessGrants,
   listAccessRequests,
   rejectAccessRequest,
@@ -15,6 +16,7 @@ import {
   type AccessGrant,
   type AccessRequest,
   type GrantScope,
+  type ProofUsage,
 } from '@entities/blog-access';
 import { AuthorLink } from '@entities/user';
 import './admin-blog-access.css';
@@ -27,10 +29,44 @@ interface AccessState {
   loaded: boolean;
 }
 
-/** 관리실의 블로그 열람 요청과 허락 명단. 권한(blog:grant)이 있을 때만 보임 */
+// 오늘 증명 채점 사용량. 잠긴 글 증명을 바깥 AI 가 채점한 횟수와 한도
+function ProofUsageBlock({ usage }: { usage: ProofUsage | null }) {
+  const full = usage !== null && usage.total >= usage.limit;
+  return (
+    <section className="admin-block" aria-labelledby="proof-usage-title">
+      <div className="community-section-head">
+        <h3 id="proof-usage-title">증명 채점</h3>
+        <span className="community-meta">{usage ? `오늘 ${usage.total} / ${usage.limit}번` : ''}</span>
+      </div>
+      {usage && (
+        <>
+          <div
+            className="proof-meter"
+            data-full={full || undefined}
+            role="meter"
+            aria-label="오늘 증명 채점 AI 사용량"
+            aria-valuemin={0}
+            aria-valuemax={usage.limit}
+            aria-valuenow={usage.total}
+          >
+            <span style={{ width: `${Math.min(100, (usage.total / usage.limit) * 100)}%` }} />
+          </div>
+          <p className="community-meta proof-note">
+            {full ? '오늘 한도를 다 써서 내일 0시(한국 시간)까지는 미리 적어 둔 채점평이 나갑니다. ' : ''}
+            잠긴 글 증명을 AI 가 채점한 횟수예요. IP 당 하루 {usage.perVisitor}번, 사이트 전체 하루 {usage.limit}번까지 부르고, 다 쓰면 메일로 알려 드려요.
+          </p>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** 관리실의 블로그 열람 요청과 허락 명단, 오늘 증명 채점 사용량. 권한(blog:grant)이 있을 때만 보임 */
 export function AdminBlogAccess({ onStatus }: { onStatus: (status: Status) => void }) {
   const [state, setState] = useState<AccessState>({ requests: [], grants: [], error: null, loaded: false });
   const [busy, setBusy] = useState<string | null>(null);
+  // 사용량은 따로 받아서 못 받아도 열람 요청 칸은 그대로 보임
+  const [usage, setUsage] = useState<ProofUsage | null>(null);
   const section = useRef<HTMLElement>(null);
 
   const load = useCallback(
@@ -44,6 +80,7 @@ export function AdminBlogAccess({ onStatus }: { onStatus: (status: Status) => vo
 
   useEffect(() => {
     load();
+    getProofUsage().then(setUsage, () => {});
   }, [load]);
 
   // 블로그 머리의 '열람 요청'이나 알림 메일의 링크(#blog-requests)로 오면 목록을 받은 뒤 이 칸으로 내려감
@@ -137,6 +174,8 @@ export function AdminBlogAccess({ onStatus }: { onStatus: (status: Status) => vo
           </ul>
         )}
       </section>
+
+      <ProofUsageBlock usage={usage} />
     </>
   );
 }
