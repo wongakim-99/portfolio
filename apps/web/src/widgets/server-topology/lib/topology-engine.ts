@@ -230,7 +230,8 @@ export class TopologyEngine {
   private readonly tick = (now: number) => {
     const layout = this.layout;
     for (const packet of this.packets) {
-      const progress = (now - packet.start) / packet.hop;
+      // 프레임 시각(now)은 그 프레임이 시작된 때라 점을 만든 시각보다 조금 이를 수 있음. 음수면 path[-1] 을 찾다 멈춰서 0 부터 셈
+      const progress = Math.max(0, (now - packet.start) / packet.hop);
       const index = Math.floor(progress);
       if (!layout || index >= packet.path.length - 1) {
         packet.dot.remove();
