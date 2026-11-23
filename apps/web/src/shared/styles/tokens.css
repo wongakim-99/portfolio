@@ -25,11 +25,11 @@
   --sticky-4: #ffc8dc;
   --sticky-ink: #1d1e20;
   --stamp-red: #d6352b;
-  /* 빈 책상을 굴러다니는 로키(widgets/rocky): 황토빛 바윗덩이 몸, 주름진 관절, 초록빛 도는 제노나이트 공 */
-  --rock: #9a7446;
-  --rock-deep: #4b3520;
-  --rock-fleck: #c9a271;
-  --rock-joint: #6b4d30;
+  /* 빈 책상을 굴러다니는 로키(widgets/rocky): 모래빛 사암을 깎은 몸과 돌기둥 다리, 초록빛 도는 제노나이트 공 */
+  --rock: #cdb18a;
+  --rock-deep: #5e4630;
+  --rock-fleck: #e8d8bb;
+  --rock-joint: #ab8f69;
   --xenonite: rgb(205 232 218 / .32);
   --xenonite-line: rgb(60 120 95 / .32);
   --st-white: #ffffff;
@@ -88,10 +88,10 @@
     --sticky-3: #9db4dc;
     --sticky-4: #d4a6b8;
     --stamp-red: #ff6b5f;
-    --rock: #a8845a;
-    --rock-deep: #5a4330;
-    --rock-fleck: #d2b08a;
-    --rock-joint: #7a5c40;
+    --rock: #c6aa82;
+    --rock-deep: #4e3b28;
+    --rock-fleck: #e2cfae;
+    --rock-joint: #a2865f;
     --xenonite: rgb(120 190 160 / .14);
     --xenonite-line: rgb(140 205 175 / .3);
     --shadow-soft: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px rgb(0 0 0 / .5);
@@ -120,10 +120,10 @@
   --sticky-3: #9db4dc;
   --sticky-4: #d4a6b8;
   --stamp-red: #ff6b5f;
-  --rock: #a8845a;
-  --rock-deep: #5a4330;
-  --rock-fleck: #d2b08a;
-  --rock-joint: #7a5c40;
+  --rock: #c6aa82;
+  --rock-deep: #4e3b28;
+  --rock-fleck: #e2cfae;
+  --rock-joint: #a2865f;
   --xenonite: rgb(120 190 160 / .14);
   --xenonite-line: rgb(140 205 175 / .3);
   --shadow-soft: 0 1px 2px rgb(0 0 0 / .4), 0 12px 32px rgb(0 0 0 / .5);
