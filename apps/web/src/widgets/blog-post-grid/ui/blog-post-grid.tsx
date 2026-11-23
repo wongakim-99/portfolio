@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { BlogCard, listBlogPosts, type BlogListQuery, type BlogPostSummary } from '@entities/blog-post';
 import { useSession } from '@entities/user';
+import { EmptyDesk } from './empty-desk';
 import './blog-post-grid.css';
 
 interface GridState {
@@ -19,6 +20,8 @@ export function BlogPostGrid({ query }: { query: BlogListQuery }) {
   const userId = user?.id ?? null;
   const { room = null, tag = null, q = null, visibility = null } = query;
   const filtered = Boolean(room || tag || q || visibility);
+  // 무엇으로 걸렀는지에 맞춘 빈 목록 문장. 검색, 태그, 방, 공개 범위 순으로 봄
+  const emptyText = q ? '찾는 글이 없어요.' : tag ? '이 태그가 붙은 글이 아직 없어요.' : room ? '이 방은 아직 비어 있어요.' : visibility ? '이 공개 범위의 글이 없어요.' : '아직 글이 없습니다.';
   const [state, setState] = useState<GridState>({ posts: [], cursor: null, status: 'loading' });
 
   const load = useCallback(
@@ -52,14 +55,17 @@ export function BlogPostGrid({ query }: { query: BlogListQuery }) {
       </div>
       {status === 'loading' && !posts.length && <p className="blog-grid-empty">글을 불러오는 중입니다.</p>}
       {status === 'ready' && !posts.length && (
-        <p className="blog-grid-empty">
-          {filtered ? '조건에 맞는 글이 없어요.' : '아직 글이 없습니다.'}
-          {filtered && (
-            <Link className="text-btn" href={routes.blog}>
-              모든 글 보기
-            </Link>
-          )}
-        </p>
+        <div className="blog-grid-empty is-illustrated">
+          <EmptyDesk />
+          <p>
+            {emptyText}
+            {filtered && (
+              <Link className="text-btn" href={routes.blog}>
+                모든 글 보기
+              </Link>
+            )}
+          </p>
+        </div>
       )}
       {status === 'error' && (
         <p className="blog-grid-empty">

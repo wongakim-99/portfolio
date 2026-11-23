@@ -5,6 +5,26 @@
 .blog-filter-note { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; margin: 0 0 18px; color: var(--ink-soft); font-size: 15px; }
 .blog-filter-note b { color: var(--pen); font-size: 18px; overflow-wrap: anywhere; }
 .blog-grid-empty { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 8px 14px; margin: 48px 0; color: var(--ink-soft); font-size: 15px; text-align: center; }
+/* 글이 없을 때: 빈 책상 그림 아래에 문장과 '모든 글 보기' */
+.blog-grid-empty.is-illustrated { flex-direction: column; align-items: center; gap: 6px; margin: 28px 0 40px; }
+.blog-grid-empty.is-illustrated p { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 8px 14px; margin: 0; }
+.empty-desk { display: block; width: min(260px, 72vw); height: auto; overflow: visible; }
+.empty-desk-paper { fill: var(--paper); filter: drop-shadow(0 1px 1px rgb(15 20 25 / .12)) drop-shadow(0 8px 14px rgb(15 20 25 / .14)); }
+.empty-desk-rule { stroke: var(--paper-rule); stroke-width: 1; }
+.empty-desk-margin { stroke: color-mix(in srgb, var(--stamp-red) 35%, transparent); stroke-width: 1; }
+.empty-desk-tape { fill: color-mix(in srgb, var(--sticky-1) 62%, transparent); }
+.empty-desk-ring { fill: none; stroke: color-mix(in srgb, var(--rock-joint) 45%, transparent); stroke-width: 3; }
+.empty-desk-ring.is-faint { stroke-width: 1.5; opacity: .55; }
+.empty-desk-note { fill: var(--sticky-2); filter: drop-shadow(0 4px 6px rgb(15 20 25 / .16)); }
+.empty-desk-note-fold { fill: color-mix(in srgb, var(--sticky-2) 70%, var(--sticky-ink)); opacity: .35; }
+.empty-desk-hand { fill: var(--sticky-ink); font-family: var(--font-hand); font-size: 17px; }
+.empty-desk-pencil { fill: var(--sticky-1); }
+.empty-desk-pencil-edge { stroke: color-mix(in srgb, var(--sticky-1) 60%, var(--sticky-ink)); stroke-width: 1; opacity: .5; }
+.empty-desk-eraser { fill: var(--sticky-4); }
+.empty-desk-ferrule { fill: var(--lid); }
+.empty-desk-wood { fill: var(--rock-fleck); }
+.empty-desk-lead { fill: var(--st-black); }
+.empty-desk g:has(.empty-desk-pencil) { filter: drop-shadow(0 3px 3px rgb(15 20 25 / .2)); }
 .blog-more { display: flex; margin: 32px auto 0; background: none; color: var(--ink); font: inherit; font-weight: 600; cursor: pointer; }
 
 @media (max-width: 720px) {
