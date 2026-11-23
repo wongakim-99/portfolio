@@ -37,15 +37,16 @@
 .rocky-crease { fill: none; stroke: var(--rock-deep); stroke-width: .6; stroke-linecap: round; stroke-linejoin: round; opacity: .45; }
 .rocky-speck { fill: var(--rock-deep); opacity: .55; }
 .rocky-body-edge { fill: none; stroke: var(--rock-deep); stroke-width: 1.5; stroke-linejoin: round; }
-/* 다리: 각진 돌기둥 두 마디와 육각 마디돌, 발끝의 뾰족한 손가락 셋, 위 마디에 새긴 문양. 뒤 다리는 그늘이라 어둡게 */
+/* 다리: 각진 돌기둥 두 마디와 초록빛 육각 마디, 발끝의 뾰족한 손가락 셋, 위 마디에 새긴 문양. 뒤 다리는 그늘이라 어둡게 */
 .rocky-pillar { fill: var(--rock); }
 .rocky-pillar-light { fill: var(--rock-fleck); opacity: .85; }
 .rocky-pillar-shade { fill: var(--rock-deep); opacity: .2; }
 .rocky-pillar-edge { fill: none; stroke: var(--rock-deep); stroke-width: 1.3; stroke-linejoin: round; }
 .rocky-back .rocky-leg { filter: brightness(.8); }
-.rocky-knuckle { fill: var(--rock-joint); stroke: var(--rock-deep); stroke-width: 1.1; stroke-linejoin: round; }
-.rocky-knuckle-light { fill: var(--rock-fleck); opacity: .45; }
-.rocky-knuckle-crease { fill: none; stroke: var(--rock-deep); stroke-width: .6; stroke-linecap: round; opacity: .6; }
+/* 관절 마디는 영화 속 관절 띠처럼 초록빛. 골은 짙은 초록 */
+.rocky-knuckle { fill: var(--rock-knuckle); stroke: var(--rock-deep); stroke-width: 1.1; stroke-linejoin: round; }
+.rocky-knuckle-light { fill: var(--st-white); opacity: .28; }
+.rocky-knuckle-rib { fill: none; stroke: var(--rock-knuckle-deep); stroke-width: .7; stroke-linecap: round; opacity: .85; }
 .rocky-finger { fill: var(--rock-joint); stroke: var(--rock-deep); stroke-width: .9; stroke-linejoin: round; }
 .rocky-mark { fill: none; stroke: var(--rock-deep); stroke-width: .55; stroke-linecap: round; opacity: .6; }
 .rocky-mark.is-dots { stroke-width: 1.2; }

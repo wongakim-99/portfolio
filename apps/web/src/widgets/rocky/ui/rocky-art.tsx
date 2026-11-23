@@ -99,17 +99,27 @@ function pillar(from: P, to: P, start: number, end: number) {
   };
 }
 
-// 관절: 두 마디가 맞물리는 자리의 각진 마디돌(육각형). 윗면은 밝게, 가운데에 주름 하나
+// 관절: 두 마디가 맞물리는 자리의 각진 마디(육각형). 영화 속 관절 띠처럼 초록빛이고, 굽는 방향을 가로지르는 골이 셋
 function knuckle(center: P, radius: number, turn: number) {
   const points = Array.from({ length: 6 }, (_, index): P => {
     const angle = ((turn + index * 60) * Math.PI) / 180;
     return [center[0] + Math.cos(angle) * radius, center[1] + Math.sin(angle) * radius * 0.86];
   });
   const [x, y] = center;
+  const radians = (turn * Math.PI) / 180;
+  const [ux, uy] = [Math.cos(radians), Math.sin(radians) * 0.86];
+  const [vx, vy] = [-Math.sin(radians) * 0.86, Math.cos(radians)];
+  const ribs = [-0.42, 0, 0.42]
+    .map((step) => {
+      const [cx, cy] = [x + ux * radius * step, y + uy * radius * step];
+      const half = radius * (step ? 0.62 : 0.74);
+      return `M${f(cx - vx * half)} ${f(cy - vy * half)} L${f(cx + vx * half)} ${f(cy + vy * half)}`;
+    })
+    .join(' ');
   return {
     outline: rounded(points, 1.1),
     light: path([points[3]!, points[4]!, points[5]!, [x, y]]),
-    crease: `M${f(points[1]![0])} ${f(points[1]![1])} L${f(x)} ${f(y)} L${f(points[4]![0])} ${f(points[4]![1])}`,
+    ribs,
   };
 }
 
@@ -187,7 +197,7 @@ function LegShape({ leg }: { leg: Leg }) {
         <g key={joint.outline}>
           <path className="rocky-knuckle" d={joint.outline} />
           <path className="rocky-knuckle-light" d={joint.light} />
-          <path className="rocky-knuckle-crease" d={joint.crease} />
+          <path className="rocky-knuckle-rib" d={joint.ribs} />
         </g>
       ))}
     </g>
