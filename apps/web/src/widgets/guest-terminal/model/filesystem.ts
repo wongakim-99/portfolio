@@ -54,13 +54,22 @@ async function serverReport() {
 // 최근 글 10개를 글 ID 이름의 파일로 보여 줌. 받은 목록은 Tab 자동 완성에도 씀
 async function recentPosts(): Promise<readonly FsNode[]> {
   const { posts } = await listPosts();
-  return posts.map((post) => ({
-    name: post.id,
-    note: post.title,
-    href: routes.post(post.id),
-    read: () =>
-      `${post.title}\n${post.authorName} / ${formatDate(post.createdAt)} / 댓글 ${post.commentCount}\n\n${post.excerpt}${post.excerpt.length >= 220 ? '…' : ''}`,
-  }));
+  // 짧은 글은 제목이 없어서 본문 첫 줄을 이름표로 씀
+  return posts.map((post) => {
+    const label = post.title || post.excerpt.split('\n')[0]!.slice(0, 40) || '(사진)';
+    const extras = [post.photos.length ? `사진 ${post.photos.length}장` : '', post.video ? `유튜브: ${post.video.title ?? post.video.id}` : ''].filter(Boolean);
+    return {
+      name: post.id,
+      note: label,
+      href: routes.post(post.id),
+      read: () =>
+        [
+          `${post.title ? `${post.title}\n` : ''}${post.authorName} / ${formatDate(post.createdAt)} / 하트 ${post.likeCount} / 답글 ${post.commentCount}`,
+          `${post.excerpt}${post.truncated ? '…' : ''}`,
+          ...extras,
+        ].join('\n\n'),
+    };
+  });
 }
 
 // 블로그 최근 글. 잠긴 글은 제목만 보이고 읽으려 하면 권한이 없다고 함

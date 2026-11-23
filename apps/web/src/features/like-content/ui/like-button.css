@@ -1,0 +1,15 @@
+/* 좋아요 하트. 누르면 도장 빨강으로 채워지고 한 번 통통 튐 */
+.like-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 6px; margin-left: -6px; border: 0; border-radius: 6px; background: none; color: var(--ink-soft); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer; transition: color .15s ease, background-color .15s ease; }
+.like-btn:hover { background: color-mix(in srgb, var(--stamp-red) 8%, transparent); color: var(--stamp-red); }
+.like-btn:focus-visible { outline: 2px solid var(--pen); outline-offset: 1px; }
+.like-btn svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.like-btn.is-on { color: var(--stamp-red); }
+.like-btn.is-on svg { fill: currentColor; animation: like-pop .32s cubic-bezier(.3, 1.6, .5, 1); }
+.like-btn span:empty { display: none; }
+
+@keyframes like-pop {
+  40% { transform: scale(1.28); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .like-btn.is-on svg { animation: none; }
+}

@@ -14,7 +14,7 @@ export function PostEditorPage({ postId }: { postId?: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, ready, requestLogin } = useSession();
-  const [loaded, setLoaded] = useState<PostDraft | null>(null);
+  const [loaded, setLoaded] = useState<(PostDraft & { photos: string[] }) | null>(null);
   const [loadStatus, setLoadStatus] = useState<Status | undefined>(undefined);
   const userId = user?.id;
 
@@ -31,7 +31,7 @@ export function PostEditorPage({ postId }: { postId?: string }) {
         if (!active) return;
         // 남의 글은 고칠 수 없으니 읽기 화면으로 돌려보냄
         if (post.authorId !== userId) router.replace(routes.post(postId));
-        else setLoaded({ title: post.title, body: post.body });
+        else setLoaded({ title: post.title, body: post.body, photos: post.photos.map((photo) => photo.file) });
       },
       () => active && setLoadStatus({ message: '글을 불러오지 못했습니다.', tone: 'error' }),
     );
@@ -42,11 +42,15 @@ export function PostEditorPage({ postId }: { postId?: string }) {
 
   // 로그인 확인 전, 불러오는 중, 다 받은 뒤마다 폼을 새로 그려 처음 값을 다시 넣음
   const stage = !userId ? 'signed-out' : !postId ? 'draft' : loaded ? 'loaded' : loadStatus ? 'failed' : 'loading';
+  // 제목 없는 짧은 글을 고칠 때는 제목 칸 없이 500자까지
+  const short = Boolean(loaded && !loaded.title);
   return (
     <Sheet className="community-sheet editor-sheet" aria-labelledby="editor-title">
       <BackLink href={routes.feed}>모든 글</BackLink>
-      <h2 id="editor-title">{postId ? '글 수정하기' : '새 글 쓰기'}</h2>
-      <p className="community-meta">제목과 본문을 적어 주세요. 줄바꿈이 그대로 보입니다.</p>
+      <h2 id="editor-title">{postId ? '글 수정하기' : '긴 글 쓰기'}</h2>
+      <p className="community-meta">
+        {short ? '짧은 글은 500자까지 씁니다. 붙인 사진은 그대로 둡니다.' : '제목과 본문을 적어 주세요. 짧은 생각은 피드 맨 위 쓰기 칸에 바로 남기면 됩니다.'}
+      </p>
       <PostForm
         key={stage}
         postId={postId}
@@ -54,6 +58,8 @@ export function PostEditorPage({ postId }: { postId?: string }) {
         restoreDraft={stage === 'draft'}
         disabled={stage !== 'draft' && stage !== 'loaded'}
         initialStatus={loadStatus}
+        short={short}
+        photos={loaded?.photos}
       />
     </Sheet>
   );

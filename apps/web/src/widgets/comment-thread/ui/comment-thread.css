@@ -1,12 +1,40 @@
-/* 글 아래 댓글. 목록, 댓글 쓰기, 내 댓글 고치기 */
-.community-comments { border-top: 1px solid var(--paper-rule); padding-top: 40px; }
-.community-comments h3 { margin: 0 0 20px; font-size: 24px; letter-spacing: -.02em; }
-.community-comment { padding: 20px 0; border-top: 1px dashed var(--paper-rule); }
-.community-comment:first-child { border-top: 0; }
-.community-comment .community-meta { margin: 0 0 8px; }
-.community-comment p { max-width: 68ch; margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
-.community-comment .community-inline-actions { margin-top: 7px; }
-.comment-form { max-width: 680px; margin-top: 32px; }
+/* 글 아래 답글 타래. 맨 위에 답글 칸, 아래로 타래마다 첫 답글과 들여 쓴 이어진 답글. 이어진 답글 왼쪽에 가는 타래 선 */
+.community-comments { border-top: 1px solid var(--paper-rule); padding-top: 34px; }
+.community-comments h3 { margin: 0 0 16px; font-size: 24px; letter-spacing: -.02em; }
+.comment-list { margin-top: 8px; }
+.comment-thread { padding: 18px 0 14px; border-top: 1px dashed var(--paper-rule); }
+.comment-thread:first-child { border-top: 0; }
+.community-comment + .community-comment { margin-top: 14px; }
+.comment-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin: 0; }
+.comment-head time { color: var(--ink-soft); font-size: 13px; }
+/* 글쓴이가 단 답글: 펜 색 라벨 */
+.comment-badge { padding: 1px 7px; border: 1.5px solid var(--pen); border-radius: 4px; color: var(--pen); font-size: 11px; font-weight: 700; letter-spacing: .02em; }
+.comment-body { min-width: 0; margin-top: 4px; padding-left: 31px; }
+.comment-to { margin-right: 6px; color: var(--pen); font-size: 15px; font-weight: 600; }
+.comment-text { display: inline; max-width: 64ch; margin: 0; font-size: 16px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-text a { color: var(--pen); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.comment-body .yt-card { margin-top: 10px; }
+.comment-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 6px; }
+.comment-actions .community-inline-actions { margin: 0 0 0 auto; gap: 2px; }
+/* 답글의 수정, 삭제, 신고는 테두리 없이 흐리게 두고 손을 올렸을 때만 또렷하게 (답글이 많아도 단추가 눈에 걸리지 않게) */
+.comment-actions .action-btn { height: 30px; padding: 0 8px; border-color: transparent; color: var(--ink-soft); font-size: 13px; font-weight: 500; }
+.comment-actions .action-btn:hover { border-color: transparent; background: color-mix(in srgb, var(--desk) 35%, transparent); color: var(--ink); }
+.comment-actions .action-btn-danger:hover { background: color-mix(in srgb, var(--stamp-red) 8%, transparent); color: var(--stamp-red); }
+.comment-reply { min-height: 32px; padding: 0 6px; border: 0; border-radius: 6px; background: none; color: var(--ink-soft); font: inherit; font-size: 14px; cursor: pointer; }
+.comment-reply:hover { background: color-mix(in srgb, var(--pen) 8%, transparent); color: var(--pen); }
+.comment-reply:focus-visible { outline: 2px solid var(--pen); outline-offset: 1px; }
+/* 이어진 답글: 첫 답글 사진 아래에서 내려오는 선을 따라 들여 씀 */
+.comment-replies { position: relative; margin: 10px 0 0 11px; padding-left: 20px; border-left: 2px solid var(--paper-rule); }
+.comment-form { max-width: 680px; margin-top: 4px; }
+.comment-form.is-reply { margin-top: 14px; }
+.comment-form.is-reply label { margin-top: 0; font-size: 13px; color: var(--ink-soft); }
+.comment-form-buttons { display: inline-flex; align-items: center; gap: 14px; }
+
+@media (max-width: 720px) {
+  .comment-body { padding-left: 0; }
+  .comment-replies { margin-left: 4px; padding-left: 14px; }
+  .comment-actions .community-inline-actions { margin-left: 0; }
+}
 
 @media print {
   .community-comments { display: none !important; }

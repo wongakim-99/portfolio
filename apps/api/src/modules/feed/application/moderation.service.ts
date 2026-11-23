@@ -23,7 +23,7 @@ export class ModerationService {
     if (!created) throw new ConflictException('이미 신고한 내용입니다.');
   }
 
-  // 관리실에서 무엇이 신고됐는지 바로 보이도록 글 제목이나 댓글 앞부분을 함께 줌
+  // 관리실에서 무엇이 신고됐는지 바로 보이도록 글 제목(짧은 글은 본문 앞부분)이나 답글 앞부분을 함께 줌
   async reportsForAdmin() {
     const reports = await this.reports.latest(REPORTS_FOR_ADMIN);
     const idsOf = (type: ReportTarget) => reports.filter((report) => report.targetType === type).map((report) => report.targetId);
@@ -35,7 +35,7 @@ export class ModerationService {
       const comment = report.targetType === 'comment' ? commentsById.get(report.targetId) : undefined;
       return {
         id: report.id, targetType: report.targetType, targetId: report.targetId, reason: report.reason, createdAt: report.createdAt,
-        target: post ? { postId: post.id, authorName: post.authorName, text: post.title }
+        target: post ? { postId: post.id, authorName: post.authorName, text: post.title || post.body.slice(0, 160) || '(사진만 올린 글)' }
           : comment ? { postId: comment.postId, authorName: comment.authorName, text: comment.body.slice(0, 160) }
           : null,
       };

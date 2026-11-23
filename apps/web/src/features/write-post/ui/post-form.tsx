@@ -20,6 +20,9 @@ interface PostFormProps {
   /** 글을 아직 못 불러왔거나 로그인 전이면 보내기를 막음 */
   disabled?: boolean;
   initialStatus?: Status;
+  /** 제목 없는 짧은 글 고치기. 제목 칸 없이 500자까지, 붙어 있던 사진(photos)은 그대로 둠 */
+  short?: boolean;
+  photos?: string[];
 }
 
 function startingDraft(initial: PostDraft | undefined, restoreDraft: boolean): PostDraft {
@@ -28,7 +31,7 @@ function startingDraft(initial: PostDraft | undefined, restoreDraft: boolean): P
   return { title: saved?.title ?? '', body: saved?.body ?? '' };
 }
 
-export function PostForm({ postId, initial, restoreDraft = false, disabled = false, initialStatus = NO_STATUS }: PostFormProps) {
+export function PostForm({ postId, initial, restoreDraft = false, disabled = false, initialStatus = NO_STATUS, short = false, photos = [] }: PostFormProps) {
   const router = useRouter();
   const [draft, setDraft] = useState(() => startingDraft(initial, restoreDraft));
   const [busy, setBusy] = useState(false);
@@ -46,7 +49,8 @@ export function PostForm({ postId, initial, restoreDraft = false, disabled = fal
     setBusy(true);
     setStatus({ message: postId ? '수정하는 중입니다.' : '글을 올리는 중입니다.' });
     try {
-      const { post } = postId ? await updatePost(postId, draft) : await createPost(draft);
+      const input = short ? { title: '', body: draft.body, photos } : draft;
+      const { post } = postId ? await updatePost(postId, input) : await createPost(input);
       if (!postId) clearDraft();
       router.push(routes.post(post.id));
     } catch (error) {
@@ -58,31 +62,35 @@ export function PostForm({ postId, initial, restoreDraft = false, disabled = fal
   return (
     <>
       <form className="community-form post-form" onSubmit={submit}>
-        <label htmlFor="editor-heading">제목</label>
-        <input
-          id="editor-heading"
-          name="title"
-          required
-          minLength={POST_LIMITS.titleMin}
-          maxLength={POST_LIMITS.titleMax}
-          placeholder="글 제목"
-          value={draft.title}
-          onChange={(event) => change({ ...draft, title: event.target.value })}
-        />
+        {!short && (
+          <>
+            <label htmlFor="editor-heading">제목</label>
+            <input
+              id="editor-heading"
+              name="title"
+              required
+              minLength={POST_LIMITS.titleMin}
+              maxLength={POST_LIMITS.titleMax}
+              placeholder="글 제목"
+              value={draft.title}
+              onChange={(event) => change({ ...draft, title: event.target.value })}
+            />
+          </>
+        )}
         <label htmlFor="editor-body">본문</label>
         <textarea
           id="editor-body"
           name="body"
-          required
-          minLength={POST_LIMITS.bodyMin}
-          maxLength={POST_LIMITS.bodyMax}
-          rows={18}
+          required={!short || !photos.length}
+          minLength={short ? undefined : POST_LIMITS.bodyMin}
+          maxLength={short ? POST_LIMITS.shortMax : POST_LIMITS.bodyMax}
+          rows={short ? 8 : 18}
           placeholder="여기에 글을 써 주세요"
           value={draft.body}
           onChange={(event) => change({ ...draft, body: event.target.value })}
         />
         <div className="community-form-foot">
-          <span>{formatCount(draft.body.length, POST_LIMITS.bodyMax)}</span>
+          <span>{formatCount(draft.body.length, short ? POST_LIMITS.shortMax : POST_LIMITS.bodyMax)}</span>
           <button className="tape tape-lg" type="submit" disabled={busy || disabled}>
             {postId ? '수정 저장' : '글 올리기'}
           </button>

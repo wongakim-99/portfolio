@@ -4,13 +4,12 @@ import { TextSelection } from '@tiptap/pm/state';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { errorMessage } from '@shared/api';
-import { cx } from '@shared/lib';
+import { cx, isImage, prepareImage } from '@shared/lib';
 import type { Status } from '@shared/ui';
 import { BLOG_LIMITS, CALLOUT_EMOJI, uploadBlogImage } from '@entities/blog-post';
 import { editorExtensions } from '../lib/editor-extensions';
 import { htmlToMarkdown, looksStructured } from '../lib/html-to-markdown';
 import { looksLikeMarkdown, vscodeLanguage } from '../lib/paste-kind';
-import { isImage, prepareImage } from '../lib/prepare-image';
 
 type Tool = { label: string; hint: string; active?: (editor: Editor) => boolean; run: (editor: Editor) => void };
 

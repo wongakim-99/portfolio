@@ -3,4 +3,7 @@ export { BackLink } from './back-link/back-link';
 export { Dialog } from './dialog/dialog';
 export { FormStatus, NO_STATUS } from './form-status/form-status';
 export type { Status, StatusTone } from './form-status/form-status';
+export { RichText } from './rich-text/rich-text';
 export { Sheet } from './sheet/sheet';
+export { YoutubeCard } from './youtube-card/youtube-card';
+export type { YoutubeVideo } from './youtube-card/youtube-card';

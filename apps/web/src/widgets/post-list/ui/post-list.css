@@ -1,0 +1,5 @@
+/* 글 목록의 답글 단추와 로그인 전 안내 */
+.feed-replies { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 6px; border-radius: 6px; color: var(--ink-soft); font-size: 14px; text-decoration: none; font-variant-numeric: tabular-nums; transition: color .15s ease, background-color .15s ease; }
+.feed-replies:hover { background: color-mix(in srgb, var(--pen) 8%, transparent); color: var(--pen); }
+.feed-replies svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linejoin: round; }
+.feed-invite { margin: 0; padding: 4px 0 22px; border-bottom: 1px solid var(--paper-rule); color: var(--ink-soft); font-size: 15px; }

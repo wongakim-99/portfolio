@@ -2,9 +2,9 @@
 
 import { useRef, useState } from 'react';
 import { errorMessage } from '@shared/api';
+import { isImage, prepareImage } from '@shared/lib';
 import type { Status } from '@shared/ui';
 import { blogImageUrl, firstImageUrl, uploadBlogImage } from '@entities/blog-post';
-import { isImage, prepareImage } from '../lib/prepare-image';
 
 interface CoverPickerProps {
   /** 고른 표지 사진 파일. null 이면 본문 첫 사진을 씀 */

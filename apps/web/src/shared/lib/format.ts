@@ -28,6 +28,19 @@ export const formatDate = (value: string) => dateFormat.format(new Date(value));
 /** 2026년 11월 21일 오전 1:30 */
 export const formatDateTime = (value: string) => dateTimeFormat.format(new Date(value));
 
+const shortDateFormat = new Intl.DateTimeFormat('ko-KR', { month: 'long', day: 'numeric' });
+
+/** 피드처럼 지난 시간으로: 방금 전, 3분 전, 5시간 전, 2일 전, 일주일이 넘으면 11월 21일 (해가 다르면 연도까지) */
+export function formatAgo(value: string, now = Date.now()) {
+  const date = new Date(value);
+  const minutes = Math.floor((now - date.getTime()) / 60_000);
+  if (minutes < 1) return '방금 전';
+  if (minutes < 60) return `${minutes}분 전`;
+  if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}시간 전`;
+  if (minutes < 7 * 24 * 60) return `${Math.floor(minutes / (24 * 60))}일 전`;
+  return date.getFullYear() === new Date(now).getFullYear() ? shortDateFormat.format(date) : dateFormat.format(date);
+}
+
 /** 가동 시간: 3일 4시간, 5시간 12분, 7분 */
 export function formatDuration(seconds: number) {
   const days = Math.floor(seconds / 86400);

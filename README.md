@@ -29,16 +29,16 @@ src/
     blog/      블로그(/blog/*). 피드 계정으로 로그인, 빈 책상의 로키
   views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin, blog, blog-post, blog-editor
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
-               guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports,
+               guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list(쓰기 칸과 쓰레드식 글 목록), comment-thread(답글 타래), server-topology, admin-inbox, admin-reports,
                blog-search(검색창과 공개 범위 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 방, 태그), blog-lock(잠긴 글 자리, 항복 문서), admin-blog-access(열람 요청과 허락 명단), admin-blog-rooms(블로그 방, AI 로 나누기),
                admin-members(회원 수, 가입 막대, 회원 명부와 상세), rocky(빈 책상을 굴러다니는 로키 공)
-  features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
-               write-comment, report-content, edit-profile, change-password, change-avatar,
+  features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post(짧은 글 쓰기 칸, 긴 글 쓰기), manage-post,
+               write-comment, like-content(하트), report-content, edit-profile, change-password, change-avatar,
                write-blog-post(노션처럼 바로 바뀌는 편집기, 사진 올리기, 표지 고르기, 노션 붙여넣기, 공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
                change-member-role(관리실에서 관리자 지정, 해제)
-  entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post, comment, message, report,
+  entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post(글 API, 쓰레드식 글 카드), comment, message, report,
                blog-post(글 API, 마크다운 그리기, 콜아웃), blog-access
-  shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 저장소, 한국어 줄바꿈 다듬기, 한글 글꼴 미리 받기), ui(Sheet, Dialog, FormStatus), styles(색 토큰, 바탕)
+  shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 지난 시간, 저장소, 한국어 줄바꿈 다듬기, 한글 글꼴 미리 받기, 사진 줄이기, 글 속 링크와 유튜브 주소), ui(Sheet, Dialog, FormStatus, 링크 글, 유튜브 카드), styles(색 토큰, 바탕)
 ```
 
 - 슬라이스 안은 `ui/`(컴포넌트와 그 CSS), `model/`(상태, 훅, 타입), `api/`(요청), `lib/`(순수 함수) 로 나눈다
@@ -62,7 +62,7 @@ src/
     infrastructure/    메일(SMTP), 사진 저장소(MinIO), 텔레메트리, Mongo 도우미
   modules/
     identity/          계정: 가입, 로그인, 세션, 역할과 권한, 프로필 사진
-    feed/              피드: 글, 댓글, 신고, 회원 페이지
+    feed/              피드: 짧은 글과 긴 글, 답글 타래, 좋아요, 사진, 유튜브 미리보기, 신고, 회원 페이지
     blog/              블로그(gawon-log): 주인장 글, 공개 범위, 열람 요청과 허락
     messages/          홈 엽서 쪽지, 관리실 쪽지함
     visits/            홈 누적 방문 수
@@ -91,8 +91,8 @@ src/
 - `/portfolio`: 소개, 경력, 프로젝트, 기술, 이력을 담은 종이 포트폴리오. 목차는 이 페이지 안에서만 이동
 - `/blog`: 주인장(`owner` 역할)만 쓰는 블로그. 아래 '블로그' 참고
 - `/blog/posts/<글_ID>`, `/blog/write`, `/blog/posts/<글_ID>/edit`: 글 읽기, 새 글 쓰기, 글 고치기
-- `/feed`: 긴 글과 댓글을 읽고, 이메일 확인을 마친 계정으로 작성하는 피드
-- `/feed/posts/<글_ID>`, `/feed/write`, `/feed/posts/<글_ID>/edit`: 글 읽기, 새 글 쓰기, 내 글 고치기
+- `/feed`: 쓰레드처럼 짧은 글이 쌓이는 피드. 맨 위 쓰기 칸에서 바로 쓰고, 이메일 확인을 마친 계정으로 글, 답글, 하트를 남김 (아래 '피드')
+- `/feed/posts/<글_ID>`, `/feed/write`, `/feed/posts/<글_ID>/edit`: 글과 답글 타래 읽기, 제목 있는 긴 글 쓰기, 내 글 고치기
 - `/feed/users/<회원_ID>`: 회원 페이지. 프로필 사진, 이름, 소개, 쓴 글. 내 페이지에서는 사진과 프로필을 고치고 비밀번호 변경, 로그아웃, 화면 설정(로키 보이기)을 함
 - `/feed/admin`: 관리실 (아래 RBAC)
 - 정적 페이지 시절 주소도 그대로 열림. `/portfolio.html`, `/index.html` 은 새 주소로, `/community.html?post=`, `?user=`, `?edit=`, `?write=`, `?admin=` 은 해당 피드 화면으로 영구 이동(308)
@@ -182,12 +182,27 @@ src/
   - 공을 잡아 끌고 던지면 화면 가장자리에 튕기며 구르고, 세게 던지면 로키가 공 안에서 같이 굴러 어지러워함. 화살표 키로도 밈. 마우스가 가까이 오면 그쪽을 돌아봄
   - 움직임 줄이기 설정을 켠 사람에게는 걷지 않고 빈 자리에 가만히 있음. 영화 이미지나 소리 같은 공식 자료는 쓰지 않음
 
+## 피드
+
+- 쓰레드처럼 제목 없이 바로 쓰는 짧은 글(500자, 사진 4장까지, 사진만도 됨)이 기본. 피드 맨 위 쓰기 칸에서 쓰고, 올리면 목록 맨 위에 바로 붙음. 제목을 붙인 긴 글(본문 20자 이상, 2만 자까지)은 머리의 '긴 글 쓰기' 로 예전처럼 씀
+- 목록은 글마다 쪽지 한 장: 글쓴이 사진과 이름, 지난 시간(방금 전, 3시간 전), 본문(긴 글은 제목과 앞 220자, '더 읽기'), 사진, 유튜브 카드, 하트와 답글 수. 사진 아래로 가는 타래 선이 본문을 따라 내려감 (`entities/post/ui/post-card.tsx`)
+- 본문의 http(s) 주소는 새 탭 링크로 바꿔 그림. 글은 여전히 React 글자 노드로만 그리고 HTML 로 해석하지 않음 (`shared/ui/rich-text`)
+- 유튜브 링크(watch, youtu.be, shorts, live)를 넣으면 첫 영상의 미리보기 카드가 붙음. 쓰는 동안에도 카드가 미리 뜸
+  - 제목과 채널은 유튜브 oEmbed(키 없음)로 한 번 읽어 `community_videos` 에 두고, 썸네일은 한 번 받아 사진 저장소 `youtube/` 에 두고 `/api/community/videos/<ID>/thumbnail` 로 내보냄. 방문자 브라우저는 누르기 전까지 유튜브에 아무 요청도 보내지 않음
+  - 서버가 부르는 주소는 oEmbed 와 썸네일 두 곳뿐이고 영상 ID 는 11자만 받음. 썸네일은 미리보기나 글로 한 번 확인한 영상만 내보내서, 아무 ID 로 서버가 유튜브를 부르게 하지 못함. 미리보기는 로그인한 회원만 시간당 60번
+  - 카드를 누르면 그 자리에서 `youtube-nocookie.com` 으로 재생. 유튜브가 퍼가기에 출처를 요구해서 이 iframe 만 출처를 보냄 (`shared/ui/youtube-card`)
+- 사진: 브라우저가 긴 변 1600px WebP 로 줄이고 위치 정보(EXIF)를 뺀 뒤 `POST /api/community/images` 로 올림(시간당 40장, 3MB, 4096px). MinIO `community-media` 의 `feed/` 에 두고 `/api/community/images/<파일>` 로 1년 캐시. 올린 사람만 자기 글에 붙이고, 글에서 빠진 사진, 지운 글의 사진, 하루 지나도 글에 안 붙은 사진은 지움 (`community_images`)
+- 답글 타래: 글에 단 답글마다 한 타래이고, 답글에 단 답글은 그 타래 안에 들여 씀(한 단계). 누구에게 답했는지 '@이름' 이 붙고, 글쓴이가 단 답글에는 '글쓴이' 표시. 타래의 첫 답글을 지우면 이어진 답글도 같이 지움
+- 좋아요: 글과 답글에 하트. 한 사람이 한 번만 누르고(`community_likes`), 숫자는 글과 답글의 `likeCount` 에 셈. 눌렀는지는 보는 사람마다 달라서 피드 읽기 응답은 `Cache-Control: private, no-store`
+- 쓰레드식으로 바꾸기 전 글(제목 있는 긴 글)과 댓글은 그대로 보이고, 없는 필드는 읽을 때 기본값(사진 없음, 하트 0)으로 채움
+- 요청 제한: 글 시간당 20개, 답글 40개, 하트 300번
+
 ## 피드 계정과 운영
 
-- 글은 누구나 읽을 수 있고, 이메일 확인을 마친 회원만 글과 댓글을 작성, 수정, 삭제할 수 있음
+- 글은 누구나 읽을 수 있고, 이메일 확인을 마친 회원만 글, 답글, 하트, 사진을 남기고 내 글과 답글을 수정, 삭제할 수 있음
 - 가입 확인 링크는 1시간, 비밀번호 재설정 링크는 30분 동안 한 번만 사용함. 링크 토큰과 세션 토큰은 해시만 MongoDB에 저장함
 - 비밀번호는 10자 이상이고 scrypt로 해시하며, 로그인 세션은 30일 만료 HttpOnly, Secure, SameSite=Strict 쿠키로 유지함. 로컬 HTTP 개발에서는 Secure 대신 별도 개발 쿠키를 사용함
-- 게시글 본문은 줄바꿈을 살린 일반 텍스트다. 페이지는 사용자 글을 React 의 글자 노드로만 그리고 HTML 로 해석하지 않음
+- 게시글 본문은 줄바꿈을 살린 일반 텍스트다. 페이지는 사용자 글을 React 의 글자 노드로만 그리고 HTML 로 해석하지 않음 (주소만 링크로 바꿈)
 - 프로필 사진은 브라우저에서 가운데 기준 정사각형 512px 이하로 다시 그려 올림. 이때 촬영 위치 같은 사진 속 정보(EXIF)가 빠짐
 - API 는 파일 내용으로 JPG, PNG, WebP 인지와 가로세로 2048px 이하인지를 다시 확인하고 MinIO 버킷 `community-media` 의 `avatars/` 에 저장함. 1MB 를 넘으면 413
 - 버킷은 공개하지 않음. 사진은 `/api/community/avatars/<파일>` 로 API 가 읽어 내보내고, 사진을 바꾸면 새 파일 이름을 쓰므로 1년 캐시함. 옛 사진은 바꾸거나 지울 때 버킷에서도 지움

@@ -1,15 +1,14 @@
-// 블로그에 올릴 사진을 브라우저에서 다시 그림. 긴 쪽을 2000px 이하로 줄이고 WebP(안 되면 JPEG)로 구워서
-// 촬영 위치 같은 사진 속 정보(EXIF)가 빠지고, 휴대폰 원본 사진도 1MB 안팎이 됨
-const MAX_SIDE = 2000;
+// 올릴 사진을 브라우저에서 다시 그림. 긴 쪽을 maxSide 이하로 줄이고 WebP(안 되면 JPEG)로 구워서
+// 촬영 위치 같은 사진 속 정보(EXIF)가 빠지고, 휴대폰 원본 사진도 1MB 안팎이 됨 (블로그 2000px, 피드 1600px)
 const QUALITY = 0.86;
 
 const toBlob = (canvas: HTMLCanvasElement, type: string) =>
   new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, type, QUALITY));
 
-export async function prepareImage(file: Blob): Promise<Blob> {
+export async function prepareImage(file: Blob, maxSide = 2000): Promise<Blob> {
   // 사진에 적힌 회전 정보대로 똑바로 세워서 그림
   const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
-  const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
+  const scale = Math.min(1, maxSide / Math.max(bitmap.width, bitmap.height));
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(bitmap.width * scale));
   canvas.height = Math.max(1, Math.round(bitmap.height * scale));

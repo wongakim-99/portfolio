@@ -1,0 +1,29 @@
+/* 피드 맨 위 쓰기 칸. 종이 위에 붙인 쪽지 한 장처럼, 왼쪽에 내 사진, 오른쪽에 쓰는 칸과 사진, 아래 단추 줄 */
+.composer { padding: 6px 0 22px; border-bottom: 1px solid var(--paper-rule); }
+.composer-row { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px; align-items: start; }
+.composer .avatar { width: 38px; height: 38px; border-radius: 8px; font-size: 25px; }
+.composer-main { display: grid; gap: 12px; min-width: 0; }
+.composer textarea { width: 100%; min-height: 64px; padding: 8px 2px; border: 0; border-bottom: 1px dashed var(--paper-rule); background: none; color: var(--ink); font: inherit; font-size: 17px; line-height: 1.7; resize: vertical; field-sizing: content; max-height: 360px; }
+.composer textarea::placeholder { color: color-mix(in srgb, var(--ink-soft) 75%, transparent); }
+.composer textarea:focus { outline: none; border-bottom-color: var(--pen); }
+.composer-photos { display: flex; flex-wrap: wrap; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.composer-photos li { position: relative; width: 96px; height: 96px; overflow: hidden; border-radius: 3px; box-shadow: var(--shadow-sticker); }
+.composer-photos img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.composer-photos li[data-uploading] img { opacity: .5; filter: saturate(.4); animation: composer-uploading 1.4s ease-in-out infinite; }
+.composer-photos button { position: absolute; top: 4px; right: 4px; display: grid; place-items: center; width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; background: rgb(15 20 25 / .7); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; }
+.composer-photos button:focus-visible { outline: 2px solid var(--pen); outline-offset: 1px; }
+.composer-video { display: grid; gap: 2px; }
+.composer-video .yt-card { margin-top: 4px; }
+.composer-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.composer-photo { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 0 10px; margin-left: -10px; border: 0; border-radius: 6px; background: none; color: var(--pen); font: inherit; font-size: 14px; font-weight: 600; cursor: pointer; }
+.composer-photo:hover { background: var(--blog-tint, color-mix(in srgb, var(--desk) 30%, var(--paper))); }
+.composer-photo:disabled { color: var(--ink-soft); opacity: .6; cursor: default; }
+.composer-photo svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.composer-count { margin-left: auto; color: var(--ink-soft); font-family: var(--font-mono); font-size: 12px; }
+.composer .tape:disabled { opacity: .6; cursor: wait; transform: none; }
+.composer .form-status { margin-top: 10px; }
+
+@keyframes composer-uploading { 50% { opacity: .3; } }
+@media (prefers-reduced-motion: reduce) {
+  .composer-photos li[data-uploading] img { animation: none; }
+}

@@ -15,6 +15,7 @@ import { ProofGrader, ProofUsageRepository, RoomClassifier, type RoomCandidate }
 import {
   PROOF_DAILY_PER_VISITOR, PROOF_DAILY_TOTAL, PROOF_GRADER_CHARS, PROOF_MAX, PROOF_PROBLEMS, proofDay, type ProofSubmission,
 } from '../src/modules/blog/domain/proof.js';
+import { VideoSource } from '../src/modules/feed/domain/feed.ports.js';
 import { readRelease } from '../src/modules/ops/index.js';
 import { configureApp } from '../src/setup.js';
 import { Mailer } from '../src/shared/infrastructure/mail/mailer.js';
@@ -71,6 +72,19 @@ const fakeClassifier = {
   },
 };
 
+// 바깥 유튜브 대신. 정해 둔 영상 하나만 있고, 썸네일을 몇 번 받으러 갔는지 셈
+const KNOWN_VIDEO = 'dQw4w9WgXcQ';
+const fakeVideos = {
+  thumbnails: 0,
+  async meta(id: string) {
+    return id === KNOWN_VIDEO ? { title: '테스트 영상', author: '테스트 채널' } : null;
+  },
+  async thumbnail(id: string) {
+    this.thumbnails += 1;
+    return id === KNOWN_VIDEO ? jpeg(480, 360) : null;
+  },
+};
+
 // 머리만 갖춘 사진. API 는 파일 앞부분으로 형식과 가로세로 크기만 확인함
 function png(width: number, height: number): Buffer {
   const data = Buffer.alloc(33);
@@ -98,6 +112,7 @@ async function createApp(): Promise<INestApplication<App>> {
     .overrideProvider(ObjectStorage).useValue(fakeStorage)
     .overrideProvider(ProofGrader).useValue(fakeGrader)
     .overrideProvider(RoomClassifier).useValue(fakeClassifier)
+    .overrideProvider(VideoSource).useValue(fakeVideos)
     .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
@@ -331,6 +346,94 @@ describe('community', () => {
     await request(server).delete(`/api/community/posts/${postId}`).set('Cookie', cookieB).expect(403);
     await request(server).delete(`/api/community/posts/${postId}`).set('Cookie', cookieA).expect(204);
     await request(server).get(`/api/community/posts/${postId}`).expect(404);
+  });
+
+  it('피드 쓰레드: 제목 없는 짧은 글, 사진, 유튜브 미리보기, 답글 타래, 좋아요', async () => {
+    const server = app.getHttpServer();
+    const ip = '203.0.113.90, 172.18.0.1';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    };
+    const writer = await join('thread-writer@example.com', '타래 글쓴이');
+    const reader = await join('thread-reader@example.com', '타래 독자');
+    const post = (cookie: string, body: object) => request(server).post('/api/community/posts').set('X-Forwarded-For', ip).set('Cookie', cookie).send(body);
+
+    // 짧은 글: 제목 없이 500자까지. 첫 유튜브 링크는 제목과 채널을 읽어 둠
+    const short = await post(writer, { body: `같이 봐요 https://youtu.be/${KNOWN_VIDEO}?t=3` }).expect(201);
+    expect(short.body.post).toMatchObject({
+      title: '', likeCount: 0, liked: false, photos: [],
+      video: { id: KNOWN_VIDEO, title: '테스트 영상', author: '테스트 채널', thumbnail: `/api/community/videos/${KNOWN_VIDEO}/thumbnail` },
+    });
+    await post(writer, { body: '가'.repeat(501) }).expect(400);
+    await post(writer, { body: '' }).expect(400);
+    await post(writer, { title: '제목 있는 긴 글', body: '너무 짧음' }).expect(400);
+    await post(writer, { title: '제목 있는 긴 글', body: '긴 글은 예전처럼 제목과 스무 글자 넘는 본문을 씁니다.' }).expect(201);
+
+    // 썸네일은 확인한 영상만, 한 번 받아 저장소에 두고 다시 씀
+    const thumb = await request(server).get(`/api/community/videos/${KNOWN_VIDEO}/thumbnail`).expect(200);
+    expect(thumb.headers['content-type']).toBe('image/jpeg');
+    expect(thumb.headers['cross-origin-resource-policy']).toBe('same-origin');
+    await request(server).get(`/api/community/videos/${KNOWN_VIDEO}/thumbnail`).expect(200);
+    expect(fakeVideos.thumbnails).toBe(1);
+    await request(server).get('/api/community/videos/aaaaaaaaaaa/thumbnail').expect(404);
+    await request(server).get(`/api/community/videos/${KNOWN_VIDEO}`).expect(401);
+    expect((await request(server).get(`/api/community/videos/${KNOWN_VIDEO}`).set('Cookie', writer).expect(200)).body.video.title).toBe('테스트 영상');
+    await request(server).get('/api/community/videos/bbbbbbbbbbb').set('Cookie', writer).expect(404);
+
+    // 사진: 회원만 올리고, 내 사진만 내 글에 붙음. 사진만 올린 짧은 글도 됨
+    const upload = (cookie: string | null, body: Buffer) => {
+      const req = request(server).post('/api/community/images').set('X-Forwarded-For', ip).set('Content-Type', 'image/png');
+      return (cookie ? req.set('Cookie', cookie) : req).send(body);
+    };
+    await upload(null, png(800, 600)).expect(401);
+    await upload(writer, png(5000, 10)).expect(400);
+    const photo = (await upload(writer, png(800, 600)).expect(201)).body.image;
+    await post(reader, { body: '', photos: [photo.file] }).expect(400);
+    await post(writer, { body: '', photos: ['a'.repeat(24) + '.png', 'b'.repeat(24) + '.png', 'c'.repeat(24) + '.png', 'd'.repeat(24) + '.png', 'e'.repeat(24) + '.png'] }).expect(400);
+    const photoPost = await post(writer, { body: '', photos: [photo.file] }).expect(201);
+    expect(photoPost.body.post.photos).toEqual([{ file: photo.file, url: `/api/community/images/${photo.file}` }]);
+    const image = await request(server).get(`/api/community/images/${photo.file}`).expect(200);
+    expect(image.headers['cross-origin-resource-policy']).toBe('same-origin');
+
+    // 답글 타래: 답글에 단 답글은 첫 답글 아래로 모이고, 누구에게 답했는지 남음
+    const postId = short.body.post.id;
+    const reply = (cookie: string, body: object) => request(server).post(`/api/community/posts/${postId}/comments`).set('X-Forwarded-For', ip).set('Cookie', cookie).send(body);
+    const first = (await reply(reader, { body: '좋아요!' }).expect(201)).body.comment;
+    const second = (await reply(writer, { body: '고마워요', parentId: first.id }).expect(201)).body.comment;
+    const third = (await reply(reader, { body: '또 올려 주세요', parentId: second.id }).expect(201)).body.comment;
+    expect(first).toMatchObject({ parentId: null, replyToName: null });
+    expect(second).toMatchObject({ parentId: first.id, replyToName: '타래 독자' });
+    expect(third).toMatchObject({ parentId: first.id, replyToName: '타래 글쓴이' });
+    const otherPost = photoPost.body.post.id;
+    await request(server).post(`/api/community/posts/${otherPost}/comments`).set('X-Forwarded-For', ip).set('Cookie', reader)
+      .send({ body: '엉뚱한 타래', parentId: first.id }).expect(404);
+    expect((await request(server).get(`/api/community/posts/${postId}`).expect(200)).body.commentCount).toBe(3);
+
+    // 좋아요: 한 사람이 한 번만, 보는 사람마다 눌렀는지가 다름
+    await request(server).put(`/api/community/posts/${postId}/like`).expect(401);
+    expect((await request(server).put(`/api/community/posts/${postId}/like`).set('Cookie', reader).expect(200)).body).toEqual({ likeCount: 1, liked: true });
+    expect((await request(server).put(`/api/community/posts/${postId}/like`).set('Cookie', reader).expect(200)).body.likeCount).toBe(1);
+    const asReader = await request(server).get('/api/community/posts').set('Cookie', reader).expect(200);
+    expect(asReader.headers['cache-control']).toBe('private, no-store');
+    expect(asReader.body.posts.find((item: { id: string }) => item.id === postId)).toMatchObject({ likeCount: 1, liked: true });
+    expect((await request(server).get(`/api/community/posts/${postId}`).expect(200)).body).toMatchObject({ likeCount: 1, liked: false });
+    expect((await request(server).delete(`/api/community/posts/${postId}/like`).set('Cookie', reader).expect(200)).body.likeCount).toBe(0);
+    expect((await request(server).put(`/api/community/comments/${first.id}/like`).set('Cookie', writer).expect(200)).body.likeCount).toBe(1);
+    const comments = await request(server).get(`/api/community/posts/${postId}/comments`).set('Cookie', writer).expect(200);
+    expect(comments.body.comments.map((item: { liked: boolean }) => item.liked)).toEqual([true, false, false]);
+
+    // 타래의 첫 답글을 지우면 그 아래 답글도 같이 지움. 사진 글을 지우면 사진도 저장소에서 지움
+    await request(server).delete(`/api/community/comments/${first.id}`).set('Cookie', writer).expect(403);
+    await request(server).delete(`/api/community/comments/${first.id}`).set('Cookie', reader).expect(204);
+    expect((await request(server).get(`/api/community/posts/${postId}`).expect(200)).body.commentCount).toBe(0);
+    expect((await request(server).get(`/api/community/posts/${postId}/comments`).expect(200)).body.comments).toEqual([]);
+    expect(storedFiles.has(`feed/${photo.file}`)).toBe(true);
+    await request(server).delete(`/api/community/posts/${otherPost}`).set('Cookie', writer).expect(204);
+    expect(storedFiles.has(`feed/${photo.file}`)).toBe(false);
   });
 
   it('비밀번호 변경은 기존 다른 세션을 해제', async () => {
