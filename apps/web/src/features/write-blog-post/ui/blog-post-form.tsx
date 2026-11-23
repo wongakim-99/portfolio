@@ -19,11 +19,12 @@ import {
 } from '@entities/blog-post';
 import { CoverPicker } from './cover-picker';
 import { RichEditor } from './rich-editor';
+import { RoomPicker } from './room-picker';
 import { TagInput } from './tag-input';
 import './blog-post-form.css';
 
 // 실수로 넋두리를 공개하는 쪽이 기술 글을 잠그는 쪽보다 곤란하므로 새 글은 '허락한 사람만'으로 시작함
-const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved', tags: [], cover: null };
+const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved', tags: [], cover: null, roomId: null };
 
 const VISIBILITY_HINT: Record<Visibility, string> = {
   public: '누구나 읽습니다. 기술 글이나 남에게도 쓸모 있는 글',
@@ -112,6 +113,12 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
           태그
         </label>
         <TagInput tags={draft.tags} onChange={(tags) => change({ tags })} />
+        <RoomPicker
+          roomId={draft.roomId}
+          onChange={(roomId) => change({ roomId })}
+          draft={{ title: draft.title, body: draft.body, tags: draft.tags }}
+          onStatus={setStatus}
+        />
         <fieldset className="blog-visibility">
           <legend>누가 읽을 수 있나요</legend>
           {(Object.keys(VISIBILITY_LABEL) as Visibility[]).map((visibility) => (

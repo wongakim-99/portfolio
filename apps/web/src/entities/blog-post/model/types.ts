@@ -3,6 +3,17 @@
 /** public 은 누구나, approved 는 주인장이 허락한 회원만, private 은 주인장만 읽음 */
 export type Visibility = 'public' | 'approved' | 'private';
 
+/** 글이 든 방의 이름표 */
+export interface BlogRoomRef {
+  id: string;
+  name: string;
+}
+
+/** 방과 그 방에 든 글 수 */
+export interface BlogRoom extends BlogRoomRef {
+  count: number;
+}
+
 export interface BlogPostSummary {
   id: string;
   title: string;
@@ -12,6 +23,8 @@ export interface BlogPostSummary {
   tags: string[];
   /** 썸네일 주소. 고른 표지가 없으면 본문 첫 사진. 잠긴 글은 고른 표지만 */
   cover: string | null;
+  /** 글이 든 방. 아직 방이 없으면 null */
+  room: BlogRoomRef | null;
   /** 본문 앞 220자 (마크다운 기호를 뺀 글자). 잠긴 글이면 null */
   excerpt: string | null;
   /** 읽는 데 걸리는 분. 잠긴 글이면 null */
@@ -48,6 +61,20 @@ export interface BlogPostInput {
   tags: string[];
   /** 표지 사진 파일. null 이면 본문 첫 사진을 썸네일로 씀 */
   cover: string | null;
+  /** 글이 들 방. null 이면 방 밖 */
+  roomId: string | null;
+}
+
+/** 관리실의 방 목록 (나만 보기 글까지 센 글 수)과 아직 방이 없는 글 수 */
+export interface RoomOverview {
+  rooms: BlogRoom[];
+  unsorted: number;
+}
+
+/** AI 가 방 없는 글에 고른 방. 저장 전이라 주인장이 확인하고 고침 */
+export interface RoomSuggestion {
+  post: { id: string; title: string; visibility: Visibility };
+  roomId: string | null;
 }
 
 /** 블로그에 올린 사진 한 장 */
@@ -58,15 +85,23 @@ export interface BlogImage {
   height: number;
 }
 
-/** 목록 거르기. 블로그 주소의 ?tag=, ?q=, ?visibility= 와 같음 */
+/** 목록 거르기. 블로그 주소의 ?room=, ?tag=, ?q=, ?visibility= 와 같음. room 이 NO_ROOM 이면 방 없는 글 */
 export interface BlogListQuery {
+  room?: string | null;
   tag?: string | null;
   q?: string | null;
   visibility?: Visibility | null;
 }
 
-/** 목록 옆 사이드바. private 은 주인장에게만 숫자가 옴 */
+/** 방 없는 글을 고르는 ?room= 값 (API 의 NO_ROOM) */
+export const NO_ROOM = 'none';
+export const ROOM_NAME_MAX = 20;
+
+/** 목록 옆 사이드바. 방 글 수와 private 은 보는 사람에게 보이는 글만 셈 */
 export interface BlogSummary {
+  rooms: BlogRoom[];
+  /** 아직 방이 없는 글 수 */
+  unsorted: number;
   total: number;
   public: number;
   approved: number;

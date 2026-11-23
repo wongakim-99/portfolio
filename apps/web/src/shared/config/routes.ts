@@ -11,9 +11,10 @@ export const routes = {
   blog: '/blog',
   /** 그 태그가 붙은 블로그 글만 */
   blogTag: (tag: string) => `/blog?${new URLSearchParams({ tag })}`,
-  /** 태그, 검색어, 공개 범위로 거른 블로그 목록. 빈 값은 주소에서 뺌 */
-  blogList: ({ tag, q, visibility }: { tag?: string | null; q?: string | null; visibility?: string | null }) => {
+  /** 방, 태그, 검색어, 공개 범위로 거른 블로그 목록. 빈 값은 주소에서 뺌 */
+  blogList: ({ room, tag, q, visibility }: { room?: string | null; tag?: string | null; q?: string | null; visibility?: string | null }) => {
     const params = new URLSearchParams();
+    if (room) params.set('room', room);
     if (tag) params.set('tag', tag);
     if (q) params.set('q', q);
     if (visibility) params.set('visibility', visibility);
@@ -24,4 +25,6 @@ export const routes = {
   editBlogPost: (id: string) => `/blog/posts/${encodeURIComponent(id)}/edit`,
   /** 관리실의 블로그 열람 요청 칸 */
   blogRequests: '/feed/admin#blog-requests',
+  /** 관리실의 블로그 방 칸 */
+  blogRooms: '/feed/admin#blog-rooms',
 } as const;

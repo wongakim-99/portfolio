@@ -2,18 +2,22 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model, QueryFilter } from 'mongoose';
 import { asObjectId, isDuplicateKey, toObjectId } from '../../../../shared/infrastructure/mongo.js';
-import type { AccessRequest, BlogPost, Grant, Visibility } from '../../domain/blog.js';
+import { NO_ROOM, type AccessRequest, type BlogPost, type BlogRoom, type Grant, type Visibility } from '../../domain/blog.js';
 import {
-  AccessRequestRepository, BlogImageRepository, BlogPostRepository, GrantRepository, ProofUsageRepository, type BlogListFilter,
+  AccessRequestRepository, BlogImageRepository, BlogPostRepository, BlogRoomRepository, GrantRepository, ProofUsageRepository,
+  type BlogListFilter,
 } from '../../domain/blog.ports.js';
-import { BlogAccessRequest, BlogGrant, BlogImage, BlogPost as BlogPostDoc, BlogProofUsage } from './blog.schemas.js';
+import { BlogAccessRequest, BlogGrant, BlogImage, BlogPost as BlogPostDoc, BlogProofUsage, BlogRoom as BlogRoomDoc } from './blog.schemas.js';
 
 type Doc<T> = T & { _id: unknown };
 
 const toPost = (doc: Doc<BlogPostDoc>): BlogPost => ({
   id: String(doc._id), authorId: String(doc.authorId), title: doc.title, body: doc.body, visibility: doc.visibility,
-  tags: doc.tags ?? [], cover: doc.cover ?? null, createdAt: doc.createdAt, updatedAt: doc.updatedAt,
+  tags: doc.tags ?? [], cover: doc.cover ?? null, roomId: doc.roomId ? String(doc.roomId) : null, createdAt: doc.createdAt, updatedAt: doc.updatedAt,
 });
+const toRoom = (doc: Doc<BlogRoomDoc>): BlogRoom => ({ id: String(doc._id), name: doc.name, order: doc.order ?? 0, createdAt: doc.createdAt });
+// 방이 생기기 전의 글은 roomId 가 아예 없어서, null 과 없는 필드를 같이 '방 없음' 으로 셈
+const roomFilter = (room: string | null): QueryFilter<BlogPostDoc> => (room === null ? { roomId: null } : { roomId: toObjectId(room) });
 const toRequest = (doc: Doc<BlogAccessRequest>): AccessRequest => ({
   id: String(doc._id), userId: String(doc.userId), postId: String(doc.postId), message: doc.message ?? '', status: doc.status,
   decidedAt: doc.decidedAt ?? null, createdAt: doc.createdAt,
@@ -30,11 +34,12 @@ export class MongoBlogPostRepository extends BlogPostRepository {
     super();
   }
 
-  async list({ includePrivate, before, tag, visibility, search }: BlogListFilter, limit: number) {
+  async list({ includePrivate, before, tag, visibility, room, search }: BlogListFilter, limit: number) {
     const and: QueryFilter<BlogPostDoc>[] = [visibleFilter(includePrivate)];
     if (before) and.push({ _id: { $lt: toObjectId(before) } });
     if (tag) and.push({ tags: tag });
     if (visibility) and.push({ visibility });
+    if (room !== undefined) and.push(roomFilter(room));
     if (search) {
       const pattern = new RegExp(escapeRegex(search.text), 'i');
       and.push({ $or: [
@@ -47,15 +52,20 @@ export class MongoBlogPostRepository extends BlogPostRepository {
 
   async counts(includePrivate: boolean, tagLimit: number) {
     const visible = visibleFilter(includePrivate);
-    const [counts, tags] = await Promise.all([
+    const [counts, rooms, tags] = await Promise.all([
       this.posts.aggregate<{ _id: Visibility; count: number }>([{ $match: visible }, { $group: { _id: '$visibility', count: { $sum: 1 } } }]),
-      this.posts.aggregate<{ _id: string; count: number }>([
-        { $match: visible }, { $unwind: '$tags' }, { $group: { _id: '$tags', count: { $sum: 1 } } },
-        { $sort: { count: -1, _id: 1 } }, { $limit: tagLimit },
-      ]),
+      this.posts.aggregate<{ _id: unknown; count: number }>([{ $match: visible }, { $group: { _id: { $ifNull: ['$roomId', null] }, count: { $sum: 1 } } }]),
+      // 태그가 필요 없으면(tagLimit 0) 태그는 세지 않음. $limit 은 0 을 받지 않음
+      tagLimit > 0
+        ? this.posts.aggregate<{ _id: string; count: number }>([
+          { $match: visible }, { $unwind: '$tags' }, { $group: { _id: '$tags', count: { $sum: 1 } } },
+          { $sort: { count: -1, _id: 1 } }, { $limit: tagLimit },
+        ])
+        : Promise.resolve([]),
     ]);
     return {
       byVisibility: Object.fromEntries(counts.map((item) => [item._id, item.count])) as Partial<Record<Visibility, number>>,
+      byRoom: Object.fromEntries(rooms.map((item) => [item._id ? String(item._id) : NO_ROOM, item.count])),
       tags: tags.map((item) => ({ name: item._id, count: item.count })),
     };
   }
@@ -70,16 +80,73 @@ export class MongoBlogPostRepository extends BlogPostRepository {
   }
 
   async create(input: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>) {
-    const post = await this.posts.create({ ...input, authorId: asObjectId(input.authorId) });
+    const post = await this.posts.create({ ...input, authorId: asObjectId(input.authorId), roomId: input.roomId ? asObjectId(input.roomId) : null });
     return toPost(post.toObject());
   }
 
-  async update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover'>) {
-    await this.posts.updateOne({ _id: toObjectId(id) }, { $set: input });
+  async update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover' | 'roomId'>) {
+    await this.posts.updateOne({ _id: toObjectId(id) }, { $set: { ...input, roomId: input.roomId ? asObjectId(input.roomId) : null } });
   }
 
   async delete(id: string) {
     return Boolean(await this.posts.findByIdAndDelete(toObjectId(id)));
+  }
+
+  async withoutRoom(limit: number) {
+    return (await this.posts.find(roomFilter(null)).sort({ _id: -1 }).limit(limit).lean()).map(toPost);
+  }
+
+  async assignRooms(assignments: { postId: string; roomId: string }[]) {
+    if (!assignments.length) return 0;
+    const result = await this.posts.bulkWrite(assignments.map(({ postId, roomId }) => ({
+      updateOne: { filter: { _id: asObjectId(postId) }, update: { $set: { roomId: asObjectId(roomId) } } },
+    })));
+    return result.matchedCount;
+  }
+
+  async clearRoom(roomId: string) {
+    await this.posts.updateMany({ roomId: asObjectId(roomId) }, { $set: { roomId: null } });
+  }
+}
+
+@Injectable()
+export class MongoBlogRoomRepository extends BlogRoomRepository {
+  constructor(@InjectModel(BlogRoomDoc.name) private readonly rooms: Model<BlogRoomDoc>) {
+    super();
+  }
+
+  async list() {
+    return (await this.rooms.find().sort({ order: 1, _id: 1 }).lean()).map(toRoom);
+  }
+
+  async create(name: string, order: number) {
+    try {
+      return toRoom((await this.rooms.create({ name, order })).toObject());
+    } catch (error) {
+      if (isDuplicateKey(error)) return null;
+      throw error;
+    }
+  }
+
+  async rename(id: string, name: string) {
+    const room = toObjectId(id);
+    if (!room) return null;
+    try {
+      return (await this.rooms.updateOne({ _id: room }, { $set: { name } })).matchedCount ? true : null;
+    } catch (error) {
+      if (isDuplicateKey(error)) return false;
+      throw error;
+    }
+  }
+
+  async reorder(ids: string[]) {
+    if (!ids.length) return;
+    await this.rooms.bulkWrite(ids.map((id, order) => ({ updateOne: { filter: { _id: asObjectId(id) }, update: { $set: { order } } } })));
+  }
+
+  async delete(id: string) {
+    const room = toObjectId(id);
+    return Boolean(room && (await this.rooms.findByIdAndDelete(room)));
   }
 }
 

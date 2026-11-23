@@ -30,6 +30,9 @@
   .blog-card-whisper { opacity: 1; transform: rotate(-2deg); }
 }
 .blog-card .blog-tags { position: relative; z-index: 1; }
+/* 방 이름표: 책상 위 라벨 테이프 조각. 카드에서는 제목 링크(카드 전체) 위로 올려 따로 눌림 */
+.blog-room-label { position: relative; z-index: 1; display: inline-flex; align-items: center; min-height: 22px; padding: 1px 9px; border-radius: 2px; background: color-mix(in srgb, var(--sticky-1) 55%, var(--paper)); color: var(--ink); font-size: 12px; font-weight: 700; letter-spacing: .02em; text-decoration: none; transform: rotate(-1.5deg); box-shadow: 0 1px 1px rgb(15 20 25 / .08); transition: transform .15s ease; }
+.blog-room-label:hover { transform: rotate(0); }
 .blog-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: auto 0 0; padding-top: 14px; border-top: 1px solid var(--paper-rule); color: var(--ink-soft); font-size: 13px; }
 .blog-card-foot svg { flex: none; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; transition: transform .2s ease; }
 .blog-card:hover .blog-card-foot svg { color: var(--ink); transform: translateX(3px); }

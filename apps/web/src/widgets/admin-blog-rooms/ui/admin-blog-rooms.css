@@ -1,0 +1,26 @@
+/* 관리실의 블로그 방. 방 한 줄마다 이름, 글 수, 순서 단추, 이름 바꾸기, 지우기 */
+.room-list { margin: 0; padding: 0; list-style: none; }
+.room-list li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 56px; padding: 10px 0; border-bottom: 1px solid var(--paper-rule); }
+.room-name { flex: 1 1 140px; min-width: 0; color: var(--ink); font-size: 17px; font-weight: 700; text-decoration: none; overflow-wrap: anywhere; }
+.room-name:hover { text-decoration: underline; text-underline-offset: 3px; }
+.room-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; }
+.room-move { display: inline-grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--paper-rule); border-radius: 4px; background: none; color: var(--ink-soft); cursor: pointer; }
+.room-move:hover:not(:disabled) { border-color: var(--ink); color: var(--ink); }
+.room-move:disabled { opacity: .35; cursor: default; }
+.room-move svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.room-list :disabled { cursor: default; }
+
+.room-add, .room-rename { display: flex; flex: 1 1 100%; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.room-add { margin-top: 18px; }
+.room-add input, .room-rename input, .room-picks select { flex: 1 1 200px; min-width: 0; height: 40px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--ink) 28%, transparent); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; font-size: 15px; }
+.room-add input:focus, .room-rename input:focus, .room-picks select:focus { outline: 2px solid var(--pen); outline-offset: 1px; border-color: transparent; }
+.room-add .tape, .room-rename .tape, .room-ai .tape, .room-picks-actions .tape { min-height: 40px; }
+
+/* 방 없는 글: AI 가 고른 방을 확인하고 고치는 목록 */
+.room-ai { display: grid; justify-items: start; gap: 12px; }
+.room-ai p { max-width: 62ch; margin: 0; line-height: 1.7; }
+.room-picks { margin: 0; padding: 0; list-style: none; }
+.room-picks li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; padding: 12px 0; border-bottom: 1px dashed var(--paper-rule); }
+.room-pick-title { flex: 1 1 220px; min-width: 0; color: var(--ink); font-weight: 600; text-underline-offset: 3px; overflow-wrap: anywhere; }
+.room-picks select { flex: 0 1 180px; }
+.room-picks-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-top: 18px; }

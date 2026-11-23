@@ -11,12 +11,12 @@ import './blog-search.css';
 
 const SEARCH_DELAY_MS = 300;
 
-/** 목록 위 검색창과 분류 칩. 거르기는 주소(?q=, ?visibility=)에 남아서 뒤로 가기와 공유가 됨 */
+/** 목록 위 검색창과 공개 범위 칩. 거르기는 주소(?q=, ?visibility=)에 남아서 뒤로 가기와 공유가 됨. 고른 방(?room=)은 그대로 둠 */
 export function BlogSearch({ query }: { query: BlogListQuery }) {
   const router = useRouter();
   const { can } = useSession();
   const owner = can('blog:write');
-  const { tag = null, q = null, visibility = null } = query;
+  const { room = null, tag = null, q = null, visibility = null } = query;
   const [text, setText] = useState(q ?? '');
   const [lastQ, setLastQ] = useState(q ?? '');
 
@@ -30,9 +30,9 @@ export function BlogSearch({ query }: { query: BlogListQuery }) {
   useEffect(() => {
     const next = text.trim();
     if (next === (q ?? '')) return;
-    const timer = window.setTimeout(() => router.replace(routes.blogList({ tag, visibility, q: next }), { scroll: false }), SEARCH_DELAY_MS);
+    const timer = window.setTimeout(() => router.replace(routes.blogList({ room, tag, visibility, q: next }), { scroll: false }), SEARCH_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [text, tag, q, visibility, router]);
+  }, [text, room, tag, q, visibility, router]);
 
   const chips: { label: string; visibility: Visibility | null }[] = [
     { label: '전체', visibility: null },
@@ -48,7 +48,7 @@ export function BlogSearch({ query }: { query: BlogListQuery }) {
         role="search"
         onSubmit={(event) => {
           event.preventDefault();
-          router.replace(routes.blogList({ tag, visibility, q: text.trim() }), { scroll: false });
+          router.replace(routes.blogList({ room, tag, visibility, q: text.trim() }), { scroll: false });
         }}
       >
         <label className="sr" htmlFor="blog-search-input">
@@ -73,7 +73,7 @@ export function BlogSearch({ query }: { query: BlogListQuery }) {
           <Link
             key={chip.label}
             className={cx('blog-chip', visibility === chip.visibility && 'is-active')}
-            href={routes.blogList({ tag, q, visibility: chip.visibility })}
+            href={routes.blogList({ room, tag, q, visibility: chip.visibility })}
             aria-current={visibility === chip.visibility ? 'page' : undefined}
             scroll={false}
           >

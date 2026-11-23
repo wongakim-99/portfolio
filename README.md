@@ -30,7 +30,7 @@ src/
   views/       화면 조립: home, portfolio, feed, post, post-editor, profile, admin, blog, blog-post, blog-editor
   widgets/     큰 화면 조각: site-header, site-footer, feed-header, account-menu, laptop(스티커), deploy-receipt,
                guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list, comment-thread, server-topology, admin-inbox, admin-reports,
-               blog-search(검색창과 분류 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 분류, 태그), blog-lock(잠긴 글 자리, 항복 문서), admin-blog-access(열람 요청과 허락 명단),
+               blog-search(검색창과 공개 범위 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 방, 태그), blog-lock(잠긴 글 자리, 항복 문서), admin-blog-access(열람 요청과 허락 명단), admin-blog-rooms(블로그 방, AI 로 나누기),
                admin-members(회원 수, 가입 막대, 회원 명부와 상세), rocky(빈 책상을 굴러다니는 로키 공)
   features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post, manage-post,
                write-comment, report-content, edit-profile, change-password, change-avatar,
@@ -114,8 +114,13 @@ src/
 ## 블로그
 
 - 글은 주인장만 쓰고, 글마다 공개 범위를 고름. 새 글은 '허락한 사람만'으로 시작함 (넋두리를 실수로 공개하는 쪽이 더 곤란해서)
-- 화면은 다른 페이지와 같은 책상 위에 종이 카드를 늘어놓는 블로그 모양. 목록의 제목, 검색창, 분류 칩, 카드는 포트폴리오, 피드와 같은 920px 가운데 단에 놓아 탭을 옮겨도 자리가 같음. 1920px 이상 넓은 모니터에서는 빈 책상이 너무 넓어서 단을 1236px 로 넓혀 카드를 4장씩 놓음(카드 한 장 크기는 같음). 주인 소개, 분류별 글 수, 태그 사이드바는 단 옆에 따로 빼서 제목부터 목록 끝까지 세로로 길게 차지하고, 스크롤하면 화면 위에 붙어 따라옴(화면보다 길면 사이드바 안에서 스크롤). 넓은 화면(1520px 이상)에서는 단 왼쪽 책상 위에, 그보다 좁으면 사이드바와 단을 나란히, 960px 이하에서는 맨 아래에 놓임. 글 화면은 가운데 종이 한 장에 제목, 날짜와 읽는 시간, 태그, 본문, 글 끝 소개 카드. 본문은 글쓰기 칸과 같은 종이 폭 전체를 써서 쓸 때 본 줄바꿈 그대로 읽힘
-- 글마다 태그를 8개까지 붙임 (글쓰기에서 Enter 나 쉼표로 붙임). 목록은 주소의 `?tag=`, `?q=`(제목, 태그 검색), `?visibility=` 로 거르고, 사이드바 숫자는 `/api/blog/summary`
+- 화면은 다른 페이지와 같은 책상 위에 종이 카드를 늘어놓는 블로그 모양. 목록의 제목, 검색창, 분류 칩, 카드는 포트폴리오, 피드와 같은 920px 가운데 단에 놓아 탭을 옮겨도 자리가 같음. 1920px 이상 넓은 모니터에서는 빈 책상이 너무 넓어서 단을 1236px 로 넓혀 카드를 4장씩 놓음(카드 한 장 크기는 같음). 주인 소개, 방별 글 수, 태그 사이드바는 단 옆에 따로 빼서 제목부터 목록 끝까지 세로로 길게 차지하고, 스크롤하면 화면 위에 붙어 따라옴(화면보다 길면 사이드바 안에서 스크롤). 넓은 화면(1520px 이상)에서는 단 왼쪽 책상 위에, 그보다 좁으면 사이드바와 단을 나란히, 960px 이하에서는 맨 아래에 놓임. 글 화면은 가운데 종이 한 장에 제목, 날짜와 읽는 시간, 태그, 본문, 글 끝 소개 카드. 본문은 글쓰기 칸과 같은 종이 폭 전체를 써서 쓸 때 본 줄바꿈 그대로 읽힘
+- 글마다 태그를 8개까지 붙임 (글쓰기에서 Enter 나 쉼표로 붙임). 목록은 주소의 `?room=`, `?tag=`, `?q=`(제목, 태그 검색), `?visibility=` 로 거르고, 사이드바 숫자는 `/api/blog/summary`
+- 글은 방(공부방, 잡담방 같은 묶음) 하나에 들고, 태그는 그 안에서 주제로 여럿 붙임. 방은 주인장이 관리실 `블로그 방` 칸에서 만들고, 이름과 순서를 바꾸고, 지움(12개까지, 이름 20자). 방을 지우면 그 방 글은 방 없는 글로 남음
+  - 사이드바는 방 목록과 방별 글 수(보는 사람에게 보이는 글만 셈). 방이 없는 글은 '기타' 로 모이고, 공개 범위는 검색창 옆 칩에서 거름. 카드와 글 화면에는 방 이름표(라벨 테이프)가 붙고 누르면 그 방 글만 봄
+  - 관리실의 `방 없는 글` 에서 'AI 로 나누기' 를 누르면 AI(증명 채점과 같은 OpenAI 키, `OPENAI_ROOM_MODEL` 로 따로 바꿀 수 있음)가 글마다 제목, 태그, 본문 앞 800자를 읽고 방을 고름. 바로 저장하지 않고 주인장이 확인하고 고친 뒤 '이대로 넣기' 를 눌러야 들어감. 글 안의 지시는 따르지 않고, OpenAI 에 `store: false` 로 보냄
+  - 글쓰기에서는 방을 칩으로 고르고, 'AI 추천' 을 누르면 쓰고 있는 제목과 본문으로 방을 골라 줌
+  - API: `GET/POST /api/blog/admin/rooms`, `PATCH/DELETE /api/blog/admin/rooms/<방_ID>`, `PUT /api/blog/admin/rooms/order`, `POST /api/blog/admin/rooms/suggest`(한 시간 10번), `POST /api/blog/admin/rooms/suggest-draft`(한 시간 30번), `POST /api/blog/admin/rooms/assign` (모두 `blog:write`)
 - 검색은 잠긴 글이면 제목과 태그만 뒤지고 본문은 보지 않음. 본문 검색은 누구나 읽는 글에서만 (주인장은 전부)
 
 | 공개 범위 | 목록 | 본문 |
@@ -142,7 +147,7 @@ src/
 - 거절된 요청은 3일 뒤에 다시 보낼 수 있음. 허락은 관리실의 `열람 허락 명단` 에서 언제든 거둠
 - 본문은 API 가 허락된 계정에게만 내려 줌. 블로그 읽기 응답은 보는 사람마다 달라서 `Cache-Control: private, no-store`. 글 화면은 미리 그리지 않고 브라우저에서 로그인 상태를 확인한 뒤 받음
 - 글을 공개나 나만 보기로 바꾸면 그 글에 온 요청은 지우고, 글을 지우면 그 글의 요청과 허락도 같이 지움
-- 데이터는 `blog_posts`, `blog_images`, `blog_access_requests`, `blog_grants`, `blog_proof_usage` 컬렉션 (`apps/api/src/modules/blog`)
+- 데이터는 `blog_posts`(글의 방은 `roomId`), `blog_rooms`, `blog_images`, `blog_access_requests`, `blog_grants`, `blog_proof_usage` 컬렉션 (`apps/api/src/modules/blog`)
 
 ### 글 쓰기 (마크다운, 사진, 표지)
 

@@ -41,9 +41,10 @@ export class BlogController {
     @Query('tag') tag?: unknown,
     @Query('q') q?: unknown,
     @Query('visibility') visibility?: unknown,
+    @Query('room') room?: unknown,
   ) {
     return this.posts.list(await this.currentUser.find(req), {
-      before: single(before), tag: single(tag), q: single(q), visibility: single(visibility),
+      before: single(before), tag: single(tag), q: single(q), visibility: single(visibility), room: single(room),
     });
   }
 

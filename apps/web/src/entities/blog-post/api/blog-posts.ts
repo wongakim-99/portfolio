@@ -2,8 +2,9 @@ import { blogRequest } from '@shared/api';
 import type { AccessRequestState, BlogImage, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
 
 /** 최근 글 10개씩. 잠긴 글은 제목과 태그만, 나만 보기 글은 주인장에게만 옴 */
-export function listBlogPosts({ before, tag, q, visibility }: BlogListQuery & { before?: string | null } = {}) {
+export function listBlogPosts({ before, room, tag, q, visibility }: BlogListQuery & { before?: string | null } = {}) {
   const query = new URLSearchParams();
+  if (room) query.set('room', room);
   if (tag) query.set('tag', tag);
   if (q) query.set('q', q);
   if (visibility) query.set('visibility', visibility);

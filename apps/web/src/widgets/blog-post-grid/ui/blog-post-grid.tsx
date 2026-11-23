@@ -17,17 +17,17 @@ interface GridState {
 export function BlogPostGrid({ query }: { query: BlogListQuery }) {
   const { user, ready } = useSession();
   const userId = user?.id ?? null;
-  const { tag = null, q = null, visibility = null } = query;
-  const filtered = Boolean(tag || q || visibility);
+  const { room = null, tag = null, q = null, visibility = null } = query;
+  const filtered = Boolean(room || tag || q || visibility);
   const [state, setState] = useState<GridState>({ posts: [], cursor: null, status: 'loading' });
 
   const load = useCallback(
     (before: string | null) =>
-      listBlogPosts({ before, tag, q, visibility }).then(
+      listBlogPosts({ before, room, tag, q, visibility }).then(
         (page) => setState((prev) => ({ posts: before ? [...prev.posts, ...page.posts] : page.posts, cursor: page.nextCursor, status: 'ready' })),
         () => setState((prev) => ({ ...prev, status: 'error' })),
       ),
-    [tag, q, visibility],
+    [room, tag, q, visibility],
   );
 
   useEffect(() => {
@@ -40,7 +40,7 @@ export function BlogPostGrid({ query }: { query: BlogListQuery }) {
       {tag && (
         <p className="blog-filter-note">
           <b>#{tag}</b> 태그가 붙은 글
-          <Link className="text-btn" href={routes.blogList({ q, visibility })} scroll={false}>
+          <Link className="text-btn" href={routes.blogList({ room, q, visibility })} scroll={false}>
             태그 풀기
           </Link>
         </p>

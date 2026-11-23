@@ -12,6 +12,20 @@
 .tag-input-chip span { margin-left: 6px; opacity: .6; }
 .tag-input-chip:hover span { opacity: 1; }
 
+/* 방 고르기: 라벨 테이프 칩. 고른 방은 포스트잇 색으로 */
+.blog-rooms { margin: 0; padding: 0; border: 0; }
+.blog-rooms legend { margin-bottom: 8px; padding: 0; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+.blog-rooms-list { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.blog-room-option { position: relative; display: inline-flex; align-items: center; min-height: 34px; padding: 4px 14px; border: 1px solid var(--paper-rule); border-radius: 3px; color: var(--ink-soft); font-size: 14px; font-weight: 600; cursor: pointer; transition: background-color .15s ease, border-color .15s ease, transform .15s ease; }
+.blog-room-option:hover { border-color: color-mix(in srgb, var(--ink) 35%, transparent); }
+.blog-room-option input { position: absolute; opacity: 0; pointer-events: none; }
+.blog-room-option.is-checked { border-color: transparent; background: color-mix(in srgb, var(--sticky-1) 60%, var(--paper)); color: var(--ink); transform: rotate(-1.5deg); box-shadow: 0 1px 2px rgb(15 20 25 / .12); }
+.blog-room-option:has(input:focus-visible) { outline: 2px solid var(--pen); outline-offset: 2px; }
+.blog-rooms-ai { margin-left: 4px; font-size: 14px; }
+.blog-rooms-ai:disabled { opacity: .5; cursor: default; }
+.blog-rooms-empty { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.blog-rooms-empty a { color: var(--pen); }
+
 .blog-visibility { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; border: 0; }
 .blog-visibility legend { margin-bottom: 8px; padding: 0; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
 .blog-visibility-option { position: relative; display: grid; align-content: start; gap: 4px; padding: 12px 14px 13px; border: 1px solid var(--paper-rule); border-radius: 12px; cursor: pointer; transition: border-color .15s ease, background-color .15s ease; }

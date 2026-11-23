@@ -15,9 +15,24 @@ export interface BlogPost {
   tags: string[];
   /** 글쓴이가 고른 표지 사진 파일. 없으면 본문 첫 사진을 썸네일로 씀 */
   cover: string | null;
+  /** 글이 든 방(공부방, 잡담방 같은 묶음). 아직 고르지 않았으면 null */
+  roomId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
+
+/** 블로그 방. 주인장이 관리실에서 만들고 이름, 순서를 정함. 글은 방 하나에 들고, 태그는 따로 여럿 붙음 */
+export interface BlogRoom {
+  id: string;
+  name: string;
+  order: number;
+  createdAt: Date;
+}
+
+export const ROOM_NAME_MAX = 20;
+export const ROOM_MAX = 12;
+/** 목록 주소 ?room=none 은 아직 방이 없는 글 */
+export const NO_ROOM = 'none';
 
 export type AccessRequestStatus = 'pending' | 'rejected';
 

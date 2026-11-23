@@ -5,23 +5,26 @@ import { routes } from '@shared/config';
 import { prefersReducedMotion, useDocumentTitle } from '@shared/lib';
 import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
 import { AdminBlogAccess } from '@widgets/admin-blog-access';
+import { AdminBlogRooms } from '@widgets/admin-blog-rooms';
 import { AdminInbox } from '@widgets/admin-inbox';
 import { AdminMembers } from '@widgets/admin-members';
 import { AdminReports } from '@widgets/admin-reports';
 import { ServerTopology } from '@widgets/server-topology';
 import { listAccessRequests } from '@entities/blog-access';
+import { getRoomOverview } from '@entities/blog-post';
 import { getAdminSummary, setUnreadMessages, useUnreadMessages } from '@entities/message';
 import { useSession, type Permission } from '@entities/user';
 import { replaceHash, useHash } from '../model/use-hash';
 import { AdminNav } from './admin-nav';
 import './admin-page.css';
 
-type SectionKey = 'server' | 'members' | 'blog-requests' | 'inbox' | 'reports';
+type SectionKey = 'server' | 'members' | 'blog-rooms' | 'blog-requests' | 'inbox' | 'reports';
 
 // 관리실 칸. 칸마다 권한이 따로 있어서 가진 권한의 칸만 보임. 실제 허용 여부는 API 가 요청마다 다시 확인함
 const SECTIONS: { key: SectionKey; label: string; permission: Permission }[] = [
   { key: 'server', label: '지금 서버', permission: 'server:read' },
   { key: 'members', label: '회원', permission: 'members:read' },
+  { key: 'blog-rooms', label: '블로그 방', permission: 'blog:write' },
   { key: 'blog-requests', label: '블로그 열람', permission: 'blog:grant' },
   { key: 'inbox', label: '쪽지함', permission: 'messages:read' },
   { key: 'reports', label: '신고', permission: 'reports:read' },
@@ -33,7 +36,7 @@ export function AdminPage() {
   const [status, setStatus] = useState<Status>(NO_STATUS);
   // 칸에서 무언가를 처리하면 칸 이름 옆 숫자를 다시 셈
   const [changes, setChanges] = useState(0);
-  const [counts, setCounts] = useState<{ reports?: number; requests?: number }>({});
+  const [counts, setCounts] = useState<{ reports?: number; requests?: number; unsorted?: number }>({});
   const unread = useUnreadMessages();
   const hash = useHash();
   const top = useRef<HTMLDivElement>(null);
@@ -46,6 +49,7 @@ export function AdminPage() {
 
   const canSummary = can('messages:read');
   const canGrant = can('blog:grant');
+  const canWrite = can('blog:write');
   useEffect(() => {
     if (!userId) return;
     let active = true;
@@ -58,10 +62,12 @@ export function AdminPage() {
       }, () => {});
     }
     if (canGrant) listAccessRequests().then(({ requests }) => active && setCounts((value) => ({ ...value, requests: requests.length })), () => {});
+    // 방 칸 옆 숫자는 아직 방이 없는 글 수
+    if (canWrite) getRoomOverview().then(({ unsorted }) => active && setCounts((value) => ({ ...value, unsorted })), () => {});
     return () => {
       active = false;
     };
-  }, [userId, canSummary, canGrant, changes]);
+  }, [userId, canSummary, canGrant, canWrite, changes]);
 
   const report = useCallback((next: Status) => {
     setStatus(next);
@@ -70,7 +76,7 @@ export function AdminPage() {
 
   const sections = SECTIONS.filter((section) => can(section.permission));
   const active = sections.find((section) => section.key === hash)?.key ?? sections[0]?.key;
-  const badges: Partial<Record<SectionKey, number>> = { inbox: unread, reports: counts.reports, 'blog-requests': counts.requests };
+  const badges: Partial<Record<SectionKey, number>> = { inbox: unread, reports: counts.reports, 'blog-requests': counts.requests, 'blog-rooms': counts.unsorted };
 
   function select(key: string) {
     replaceHash(key);
@@ -94,10 +100,11 @@ export function AdminPage() {
         <p className="hand profile-hand">운영자에게만 보이는 곳</p>
         <h1 id="admin-title">관리실</h1>
         <p className="community-meta admin-lead">
-          {user && !active ? '관리자 권한이 있는 계정만 볼 수 있습니다.' : '지금 서버 상태와 회원, 홈 엽서로 받은 쪽지, 피드 신고를 봅니다.'}
+          {user && !active ? '관리자 권한이 있는 계정만 볼 수 있습니다.' : '지금 서버 상태와 회원, 블로그 방과 열람, 홈 엽서로 받은 쪽지, 피드 신고를 봅니다.'}
         </p>
         {active === 'server' && <ServerTopology />}
         {active === 'members' && <AdminMembers />}
+        {active === 'blog-rooms' && <AdminBlogRooms onStatus={report} />}
         {active === 'blog-requests' && <AdminBlogAccess onStatus={report} />}
         {active === 'inbox' && <AdminInbox onStatus={report} />}
         {active === 'reports' && <AdminReports onStatus={report} />}

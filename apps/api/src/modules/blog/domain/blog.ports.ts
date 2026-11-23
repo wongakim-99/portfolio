@@ -1,4 +1,4 @@
-import type { AccessRequest, BlogPost, Grant, Visibility } from './blog.js';
+import type { AccessRequest, BlogPost, BlogRoom, Grant, Visibility } from './blog.js';
 import type { ProofSubmission } from './proof.js';
 
 export interface BlogListFilter {
@@ -7,12 +7,16 @@ export interface BlogListFilter {
   before?: string;
   tag?: string;
   visibility?: Visibility;
+  /** 방 ID 하나, 또는 null 이면 아직 방이 없는 글 */
+  room?: string | null;
   /** 제목과 태그는 늘 찾고, 본문은 bodyScope 가 all 이면 모든 글, public 이면 누구나 읽는 글에서만 찾음 */
   search?: { text: string; bodyScope: 'all' | 'public' };
 }
 
 export interface BlogCounts {
   byVisibility: Partial<Record<Visibility, number>>;
+  /** 방 ID 별 글 수. 방이 없는 글은 키가 null 인 대신 NO_ROOM('none') */
+  byRoom: Record<string, number>;
   tags: { name: string; count: number }[];
 }
 
@@ -23,8 +27,39 @@ export abstract class BlogPostRepository {
   abstract findById(id: string): Promise<BlogPost | null>;
   abstract findMany(ids: string[]): Promise<BlogPost[]>;
   abstract create(input: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>): Promise<BlogPost>;
-  abstract update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover'>): Promise<void>;
+  abstract update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover' | 'roomId'>): Promise<void>;
   abstract delete(id: string): Promise<boolean>;
+  /** 아직 방이 없는 글, 최근 것부터 */
+  abstract withoutRoom(limit: number): Promise<BlogPost[]>;
+  /** 글마다 방을 정함. 없는 글은 넘어감 */
+  abstract assignRooms(assignments: { postId: string; roomId: string }[]): Promise<number>;
+  /** 이 방에 든 글을 모두 방 밖(null)으로 뺌. 방을 지울 때 씀 */
+  abstract clearRoom(roomId: string): Promise<void>;
+}
+
+// 블로그 방 목록. 이름은 겹치지 않음
+export abstract class BlogRoomRepository {
+  /** 정한 순서대로 */
+  abstract list(): Promise<BlogRoom[]>;
+  /** 같은 이름이 있으면 null */
+  abstract create(name: string, order: number): Promise<BlogRoom | null>;
+  /** 같은 이름이 있으면 false, 없는 방이면 null */
+  abstract rename(id: string, name: string): Promise<boolean | null>;
+  abstract reorder(ids: string[]): Promise<void>;
+  abstract delete(id: string): Promise<boolean>;
+}
+
+/** 방을 고를 글. 본문은 앞부분만 */
+export interface RoomCandidate {
+  id: string;
+  title: string;
+  tags: string[];
+  text: string;
+}
+
+// 글 내용을 읽고 알맞은 방을 고름 (바깥 AI). 못 쓰면(키 없음, 오류) null. 고른 방은 주인장이 확인한 뒤에만 저장함
+export abstract class RoomClassifier {
+  abstract suggest(posts: RoomCandidate[], rooms: Pick<BlogRoom, 'id' | 'name'>[], signal: AbortSignal): Promise<Map<string, string | null> | null>;
 }
 
 export abstract class AccessRequestRepository {

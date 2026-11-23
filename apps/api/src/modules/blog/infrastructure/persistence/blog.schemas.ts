@@ -26,6 +26,10 @@ export class BlogPost {
   @Prop({ type: String, default: null })
   cover: string | null;
 
+  // 글이 든 방(blog_rooms). 방이 생기기 전의 글은 이 필드가 없거나 null
+  @Prop({ type: SchemaTypes.ObjectId, default: null })
+  roomId: Types.ObjectId | null;
+
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,6 +37,21 @@ export class BlogPost {
 export const BlogPostSchema = SchemaFactory.createForClass(BlogPost);
 BlogPostSchema.index({ visibility: 1, _id: -1 });
 BlogPostSchema.index({ tags: 1, _id: -1 });
+BlogPostSchema.index({ roomId: 1, _id: -1 });
+
+// 블로그 방. 주인장이 관리실에서 만들고 order 순서로 사이드바에 놓임
+@Schema({ collection: 'blog_rooms', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })
+export class BlogRoom {
+  @Prop({ type: String, required: true, unique: true })
+  name: string;
+
+  @Prop({ type: Number, required: true, default: 0 })
+  order: number;
+
+  createdAt: Date;
+}
+
+export const BlogRoomSchema = SchemaFactory.createForClass(BlogRoom);
 
 // 회원 한 사람이 글 한 편에 남기는 열람 요청. 거절돼도 지우지 않고 남겨서 다시 보낼 수 있는 때를 셈
 @Schema({ collection: 'blog_access_requests', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })

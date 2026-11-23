@@ -3,6 +3,7 @@ import { routes } from '@shared/config';
 import { formatDate } from '@shared/lib';
 import { redactedLines } from '../lib/redaction';
 import type { BlogPostSummary } from '../model/types';
+import { RoomLabel } from './room-label';
 import { TagList } from './tag-list';
 import { VisibilityStamp } from './visibility-stamp';
 import './blog-post.css';
@@ -35,6 +36,7 @@ export function BlogCard({ post }: { post: BlogPostSummary }) {
         </span>
       )}
       <p className="blog-card-meta">
+        <RoomLabel room={post.room} />
         <span>{formatDate(post.createdAt)}</span>
         <VisibilityStamp visibility={post.visibility} locked={post.locked} />
       </p>

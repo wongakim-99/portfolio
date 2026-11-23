@@ -4,24 +4,28 @@ import { IdentityModule } from '../identity/index.js';
 import { BlogAccessService } from './application/blog-access.service.js';
 import { BlogImagesService } from './application/blog-images.service.js';
 import { BlogPostsService } from './application/blog-posts.service.js';
+import { BlogRoomsService } from './application/blog-rooms.service.js';
 import { ProofGradingService } from './application/proof-grading.service.js';
 import { ReaderAccess } from './application/reader-access.js';
 import {
-  AccessRequestRepository, BlogImageRepository, BlogNotifier, BlogPostRepository, GrantRepository, ProofGrader, ProofUsageRepository,
+  AccessRequestRepository, BlogImageRepository, BlogNotifier, BlogPostRepository, BlogRoomRepository, GrantRepository, ProofGrader,
+  ProofUsageRepository, RoomClassifier,
 } from './domain/blog.ports.js';
 import { MailBlogNotifier } from './infrastructure/mail-blog-notifier.js';
 import { OpenAiProofGrader } from './infrastructure/openai-proof-grader.js';
+import { OpenAiRoomClassifier } from './infrastructure/openai-room-classifier.js';
 import {
   BlogAccessRequest, BlogAccessRequestSchema, BlogGrant, BlogGrantSchema, BlogImage, BlogImageSchema, BlogPost, BlogPostSchema,
-  BlogProofUsage, BlogProofUsageSchema,
+  BlogProofUsage, BlogProofUsageSchema, BlogRoom, BlogRoomSchema,
 } from './infrastructure/persistence/blog.schemas.js';
 import {
-  MongoAccessRequestRepository, MongoBlogImageRepository, MongoBlogPostRepository, MongoGrantRepository, MongoProofUsageRepository,
+  MongoAccessRequestRepository, MongoBlogImageRepository, MongoBlogPostRepository, MongoBlogRoomRepository, MongoGrantRepository,
+  MongoProofUsageRepository,
 } from './infrastructure/persistence/mongo-blog.repositories.js';
 import { BlogAdminController } from './presentation/blog-admin.controller.js';
 import { BlogController } from './presentation/blog.controller.js';
 
-// 블로그 영역 (gawon-log): 주인장 글과 사진, 공개 범위, 열람 요청과 허락, 잠긴 글의 증명 채점
+// 블로그 영역 (gawon-log): 주인장 글과 사진, 방, 공개 범위, 열람 요청과 허락, 잠긴 글의 증명 채점
 @Module({
   imports: [IdentityModule, MongooseModule.forFeature([
     { name: BlogPost.name, schema: BlogPostSchema },
@@ -29,10 +33,11 @@ import { BlogController } from './presentation/blog.controller.js';
     { name: BlogGrant.name, schema: BlogGrantSchema },
     { name: BlogImage.name, schema: BlogImageSchema },
     { name: BlogProofUsage.name, schema: BlogProofUsageSchema },
+    { name: BlogRoom.name, schema: BlogRoomSchema },
   ])],
   controllers: [BlogController, BlogAdminController],
   providers: [
-    BlogPostsService, BlogAccessService, BlogImagesService, ReaderAccess, ProofGradingService,
+    BlogPostsService, BlogAccessService, BlogImagesService, BlogRoomsService, ReaderAccess, ProofGradingService,
     { provide: BlogPostRepository, useClass: MongoBlogPostRepository },
     { provide: AccessRequestRepository, useClass: MongoAccessRequestRepository },
     { provide: GrantRepository, useClass: MongoGrantRepository },
@@ -40,6 +45,8 @@ import { BlogController } from './presentation/blog.controller.js';
     { provide: BlogNotifier, useClass: MailBlogNotifier },
     { provide: ProofGrader, useClass: OpenAiProofGrader },
     { provide: ProofUsageRepository, useClass: MongoProofUsageRepository },
+    { provide: BlogRoomRepository, useClass: MongoBlogRoomRepository },
+    { provide: RoomClassifier, useClass: OpenAiRoomClassifier },
   ],
 })
 export class BlogModule {}

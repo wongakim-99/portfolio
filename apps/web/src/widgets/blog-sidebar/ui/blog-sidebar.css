@@ -1,6 +1,11 @@
 /* 목록 왼쪽 사이드바. 책상에 놓인 종이 한 장 위에 주인 소개, 분류, 태그 */
 .blog-sidebar { display: grid; gap: 26px; align-content: start; padding: 26px 22px; border-radius: 3px; background: var(--paper); box-shadow: var(--shadow-soft); transition: background-color .4s ease; }
 .blog-side-block h2 { margin: 0 0 10px; color: var(--ink-soft); font-size: 13px; font-weight: 700; }
+/* 방 제목 줄. 주인장에게는 오른쪽에 관리실 방 칸으로 가는 링크 */
+.blog-side-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin: 0 0 10px; }
+.blog-side-head h2 { margin: 0; }
+.blog-side-manage { color: var(--ink-soft); font-size: 12px; text-decoration: underline dashed; text-underline-offset: 3px; }
+.blog-side-manage:hover { color: var(--ink); }
 .blog-side-groups { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
 .blog-side-groups a { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; border-radius: 10px; color: var(--ink); font-size: 15px; text-decoration: none; transition: background-color .15s ease; }
 .blog-side-groups a:hover { background: var(--blog-tint); }

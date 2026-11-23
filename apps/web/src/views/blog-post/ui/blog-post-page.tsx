@@ -7,7 +7,7 @@ import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui'
 import { BlogLock } from '@widgets/blog-lock';
 import { BlogOwnerCard } from '@widgets/blog-sidebar';
 import { BlogPostActions } from '@features/manage-blog-post';
-import { BlogMarkdown, getBlogPost, getBlogSummary, TagList, VisibilityStamp, type BlogPost, type BlogSummary } from '@entities/blog-post';
+import { BlogMarkdown, getBlogPost, getBlogSummary, RoomLabel, TagList, VisibilityStamp, type BlogPost, type BlogSummary } from '@entities/blog-post';
 import { useSession } from '@entities/user';
 import './blog-post-page.css';
 
@@ -63,6 +63,7 @@ export function BlogPostPage({ postId }: { postId: string }) {
           <>
             <div className="blog-article-meta">
               <p>
+                <RoomLabel room={post.room} />
                 {owner && <b>{owner.name}</b>}
                 <span>{formatDate(post.createdAt)}</span>
                 {edited && <span>{formatDate(post.updatedAt)} 고침</span>}

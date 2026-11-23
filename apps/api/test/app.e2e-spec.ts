@@ -11,7 +11,7 @@ import { Readable } from 'node:stream';
 import request from 'supertest';
 import { vi } from 'vitest';
 import type { App } from 'supertest/types.js';
-import { ProofGrader, ProofUsageRepository } from '../src/modules/blog/domain/blog.ports.js';
+import { ProofGrader, ProofUsageRepository, RoomClassifier, type RoomCandidate } from '../src/modules/blog/domain/blog.ports.js';
 import {
   PROOF_DAILY_PER_VISITOR, PROOF_DAILY_TOTAL, PROOF_GRADER_CHARS, PROOF_MAX, PROOF_PROBLEMS, proofDay, type ProofSubmission,
 } from '../src/modules/blog/domain/proof.js';
@@ -62,6 +62,15 @@ const fakeGrader = {
   },
 };
 
+// 방 고르기 AI 대신. pick 이 null 이면 AI 를 못 쓰는 상태
+const fakeClassifier = {
+  pick: null as ((post: RoomCandidate) => string | null) | null,
+  async suggest(posts: RoomCandidate[]) {
+    const pick = this.pick;
+    return pick && new Map(posts.map((post) => [post.id, pick(post)]));
+  },
+};
+
 // 머리만 갖춘 사진. API 는 파일 앞부분으로 형식과 가로세로 크기만 확인함
 function png(width: number, height: number): Buffer {
   const data = Buffer.alloc(33);
@@ -88,6 +97,7 @@ async function createApp(): Promise<INestApplication<App>> {
     .overrideProvider(Mailer).useValue(fakeMail)
     .overrideProvider(ObjectStorage).useValue(fakeStorage)
     .overrideProvider(ProofGrader).useValue(fakeGrader)
+    .overrideProvider(RoomClassifier).useValue(fakeClassifier)
     .compile();
   const app = moduleRef.createNestApplication<NestExpressApplication>();
   configureApp(app);
@@ -762,6 +772,89 @@ describe('blog', () => {
     await prove(locked, proof).expect(503);
     fakeGrader.reply = [];
     await prove(locked, proof).expect(503);
+  });
+
+  it('블로그 방: 주인장이 만들고 이름과 순서를 정하며, 글을 방으로 거르고, AI 가 고른 방은 확인한 뒤에만 넣음', async () => {
+    const server = app.getHttpServer();
+    const ip = '198.51.100.240';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    };
+    const owner = await join('room-owner@example.com', '방 주인');
+    const member = await join('room-member@example.com', '방 구경꾼');
+    await request(server).put('/api/community/admin/users/role').set('Authorization', `Bearer ${ADMIN_TOKEN}`)
+      .send({ email: 'room-owner@example.com', role: 'owner' }).expect(200);
+    const admin = (method: 'get' | 'post' | 'patch' | 'put' | 'delete', path: string, cookie = owner) =>
+      request(server)[method](`/api/blog/admin${path}`).set('X-Forwarded-For', ip).set('Cookie', cookie);
+
+    // 방 만들기, 이름 바꾸기, 순서 (blog:write)
+    await request(server).get('/api/blog/admin/rooms').expect(401);
+    await admin('get', '/rooms', member).expect(403);
+    await admin('post', '/rooms', member).send({ name: '몰래 방' }).expect(403);
+    const study = (await admin('post', '/rooms').send({ name: '공부방' }).expect(201)).body.room;
+    const chat = (await admin('post', '/rooms').send({ name: '잡담방' }).expect(201)).body.room;
+    await admin('post', '/rooms').send({ name: '공부방' }).expect(409);
+    await admin('post', '/rooms').send({ name: '' }).expect(400);
+    await admin('patch', `/rooms/${chat.id}`).send({ name: '수다방' }).expect(204);
+    await admin('patch', `/rooms/${chat.id}`).send({ name: '공부방' }).expect(409);
+    await admin('patch', `/rooms/${new Types.ObjectId()}`).send({ name: '없는 방' }).expect(404);
+    await admin('put', '/rooms/order').send({ ids: [chat.id] }).expect(400);
+    await admin('put', '/rooms/order').send({ ids: [chat.id, study.id] }).expect(204);
+    expect((await admin('get', '/rooms').expect(200)).body.rooms.map((room: { name: string }) => room.name)).toEqual(['수다방', '공부방']);
+
+    // 글은 방 하나에 듦. 없는 방은 받지 않음
+    const write = (body: object) => request(server).post('/api/blog/posts').set('X-Forwarded-For', ip).set('Cookie', owner).send(body);
+    await write({ title: '없는 방 글', body: '본문', visibility: 'public', roomId: String(new Types.ObjectId()) }).expect(400);
+    const kafka = (await write({ title: '방 시험 Kafka', body: '메시지 큐', visibility: 'public', roomId: study.id }).expect(201)).body.post;
+    expect(kafka.room).toEqual({ id: study.id, name: '공부방' });
+    await write({ title: '방 시험 나만 보기', body: '비밀', visibility: 'private', roomId: study.id }).expect(201);
+    const lunch = (await write({ title: '방 시험 점심', body: '김치찌개', visibility: 'public' }).expect(201)).body.post;
+    expect(lunch.room).toBeNull();
+
+    // 목록 거르기와 사이드바 글 수. 나만 보기 글은 주인장에게만 셈
+    const titles = async (query: string, cookie?: string) => {
+      const req = request(server).get(`/api/blog/posts?${query}`);
+      return (await (cookie ? req.set('Cookie', cookie) : req).expect(200)).body.posts.map((post: { title: string }) => post.title);
+    };
+    expect(await titles(`room=${study.id}`)).toEqual(['방 시험 Kafka']);
+    expect(await titles(`room=${study.id}`, owner)).toEqual(['방 시험 나만 보기', '방 시험 Kafka']);
+    expect(await titles('room=none')).toContain('방 시험 점심');
+    expect(await titles('room=none')).not.toContain('방 시험 Kafka');
+    expect((await request(server).get('/api/blog/summary').expect(200)).body.rooms)
+      .toEqual([{ id: chat.id, name: '수다방', count: 0 }, { id: study.id, name: '공부방', count: 1 }]);
+    expect((await request(server).get('/api/blog/summary').set('Cookie', owner).expect(200)).body.rooms[1].count).toBe(2);
+
+    // 고칠 때 roomId 를 보내지 않으면(예전 화면) 방은 그대로
+    await request(server).patch(`/api/blog/posts/${kafka.id}`).set('X-Forwarded-For', ip).set('Cookie', owner)
+      .send({ title: '방 시험 Kafka 2', body: '메시지 큐', visibility: 'public' }).expect(200);
+    expect((await request(server).get(`/api/blog/posts/${kafka.id}`).expect(200)).body.room).toEqual({ id: study.id, name: '공부방' });
+
+    // AI 추천은 저장하지 않고 돌려주기만 함. AI 를 못 쓰면 503
+    fakeClassifier.pick = null;
+    await admin('post', '/rooms/suggest').expect(503);
+    fakeClassifier.pick = (post) => (post.title.includes('점심') ? chat.id : null);
+    const { suggestions } = (await admin('post', '/rooms/suggest').expect(201)).body;
+    expect(suggestions.find((item: { post: { id: string } }) => item.post.id === lunch.id).roomId).toBe(chat.id);
+    expect((await request(server).get(`/api/blog/posts/${lunch.id}`).expect(200)).body.room).toBeNull();
+    fakeClassifier.pick = () => study.id;
+    expect((await admin('post', '/rooms/suggest-draft').send({ title: '새 글', body: '쓰는 중' }).expect(201)).body).toEqual({ roomId: study.id });
+
+    // 주인장이 확인한 것만 넣음
+    await admin('post', '/rooms/assign', member).send({ assignments: [{ postId: lunch.id, roomId: chat.id }] }).expect(403);
+    await admin('post', '/rooms/assign').send({ assignments: [{ postId: lunch.id, roomId: String(new Types.ObjectId()) }] }).expect(400);
+    expect((await admin('post', '/rooms/assign').send({ assignments: [{ postId: lunch.id, roomId: chat.id }] }).expect(201)).body).toEqual({ assigned: 1 });
+    expect((await request(server).get(`/api/blog/posts/${lunch.id}`).expect(200)).body.room).toEqual({ id: chat.id, name: '수다방' });
+
+    // 방을 지우면 글은 남고 방 밖으로 나옴
+    await admin('delete', `/rooms/${study.id}`).expect(204);
+    await admin('delete', `/rooms/${study.id}`).expect(404);
+    expect((await request(server).get(`/api/blog/posts/${kafka.id}`).expect(200)).body.room).toBeNull();
+    expect((await admin('get', '/rooms').expect(200)).body.rooms.map((room: { id: string }) => room.id)).toEqual([chat.id]);
+    fakeClassifier.pick = null;
   });
 
   it('증명 채점 AI 는 답안 앞 600자만 받고, 하루 한도는 DB 에 남겨 IP 당 10번, 전체 200번에서 멈추며 다 쓰면 주인장에게 알림', async () => {

@@ -13,6 +13,7 @@ export function BlogBoard() {
   const params = useSearchParams();
   const visibility = params.get('visibility');
   const query: BlogListQuery = {
+    room: params.get('room'),
     tag: params.get('tag'),
     q: params.get('q'),
     visibility: visibility && VISIBILITIES.includes(visibility) ? (visibility as Visibility) : null,
