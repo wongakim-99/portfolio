@@ -3,7 +3,6 @@ export const routes = {
   home: '/',
   portfolio: '/portfolio',
   feed: '/feed',
-  write: '/feed/write',
   admin: '/feed/admin',
   post: (id: string) => `/feed/posts/${encodeURIComponent(id)}`,
   editPost: (id: string) => `/feed/posts/${encodeURIComponent(id)}/edit`,

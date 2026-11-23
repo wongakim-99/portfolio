@@ -29,7 +29,7 @@ describe('터미널 경로', () => {
     expect(dirForPathname('/blog/posts/6650c3')).toEqual(['blog']);
     expect(pageOf(['blog'])).toBe('/blog');
     expect(pageOf(['feed', 'posts'])).toBe('/feed');
-    expect(pageOf(['feed', 'write'])).toBe('/feed/write');
+    expect(pageOf(['feed', 'admin'])).toBe('/feed/admin');
     expect(pageOf([])).toBe('/');
   });
 });
@@ -44,7 +44,7 @@ describe('Tab 자동 완성', () => {
 
   it('후보가 여럿이면 겹치는 데까지 채우고 후보를 돌려줌', () => {
     const result = complete('ls feed/', []);
-    expect(result.candidates).toEqual(['posts/', 'write/', 'admin/']);
+    expect(result.candidates).toEqual(['posts/', 'admin/']);
   });
 
   it('숨은 파일은 점으로 시작할 때만', () => {

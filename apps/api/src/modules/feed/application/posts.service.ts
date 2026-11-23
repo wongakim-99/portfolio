@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { requireEntityId } from '../../../shared/application/require-id.js';
 import { UserDirectory, type Identity } from '../../identity/index.js';
 import {
-  COMMENTS_PER_PAGE, EXCERPT_LENGTH, isAuthor, POSTS_PER_PAGE, postProblem, type FeedComment, type FeedPost, type LikeTarget,
+  COMMENTS_PER_PAGE, EXCERPT_LENGTH, isAuthor, linkView, POSTS_PER_PAGE, postProblem, type FeedComment, type FeedPost, type LikeTarget,
 } from '../domain/feed.js';
 import { CommentRepository, LikeRepository, PostRepository, ReportRepository } from '../domain/feed.ports.js';
 import { FeedMediaService, photoView, videoView } from './feed-media.service.js';
@@ -10,11 +10,12 @@ import { FeedMediaService, photoView, videoView } from './feed-media.service.js'
 const POST_MISSING = '글을 찾을 수 없습니다.';
 const COMMENT_MISSING = '답글을 찾을 수 없습니다.';
 
-/** 글 쓰기, 고치기에서 받는 것. 제목이 비면 짧은 글 */
+/** 글 쓰기, 고치기에서 받는 것. 제목은 예전 긴 글을 고칠 때만 옴 */
 export interface PostInput {
   title?: string;
   body: string;
   photos?: string[];
+  link?: string;
 }
 
 // 피드 글과 답글, 좋아요. 글쓴이 사진은 글에 적어 두지 않고 지금 설정된 것을 계정 영역에서 찾아 붙임
@@ -44,7 +45,7 @@ export class PostsService {
     const excerpt = post.title ? post.body.slice(0, EXCERPT_LENGTH) : post.body;
     return {
       id: post.id, title: post.title, excerpt, truncated: excerpt.length < post.body.length,
-      photos: post.photos.map(photoView), video: videoView(post.video),
+      photos: post.photos.map(photoView), link: linkView(post.link), video: videoView(post.video),
       authorId: post.authorId, authorName: post.authorName, authorAvatarUrl: avatar,
       commentCount: post.commentCount, likeCount: post.likeCount, liked,
       createdAt: post.createdAt, updatedAt: post.updatedAt,
@@ -81,23 +82,28 @@ export class PostsService {
   }
 
   private content(input: PostInput) {
-    const content = { title: input.title?.trim() ?? '', body: input.body, photos: [...new Set(input.photos ?? [])] };
+    const content = { title: input.title?.trim() ?? '', body: input.body, photos: [...new Set(input.photos ?? [])], link: input.link?.trim() || null };
     const problem = postProblem(content);
     if (problem) throw new BadRequestException(problem);
     return content;
   }
 
+  // 따로 붙인 링크가 유튜브면 그 영상, 아니면 본문 속 첫 유튜브 링크를 미리보기로 씀
+  private async videoFor(content: { body: string; link: string | null }) {
+    return (content.link && (await this.media.videoFor(content.link))) || this.media.videoFor(content.body);
+  }
+
   // 사진은 글이 생긴 뒤에 붙임. 내가 올린 사진만 붙고, 남의 사진 이름을 넣어도 무시됨
-  private async photosFor(postId: string, content: { body: string; photos: string[] }, author: Identity) {
+  private async photosFor(postId: string, content: { body: string; photos: string[]; link: string | null }, author: Identity) {
     const photos = await this.media.attach(postId, content.photos, author.id);
-    if (!content.body && !photos.length) throw new BadRequestException('사진을 다시 올려 주세요.');
+    if (!content.body && !content.link && !photos.length) throw new BadRequestException('사진을 다시 올려 주세요.');
     await this.media.prune(postId, photos);
     return photos;
   }
 
   async create(input: PostInput, author: Identity) {
     const content = this.content(input);
-    const video = await this.media.videoFor(content.body);
+    const video = await this.videoFor(content);
     const post = await this.posts.create({ ...content, photos: [], video, authorId: author.id, authorName: author.name });
     try {
       const photos = await this.photosFor(post.id, content, author);
@@ -115,7 +121,7 @@ export class PostsService {
     if (!isAuthor(post, author.id)) throw new ForbiddenException('내 글만 수정할 수 있습니다.');
     const content = this.content(input);
     const photos = await this.photosFor(post.id, content, author);
-    await this.posts.update(post.id, { ...content, photos, video: await this.media.videoFor(content.body) });
+    await this.posts.update(post.id, { ...content, photos, video: await this.videoFor(content) });
     return this.get(post.id, author);
   }
 

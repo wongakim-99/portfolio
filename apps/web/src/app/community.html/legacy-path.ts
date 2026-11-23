@@ -11,6 +11,5 @@ export function legacyFeedPath(query: URLSearchParams) {
   const edit = pick('edit');
   if (edit) return routes.editPost(edit);
   if (query.has('admin')) return routes.admin;
-  if (query.has('write')) return routes.write;
   return routes.feed;
 }

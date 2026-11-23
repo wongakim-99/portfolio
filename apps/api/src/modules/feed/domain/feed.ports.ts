@@ -1,6 +1,6 @@
 import type { FeedComment, FeedPost, FeedVideo, LikeTarget, Report, ReportReason, ReportTarget } from './feed.js';
 
-type PostContent = { title: string; body: string; photos: string[]; video: FeedVideo | null };
+type PostContent = { title: string; body: string; photos: string[]; link: string | null; video: FeedVideo | null };
 
 export abstract class PostRepository {
   /** 최근 글부터. before 는 이 글보다 오래된 것만, authorId 는 그 회원의 글만 */

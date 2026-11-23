@@ -38,6 +38,10 @@ export class CommunityPost {
   @Prop({ type: [String], default: [] })
   photos: string[];
 
+  // 본문과 따로 붙인 링크
+  @Prop({ type: String, default: null })
+  link: string | null;
+
   @Prop({ type: CommunityVideoSchema, default: null })
   video: CommunityVideo | null;
 

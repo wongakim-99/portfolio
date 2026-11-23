@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { linkParts, youtubeIdIn } from './links';
+import { linkParts, linkPreview, youtubeIdIn } from './links';
 
 describe('글 속 링크', () => {
   it('http(s) 주소만 링크로 떼고 끝에 붙은 문장부호는 글자로 남김', () => {
@@ -20,5 +20,12 @@ describe('글 속 링크', () => {
     expect(youtubeIdIn('https://youtube.com/shorts/dQw4w9WgXcQ')).toBe('dQw4w9WgXcQ');
     expect(youtubeIdIn('https://www.youtube.com/channel/UCabc')).toBeNull();
     expect(youtubeIdIn('https://youtu.be/short')).toBeNull();
+  });
+
+  it('링크 칸 주소는 http(s) 만 카드로 바꾸고 사이트 이름의 www. 는 뺌', () => {
+    expect(linkPreview(' https://www.example.com/a?b=1 ')).toEqual({ url: 'https://www.example.com/a?b=1', host: 'example.com' });
+    expect(linkPreview('javascript:alert(1)')).toBeNull();
+    expect(linkPreview('example.com')).toBeNull();
+    expect(linkPreview('https://')).toBeNull();
   });
 });

@@ -1,0 +1,14 @@
+/* 따로 붙인 링크: 종이 위에 붙인 작은 쪽지. 왼쪽에 고리 아이콘, 사이트 이름과 주소, 오른쪽에 새 탭 화살표 */
+.link-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 12px; align-items: center; max-width: 520px; margin-top: 14px; padding: 12px 14px; border-radius: 3px; background: color-mix(in srgb, var(--desk) 22%, var(--paper)); color: var(--ink); text-decoration: none; box-shadow: var(--shadow-sticker); transition: transform .15s ease, background-color .15s ease; }
+.link-card:hover { background: color-mix(in srgb, var(--desk) 35%, var(--paper)); transform: translateY(-1px); }
+.link-card:focus-visible { outline: 2px solid var(--pen); outline-offset: 3px; }
+.link-card svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.link-card-icon { width: 22px; height: 22px; color: var(--pen); }
+.link-card-go { width: 18px; height: 18px; color: var(--ink-soft); }
+.link-card-text { display: grid; gap: 1px; min-width: 0; }
+.link-card-text b { font-size: 15px; overflow-wrap: anywhere; }
+.link-card-text span { overflow: hidden; color: var(--ink-soft); font-size: 13px; white-space: nowrap; text-overflow: ellipsis; }
+
+@media (prefers-reduced-motion: reduce) {
+  .link-card { transition: none; }
+}

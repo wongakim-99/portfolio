@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { routes } from '@shared/config';
 import { cx, formatAgo, formatDateTime } from '@shared/lib';
-import { RichText, YoutubeCard } from '@shared/ui';
+import { LinkCard, RichText, YoutubeCard } from '@shared/ui';
 import type { Post, PostSummary } from '../model/types';
 import './post-card.css';
 
@@ -19,8 +19,8 @@ interface PostCardProps {
 }
 
 /**
- * 쓰레드처럼 쌓이는 피드 글 한 장. 글쓴이와 지난 시간, 본문(링크는 새 탭), 사진, 유튜브 미리보기, 아래 단추 줄
- * 제목이 있는 긴 글은 목록에서 앞부분만 보이고 '더 읽기' 로 글 화면에 감
+ * 쓰레드처럼 쌓이는 피드 글 한 장. 글쓴이와 지난 시간, 본문(주소는 새 탭 링크), 사진, 붙인 링크(유튜브면 영상 카드), 아래 단추 줄
+ * 예전에 쓴 제목 있는 긴 글은 목록에서 앞부분만 보이고 '더 읽기' 로 글 화면에 감
  */
 export function PostCard({ post, author, actions, menu, full = false }: PostCardProps) {
   const href = routes.post(post.id);
@@ -54,7 +54,7 @@ export function PostCard({ post, author, actions, menu, full = false }: PostCard
             ))}
           </div>
         )}
-        {post.video && <YoutubeCard video={post.video} />}
+        {post.video ? <YoutubeCard video={post.video} /> : post.link && <LinkCard link={post.link} />}
         {actions && <div className="feed-card-actions">{actions}</div>}
       </div>
     </article>

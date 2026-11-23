@@ -23,3 +23,15 @@ const YOUTUBE = /https?:\/\/(?:www\.|m\.|music\.)?(?:youtube\.com\/(?:watch\?(?:
 
 /** 글 속 첫 유튜브 영상 ID. 없으면 null */
 export const youtubeIdIn = (text: string): string | null => YOUTUBE.exec(text)?.[1] ?? null;
+
+/** 링크 칸에 넣은 주소를 카드 모양으로. http(s) 주소가 아니면 null (API 의 linkView 와 같은 모양) */
+export function linkPreview(value: string): { url: string; host: string } | null {
+  const url = value.trim();
+  if (!/^https?:\/\//i.test(url)) return null;
+  try {
+    const { host } = new URL(url);
+    return host.includes('.') ? { url, host: host.replace(/^www\./, '') } : null;
+  } catch {
+    return null;
+  }
+}

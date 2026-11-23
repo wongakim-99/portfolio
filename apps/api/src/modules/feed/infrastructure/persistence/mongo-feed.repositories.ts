@@ -13,7 +13,7 @@ const toVideo = (video: CommunityVideo | null | undefined): FeedVideo | null =>
   video ? { id: video.id, title: video.title ?? null, author: video.author ?? null } : null;
 const toPost = (doc: Doc<CommunityPost>): FeedPost => ({
   id: String(doc._id), authorId: String(doc.authorId), authorName: doc.authorName, title: doc.title ?? '', body: doc.body ?? '',
-  photos: doc.photos ?? [], video: toVideo(doc.video), commentCount: doc.commentCount ?? 0, likeCount: doc.likeCount ?? 0,
+  photos: doc.photos ?? [], link: doc.link ?? null, video: toVideo(doc.video), commentCount: doc.commentCount ?? 0, likeCount: doc.likeCount ?? 0,
   createdAt: doc.createdAt, updatedAt: doc.updatedAt,
 });
 const toComment = (doc: Doc<CommunityComment>): FeedComment => ({
@@ -21,7 +21,7 @@ const toComment = (doc: Doc<CommunityComment>): FeedComment => ({
   parentId: doc.parentId ? String(doc.parentId) : null, replyToName: doc.replyToName ?? null, video: toVideo(doc.video),
   likeCount: doc.likeCount ?? 0, createdAt: doc.createdAt, updatedAt: doc.updatedAt,
 });
-type PostContent = { title: string; body: string; photos: string[]; video: FeedVideo | null };
+type PostContent = { title: string; body: string; photos: string[]; link: string | null; video: FeedVideo | null };
 const toReport = (doc: Doc<CommunityReport>): Report => ({
   id: String(doc._id), reporterId: String(doc.reporterId), targetType: doc.targetType, targetId: String(doc.targetId),
   reason: doc.reason, createdAt: doc.createdAt,

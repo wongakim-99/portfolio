@@ -3,6 +3,8 @@ export { BackLink } from './back-link/back-link';
 export { Dialog } from './dialog/dialog';
 export { FormStatus, NO_STATUS } from './form-status/form-status';
 export type { Status, StatusTone } from './form-status/form-status';
+export { LinkCard } from './link-card/link-card';
+export type { LinkPreview } from './link-card/link-card';
 export { RichText } from './rich-text/rich-text';
 export { Sheet } from './sheet/sheet';
 export { YoutubeCard } from './youtube-card/youtube-card';

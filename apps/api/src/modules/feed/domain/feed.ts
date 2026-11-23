@@ -1,5 +1,5 @@
 // 피드 영역: 회원이 쓰는 글과 답글, 좋아요, 신고. 글과 답글에는 쓸 때의 이름을 같이 적어 둠 (이름이 바뀌면 따라 고침)
-// 쓰레드처럼 제목 없이 바로 쓰는 짧은 글이 기본이고, 제목을 붙이면 예전처럼 긴 글
+// 쓰레드처럼 제목 없이 바로 쓰는 짧은 글. 제목 있는 긴 글은 예전에 쓴 글만 남아 있고 새로 쓰는 화면은 없음
 
 /** 글과 답글 속 첫 유튜브 링크. 제목과 채널은 글을 저장할 때 유튜브에서 받아 적어 둠 (못 받으면 null) */
 export interface FeedVideo {
@@ -17,6 +17,8 @@ export interface FeedPost {
   body: string;
   /** 피드 사진 파일 이름 (community_images 의 file) */
   photos: string[];
+  /** 본문과 따로 붙인 링크 하나 (http, https) */
+  link: string | null;
   video: FeedVideo | null;
   commentCount: number;
   likeCount: number;
@@ -70,12 +72,23 @@ export const POST_PHOTOS_MAX = 4;
 // 내 글과 답글만 고치고 지움. 관리자도 남의 글 내용은 고칠 수 없고 삭제만 할 수 있음 (역할이 아니라 글쓴이로 따짐)
 export const isAuthor = (item: { authorId: string }, userId: string) => item.authorId === userId;
 
-/** 제목, 본문, 사진이 글 규칙에 맞는지. 어긋나면 그 까닭을 돌려줌 */
-export function postProblem({ title, body, photos }: { title: string; body: string; photos: string[] }): string | null {
+/** 제목, 본문, 사진, 링크가 글 규칙에 맞는지. 어긋나면 그 까닭을 돌려줌 */
+export function postProblem({ title, body, photos, link }: { title: string; body: string; photos: string[]; link: string | null }): string | null {
   if (photos.length > POST_PHOTOS_MAX) return `사진은 ${POST_PHOTOS_MAX}장까지 붙일 수 있습니다.`;
+  // 예전 긴 글을 고칠 때만 제목이 옴
   if (title) return body.length < LONG_POST_MIN ? `제목을 붙인 긴 글은 본문을 ${LONG_POST_MIN}자 이상 써 주세요.` : null;
-  if (!body && !photos.length) return '글이나 사진을 넣어 주세요.';
-  return body.length > SHORT_POST_MAX ? `짧은 글은 ${SHORT_POST_MAX}자까지 씁니다. 더 길면 제목을 붙여 긴 글로 써 주세요.` : null;
+  if (!body && !photos.length && !link) return '글, 사진, 링크 가운데 하나는 넣어 주세요.';
+  return body.length > SHORT_POST_MAX ? `글은 ${SHORT_POST_MAX}자까지 씁니다.` : null;
+}
+
+/** 붙인 링크를 화면에 보일 모양. 사이트 이름(앞의 www. 는 뺌)과 주소 */
+export function linkView(url: string | null): { url: string; host: string } | null {
+  if (!url) return null;
+  try {
+    return { url, host: new URL(url).host.replace(/^www\./, '') };
+  } catch {
+    return null;
+  }
 }
 
 // 유튜브 영상 주소: watch?v=, youtu.be/, shorts/, live/, embed/. 영상 ID 는 11자

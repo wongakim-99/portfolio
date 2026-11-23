@@ -32,13 +32,13 @@ src/
                guest-terminal(숨은 터미널, 가짜 파일 시스템, tree 이스터에그), portfolio-sheet, post-list(쓰기 칸과 쓰레드식 글 목록), comment-thread(답글 타래), server-topology, admin-inbox, admin-reports,
                blog-search(검색창과 공개 범위 칩), blog-post-grid(카드 목록), blog-sidebar(주인 소개, 방, 태그), blog-lock(잠긴 글 자리, 항복 문서), admin-blog-access(열람 요청과 허락 명단), admin-blog-rooms(블로그 방, AI 로 나누기),
                admin-members(회원 수, 가입 막대, 회원 명부와 상세), rocky(빈 책상을 굴러다니는 로키 공)
-  features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post(짧은 글 쓰기 칸, 긴 글 쓰기), manage-post,
+  features/    한 가지 동작: theme-toggle(스탠드), open-terminal, copy-email, high-five, send-postcard, auth, write-post(쓰기 칸, 내 글 고치기), manage-post,
                write-comment, like-content(하트), report-content, edit-profile, change-password, change-avatar,
                write-blog-post(노션처럼 바로 바뀌는 편집기, 사진 올리기, 표지 고르기, 노션 붙여넣기, 공개 범위 고르기), manage-blog-post, prove-theorem(풀 수 없는 문제와 메모장, AI 빨간 펜 채점), request-blog-access,
                change-member-role(관리실에서 관리자 지정, 해제)
   entities/    도메인 데이터와 API: portfolio(내용 원본), server-status, visit, user(세션, 사진), post(글 API, 쓰레드식 글 카드), comment, message, report,
                blog-post(글 API, 마크다운 그리기, 콜아웃), blog-access
-  shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 지난 시간, 저장소, 한국어 줄바꿈 다듬기, 한글 글꼴 미리 받기, 사진 줄이기, 글 속 링크와 유튜브 주소), ui(Sheet, Dialog, FormStatus, 링크 글, 유튜브 카드), styles(색 토큰, 바탕)
+  shared/      공통: api(fetch 도우미), config(주소), lib(날짜, 지난 시간, 저장소, 한국어 줄바꿈 다듬기, 한글 글꼴 미리 받기, 사진 줄이기, 글 속 링크와 유튜브 주소), ui(Sheet, Dialog, FormStatus, 링크 글, 유튜브 카드, 링크 카드), styles(색 토큰, 바탕)
 ```
 
 - 슬라이스 안은 `ui/`(컴포넌트와 그 CSS), `model/`(상태, 훅, 타입), `api/`(요청), `lib/`(순수 함수) 로 나눈다
@@ -92,10 +92,10 @@ src/
 - `/blog`: 주인장(`owner` 역할)만 쓰는 블로그. 아래 '블로그' 참고
 - `/blog/posts/<글_ID>`, `/blog/write`, `/blog/posts/<글_ID>/edit`: 글 읽기, 새 글 쓰기, 글 고치기
 - `/feed`: 쓰레드처럼 짧은 글이 쌓이는 피드. 맨 위 쓰기 칸에서 바로 쓰고, 이메일 확인을 마친 계정으로 글, 답글, 하트를 남김 (아래 '피드')
-- `/feed/posts/<글_ID>`, `/feed/write`, `/feed/posts/<글_ID>/edit`: 글과 답글 타래 읽기, 제목 있는 긴 글 쓰기, 내 글 고치기
+- `/feed/posts/<글_ID>`, `/feed/posts/<글_ID>/edit`: 글과 답글 타래 읽기, 내 글 고치기. 예전 긴 글 쓰기 주소 `/feed/write` 는 피드로 영구 이동(308)
 - `/feed/users/<회원_ID>`: 회원 페이지. 프로필 사진, 이름, 소개, 쓴 글. 내 페이지에서는 사진과 프로필을 고치고 비밀번호 변경, 로그아웃, 화면 설정(로키 보이기)을 함
 - `/feed/admin`: 관리실 (아래 RBAC)
-- 정적 페이지 시절 주소도 그대로 열림. `/portfolio.html`, `/index.html` 은 새 주소로, `/community.html?post=`, `?user=`, `?edit=`, `?write=`, `?admin=` 은 해당 피드 화면으로 영구 이동(308)
+- 정적 페이지 시절 주소도 그대로 열림. `/portfolio.html`, `/index.html` 은 새 주소로, `/community.html?post=`, `?user=`, `?edit=`, `?admin=` 은 해당 피드 화면으로, `?write=` 는 피드 첫 화면으로 영구 이동(308)
 - 옛 `/#about`, `/#projects` 등의 링크는 해당 포트폴리오 섹션으로 이동
 
 - 노트북 스티커는 끌어서 옮길 수 있음. 위치는 방문자 브라우저에만 저장
@@ -105,7 +105,7 @@ src/
 - 오른쪽 위 스탠드 버튼으로 밝은 화면과 어두운 화면 전환
 - 하이파이브 버튼: 연타를 모아 보내고, 한 사람이 하루 50번까지 셈
 - 상단의 터미널 버튼이나 `` ` `` 키로 어느 페이지에서든 숨은 터미널이 열림. 사이트를 폴더처럼 돌아다님 (`apps/web/src/widgets/guest-terminal`)
-  - `~` 가 홈이고 `portfolio/`(about, work, projects, skills, history), `blog/`, `feed/`(posts, write, admin), `server`, `note`, PDF 가 들어 있음. `feed/posts` 와 `blog` 는 API 에서 최근 글 10개를 받아 글 ID 이름의 파일로 보여 줌. 잠긴 블로그 글을 `cat` 하면 Permission denied
+  - `~` 가 홈이고 `portfolio/`(about, work, projects, skills, history), `blog/`, `feed/`(posts, admin), `server`, `note`, PDF 가 들어 있음. `feed/posts` 와 `blog` 는 API 에서 최근 글 10개를 받아 글 ID 이름의 파일로 보여 줌. 잠긴 블로그 글을 `cat` 하면 Permission denied
   - `ls`, `cd`, `pwd`, `cat`, `open`, `tree <경로>`, `history`, Tab 자동 완성. `cd` 로 다른 페이지 디렉터리에 가면 실제로 그 페이지로 옮기고 터미널을 닫음. 다시 열면 기록과 위치가 이어짐
   - `git log` 는 진짜 저장소 대신 홈서버의 배포 기록을 보여 줌 (`--oneline`, `-n 5`). `mail gawon` 은 이름, 답장 메일, 메시지를 차례로 묻고 `.` 만 있는 줄에서 홈 엽서와 같은 쪽지함으로 보냄
   - 그 밖에 `neofetch`, `curl /api/health`, `hi5`, `lamp`, `pdf` 등
@@ -184,10 +184,11 @@ src/
 
 ## 피드
 
-- 쓰레드처럼 제목 없이 바로 쓰는 짧은 글(500자, 사진 4장까지, 사진만도 됨)이 기본. 피드 맨 위 쓰기 칸에서 쓰고, 올리면 목록 맨 위에 바로 붙음. 제목을 붙인 긴 글(본문 20자 이상, 2만 자까지)은 머리의 '긴 글 쓰기' 로 예전처럼 씀
-- 목록은 글마다 쪽지 한 장: 글쓴이 사진과 이름, 지난 시간(방금 전, 3시간 전), 본문(긴 글은 제목과 앞 220자, '더 읽기'), 사진, 유튜브 카드, 하트와 답글 수. 사진 아래로 가는 타래 선이 본문을 따라 내려감 (`entities/post/ui/post-card.tsx`)
+- 쓰레드처럼 제목 없이 바로 쓰는 글(500자, 사진 4장, 링크 하나. 셋 가운데 하나만 있어도 됨). 피드 맨 위 쓰기 칸에서만 쓰고, 올리면 목록 맨 위에 바로 붙음. 따로 있던 긴 글 쓰기 화면은 없앴고, 예전에 쓴 제목 있는 긴 글은 그대로 보이고 제목째 고칠 수 있음
+- 링크는 본문과 따로 링크 칸에 넣음. '링크' 단추로 칸을 열거나, 쓰기 칸에 주소 하나만 붙여 넣으면 링크 칸으로 옮겨 감. 유튜브 주소면 영상 카드, 다른 주소면 사이트 이름과 주소를 담은 링크 카드(서버가 남의 사이트를 읽어 오지 않음). http, https 주소만 받음 (`shared/ui/link-card`)
+- 목록은 글마다 쪽지 한 장: 글쓴이 사진과 이름, 지난 시간(방금 전, 3시간 전), 본문(예전 긴 글은 제목과 앞 220자, '더 읽기'), 사진, 유튜브 카드나 링크 카드, 하트와 답글 수. 사진 아래로 가는 타래 선이 본문을 따라 내려감 (`entities/post/ui/post-card.tsx`)
 - 본문의 http(s) 주소는 새 탭 링크로 바꿔 그림. 글은 여전히 React 글자 노드로만 그리고 HTML 로 해석하지 않음 (`shared/ui/rich-text`)
-- 유튜브 링크(watch, youtu.be, shorts, live)를 넣으면 첫 영상의 미리보기 카드가 붙음. 쓰는 동안에도 카드가 미리 뜸
+- 유튜브 링크(watch, youtu.be, shorts, live)는 링크 칸에 넣거나(먼저 봄) 본문에 쓰면 첫 영상의 미리보기 카드가 붙음. 쓰는 동안에도 카드가 미리 뜸
   - 제목과 채널은 유튜브 oEmbed(키 없음)로 한 번 읽어 `community_videos` 에 두고, 썸네일은 한 번 받아 사진 저장소 `youtube/` 에 두고 `/api/community/videos/<ID>/thumbnail` 로 내보냄. 방문자 브라우저는 누르기 전까지 유튜브에 아무 요청도 보내지 않음
   - 서버가 부르는 주소는 oEmbed 와 썸네일 두 곳뿐이고 영상 ID 는 11자만 받음. 썸네일은 미리보기나 글로 한 번 확인한 영상만 내보내서, 아무 ID 로 서버가 유튜브를 부르게 하지 못함. 미리보기는 로그인한 회원만 시간당 60번
   - 카드를 누르면 그 자리에서 `youtube-nocookie.com` 으로 재생. 유튜브가 퍼가기에 출처를 요구해서 이 iframe 만 출처를 보냄 (`shared/ui/youtube-card`)

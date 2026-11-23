@@ -97,7 +97,6 @@ export const ROOT: FsNode = {
       href: routes.feed,
       children: [
         { name: 'posts', href: routes.feed, children: recentPosts },
-        { name: 'write', href: routes.write, children: [] },
         { name: 'admin', href: routes.admin, children: [] },
       ],
     },

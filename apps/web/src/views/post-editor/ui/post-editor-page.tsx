@@ -4,17 +4,17 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { BackLink, Sheet, type Status } from '@shared/ui';
-import { PostForm } from '@features/write-post';
-import { getPost, type PostDraft } from '@entities/post';
+import { PostForm, type PostEdit } from '@features/write-post';
+import { getPost } from '@entities/post';
 import { useSession } from '@entities/user';
 import './post-editor-page.css';
 
-/** postId 가 있으면 내 글 수정, 없으면 새 글 쓰기 */
-export function PostEditorPage({ postId }: { postId?: string }) {
+/** 내 글 고치기. 새 글은 피드 맨 위 쓰기 칸에서 씀 */
+export function PostEditorPage({ postId }: { postId: string }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, ready, requestLogin } = useSession();
-  const [loaded, setLoaded] = useState<(PostDraft & { photos: string[] }) | null>(null);
+  const [loaded, setLoaded] = useState<PostEdit | null>(null);
   const [loadStatus, setLoadStatus] = useState<Status | undefined>(undefined);
   const userId = user?.id;
 
@@ -24,14 +24,14 @@ export function PostEditorPage({ postId }: { postId?: string }) {
   }, [ready, userId, pathname, requestLogin]);
 
   useEffect(() => {
-    if (!userId || !postId) return;
+    if (!userId) return;
     let active = true;
     getPost(postId).then(
       (post) => {
         if (!active) return;
         // 남의 글은 고칠 수 없으니 읽기 화면으로 돌려보냄
         if (post.authorId !== userId) router.replace(routes.post(postId));
-        else setLoaded({ title: post.title, body: post.body, photos: post.photos.map((photo) => photo.file) });
+        else setLoaded({ title: post.title, body: post.body, photos: post.photos.map((photo) => photo.file), link: post.link?.url ?? '' });
       },
       () => active && setLoadStatus({ message: '글을 불러오지 못했습니다.', tone: 'error' }),
     );
@@ -40,27 +40,16 @@ export function PostEditorPage({ postId }: { postId?: string }) {
     };
   }, [postId, userId, router]);
 
-  // 로그인 확인 전, 불러오는 중, 다 받은 뒤마다 폼을 새로 그려 처음 값을 다시 넣음
-  const stage = !userId ? 'signed-out' : !postId ? 'draft' : loaded ? 'loaded' : loadStatus ? 'failed' : 'loading';
-  // 제목 없는 짧은 글을 고칠 때는 제목 칸 없이 500자까지
-  const short = Boolean(loaded && !loaded.title);
+  // 불러오는 중, 다 받은 뒤마다 폼을 새로 그려 처음 값을 다시 넣음
+  const stage = !userId ? 'signed-out' : loaded ? 'loaded' : loadStatus ? 'failed' : 'loading';
   return (
     <Sheet className="community-sheet editor-sheet" aria-labelledby="editor-title">
-      <BackLink href={routes.feed}>모든 글</BackLink>
-      <h2 id="editor-title">{postId ? '글 수정하기' : '긴 글 쓰기'}</h2>
+      <BackLink href={routes.post(postId)}>글로 돌아가기</BackLink>
+      <h2 id="editor-title">글 수정하기</h2>
       <p className="community-meta">
-        {short ? '짧은 글은 500자까지 씁니다. 붙인 사진은 그대로 둡니다.' : '제목과 본문을 적어 주세요. 짧은 생각은 피드 맨 위 쓰기 칸에 바로 남기면 됩니다.'}
+        {loaded?.title ? '예전에 쓴 긴 글은 제목과 본문을 그대로 고칩니다.' : '글은 500자까지 쓰고, 링크는 아래 칸에 따로 넣습니다. 붙인 사진은 그대로 둡니다.'}
       </p>
-      <PostForm
-        key={stage}
-        postId={postId}
-        initial={loaded ?? undefined}
-        restoreDraft={stage === 'draft'}
-        disabled={stage !== 'draft' && stage !== 'loaded'}
-        initialStatus={loadStatus}
-        short={short}
-        photos={loaded?.photos}
-      />
+      <PostForm key={stage} postId={postId} initial={loaded ?? undefined} disabled={stage !== 'loaded'} initialStatus={loadStatus} />
     </Sheet>
   );
 }

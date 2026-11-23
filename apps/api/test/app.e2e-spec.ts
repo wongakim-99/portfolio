@@ -373,6 +373,14 @@ describe('community', () => {
     await post(writer, { title: '제목 있는 긴 글', body: '너무 짧음' }).expect(400);
     await post(writer, { title: '제목 있는 긴 글', body: '긴 글은 예전처럼 제목과 스무 글자 넘는 본문을 씁니다.' }).expect(201);
 
+    // 따로 붙인 링크: 유튜브면 영상 미리보기, 다른 주소면 사이트 이름과 주소만. 링크만 있는 글도 됨. http(s) 가 아니면 400
+    const linked = await post(writer, { body: '', link: `https://www.youtube.com/watch?v=${KNOWN_VIDEO}` }).expect(201);
+    expect(linked.body.post).toMatchObject({ link: { url: `https://www.youtube.com/watch?v=${KNOWN_VIDEO}`, host: 'youtube.com' }, video: { id: KNOWN_VIDEO } });
+    const other = await post(writer, { body: '읽어 볼 글', link: ' https://www.example.com/a/b?c=1 ' }).expect(201);
+    expect(other.body.post).toMatchObject({ link: { url: 'https://www.example.com/a/b?c=1', host: 'example.com' }, video: null });
+    await post(writer, { body: '나쁜 링크', link: 'javascript:alert(1)' }).expect(400);
+    await post(writer, { body: '나쁜 링크', link: 'ftp://example.com/file' }).expect(400);
+
     // 썸네일은 확인한 영상만, 한 번 받아 저장소에 두고 다시 씀
     const thumb = await request(server).get(`/api/community/videos/${KNOWN_VIDEO}/thumbnail`).expect(200);
     expect(thumb.headers['content-type']).toBe('image/jpeg');

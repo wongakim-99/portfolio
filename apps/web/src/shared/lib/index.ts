@@ -6,4 +6,4 @@ export { isImage, prepareImage } from './prepare-image';
 export { readStore, writeStore } from './storage';
 export { keepPhrases } from './text';
 export { useDocumentTitle } from './use-document-title';
-export { linkParts, youtubeIdIn } from './links';
+export { linkParts, linkPreview, youtubeIdIn } from './links';

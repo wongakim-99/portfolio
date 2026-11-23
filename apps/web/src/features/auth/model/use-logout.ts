@@ -19,7 +19,7 @@ export function useLogout() {
         await logout();
         setUser(null);
         const blog = pathname.startsWith(`${routes.blog}/`);
-        if (pathname === routes.write || pathname === routes.blogWrite || pathname === routes.admin || pathname.endsWith('/edit')) {
+        if (pathname === routes.blogWrite || pathname === routes.admin || pathname.endsWith('/edit')) {
           router.push(blog ? routes.blog : routes.feed);
         }
       } catch (error) {
