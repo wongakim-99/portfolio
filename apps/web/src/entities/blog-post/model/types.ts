@@ -1,3 +1,5 @@
+import type { YoutubeVideo } from '@shared/ui';
+
 // apps/api/src/modules/blog/application/blog-posts.service.ts 의 응답 모양
 
 /** public 은 누구나, approved 는 주인장이 허락한 회원만, private 은 주인장만 읽음 */
@@ -47,6 +49,8 @@ export interface BlogPost extends Omit<BlogPostSummary, 'excerpt'> {
   coverFile: string | null;
   /** 잠긴 글을 로그인한 회원이 볼 때만. 아직 요청하지 않았으면 null */
   request: AccessRequestState | null;
+  /** 본문 속 유튜브 영상 가운데 저장할 때 확인해 둔 것. 잠긴 글이면 빈 배열 */
+  videos: YoutubeVideo[];
 }
 
 export interface BlogPostPage {

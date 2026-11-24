@@ -6,7 +6,7 @@ const draft = (title: string, savedAt: string, extra: Partial<BlogDraft> = {}): 
 
 const post = {
   id: 'p1', title: '올린 글', body: '올린 본문', visibility: 'public', locked: false, tags: ['기술'], cover: null, coverFile: null,
-  room: { id: 'r1', name: '공부방' }, readMinutes: 1, request: null, createdAt: '2026-11-20T00:00:00.000Z', updatedAt: '2026-11-22T00:00:00.000Z',
+  room: { id: 'r1', name: '공부방' }, readMinutes: 1, request: null, videos: [], createdAt: '2026-11-20T00:00:00.000Z', updatedAt: '2026-11-22T00:00:00.000Z',
 } satisfies BlogPost;
 
 describe('draftStart', () => {

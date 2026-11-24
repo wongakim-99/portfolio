@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import ReactMarkdown, { type Components } from 'react-markdown';
 import rehypeHighlight from 'rehype-highlight';
 import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
+import { YoutubeCard, type YoutubeVideo } from '@shared/ui';
+import { loneVideoId, type ParagraphNode } from '../lib/lone-video';
 import { remarkCallout } from '../lib/remark-callout';
 import './blog-markdown.css';
 
@@ -94,10 +96,23 @@ const COMPONENTS: Components = {
   ),
 };
 
-export function BlogMarkdown({ source }: { source: string }) {
+/** videos 는 API 가 확인해 둔 본문 속 유튜브 영상. 유튜브 링크만 있는 문단을 피드와 같은 카드로 그리고, 모르는 영상은 글자 링크로 둠 */
+export function BlogMarkdown({ source, videos = [] }: { source: string; videos?: YoutubeVideo[] }) {
+  const components = useMemo<Components>(() => {
+    if (!videos.length) return COMPONENTS;
+    const byId = new Map(videos.map((video) => [video.id, video]));
+    return {
+      ...COMPONENTS,
+      p: ({ node, children }) => {
+        const video = byId.get(loneVideoId(node as ParagraphNode | undefined) ?? '');
+        return video ? <YoutubeCard video={video} /> : <p>{children}</p>;
+      },
+    };
+  }, [videos]);
+
   return (
     <div className="md">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkCallout]} rehypePlugins={[rehypeHighlight]} components={COMPONENTS}>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkCallout]} rehypePlugins={[rehypeHighlight]} components={components}>
         {source}
       </ReactMarkdown>
     </div>

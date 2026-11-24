@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { requireEntityId } from '../../../shared/application/require-id.js';
+import { VideoPreviews } from '../../feed/index.js';
 import { UserDirectory, type Identity } from '../../identity/index.js';
 import {
   canRead, EXCERPT_LENGTH, isVisible, NO_ROOM, POSTS_PER_PAGE, readMinutes, retryAt, VISIBILITIES, type BlogPost, type BlogRoom, type Visibility,
@@ -64,6 +65,7 @@ export class BlogPostsService {
     private readonly directory: UserDirectory,
     private readonly images: BlogImagesService,
     private readonly rooms: BlogRoomsService,
+    private readonly videos: VideoPreviews,
   ) {}
 
   private async roomMap() {
@@ -125,6 +127,7 @@ export class BlogPostsService {
   }
 
   // 못 읽는 글은 본문 대신 null 과, 로그인했다면 내가 보낸 요청의 상태를 줌
+  // videos 는 본문 속 유튜브 영상 가운데 저장할 때 확인해 둔 것. 화면이 유튜브 링크만 있는 줄을 카드로 그림
   async get(id: string, viewer: Identity | null) {
     const reader = readerOf(viewer);
     const post = await this.find(id);
@@ -135,6 +138,7 @@ export class BlogPostsService {
       id: post.id, title: post.title, visibility: post.visibility, locked: !readable, tags: post.tags,
       cover: coverUrl(post, readable), coverFile: post.cover, room: roomLabel(post, rooms),
       body: readable ? post.body : null, readMinutes: readable ? readMinutes(post.body) : null,
+      videos: readable ? await this.videos.known(post.body) : [],
       createdAt: post.createdAt, updatedAt: post.updatedAt,
       request: !readable && reader ? await this.requestState(reader.id, post.id) : null,
     };
@@ -151,6 +155,7 @@ export class BlogPostsService {
       title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [], cover: input.cover ?? null, roomId, authorId: author.id,
     });
     await this.images.syncPost(post.id, post.body, post.cover);
+    await this.videos.remember(post.body);
     // 올렸으니 쓰던 새 글의 임시 글은 더 이어 쓸 일이 없음
     await this.drafts.delete(author.id, null);
     return this.get(post.id, author);
@@ -164,6 +169,7 @@ export class BlogPostsService {
     await this.posts.update(post.id, { title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [], cover, roomId });
     // 본문이나 표지에서 뺀 사진은 사진 저장소에서도 지움
     await this.images.syncPost(post.id, input.body, cover);
+    await this.videos.remember(input.body);
     // 다른 기기에서 고치다 만 것도 이제 옛 글을 고친 것이라 같이 지움
     await this.drafts.deleteForPost(post.id);
     // 공개하거나 나만 보기로 돌리면 이 글에 온 요청은 더 기다릴 일이 없음

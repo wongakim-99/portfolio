@@ -5,6 +5,7 @@ import { FeedMediaService } from './application/feed-media.service.js';
 import { MembersService } from './application/members.service.js';
 import { ModerationService } from './application/moderation.service.js';
 import { PostsService } from './application/posts.service.js';
+import { VideoPreviews } from './application/video-previews.js';
 import {
   CommentRepository, FeedImageRepository, LikeRepository, PostRepository, ReportRepository, VideoCache, VideoSource,
 } from './domain/feed.ports.js';
@@ -32,7 +33,7 @@ import { PostsController } from './presentation/posts.controller.js';
   ])],
   controllers: [PostsController, MembersController, FeedAdminController],
   providers: [
-    PostsService, ModerationService, MembersService, FeedMediaService,
+    PostsService, ModerationService, MembersService, FeedMediaService, VideoPreviews,
     { provide: PostRepository, useClass: MongoPostRepository },
     { provide: CommentRepository, useClass: MongoCommentRepository },
     { provide: ReportRepository, useClass: MongoReportRepository },
@@ -41,6 +42,6 @@ import { PostsController } from './presentation/posts.controller.js';
     { provide: VideoCache, useClass: MongoVideoCache },
     { provide: VideoSource, useClass: YoutubeVideoSource },
   ],
-  exports: [ModerationService],
+  exports: [ModerationService, VideoPreviews],
 })
 export class FeedModule {}

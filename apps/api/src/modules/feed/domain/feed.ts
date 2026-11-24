@@ -99,3 +99,9 @@ export const YOUTUBE_ID = /^[\w-]{11}$/;
 export function youtubeIdIn(text: string): string | null {
   return YOUTUBE.exec(text)?.[1] ?? null;
 }
+
+/** 글 속 유튜브 영상 ID 를 나온 순서대로, 겹치지 않게 limit 개까지 */
+export function youtubeIdsIn(text: string, limit: number): string[] {
+  const ids = [...text.matchAll(new RegExp(YOUTUBE.source, 'g'))].map((match) => match[1]!);
+  return [...new Set(ids)].slice(0, limit);
+}

@@ -928,6 +928,37 @@ describe('blog', () => {
     expect(await db.collection('blog_drafts').countDocuments({ postId: new Types.ObjectId(post.id) })).toBe(0);
   });
 
+  it('글 속 유튜브 영상은 저장할 때 확인해 두고, 읽을 때는 확인한 영상만 미리보기로 줌', async () => {
+    const server = app.getHttpServer();
+    const ip = '203.0.113.200, 172.18.0.1';
+    await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+      .send({ email: 'video-owner@example.com', name: '영상 주인', password: 'correct horse battery staple' }).expect(202);
+    const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === 'video-owner@example.com')!.token;
+    const verified = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+    const owner = (verified.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    await request(server).put('/api/community/admin/users/role').set('Authorization', `Bearer ${ADMIN_TOKEN}`)
+      .send({ email: 'video-owner@example.com', role: 'owner' }).expect(200);
+
+    const meta = vi.spyOn(fakeVideos, 'meta');
+    // 쇼츠 주소도 알아보고, 유튜브에 없는 영상은 미리보기에서 뺌
+    const body = `https://youtube.com/shorts/${KNOWN_VIDEO}?si=abc\n\n본문 한 줄\n\n[없는 영상](https://youtu.be/AAAAAAAAAAA)`;
+    const write = (visibility: string) => request(server).post('/api/blog/posts').set('Cookie', owner).send({ title: '영상 글', body, visibility });
+    const preview = { id: KNOWN_VIDEO, title: '테스트 영상', author: '테스트 채널', thumbnail: `/api/community/videos/${KNOWN_VIDEO}/thumbnail` };
+    const open = (await write('public').expect(201)).body.post;
+    expect(open.videos).toEqual([preview]);
+    await request(server).get(preview.thumbnail).expect(200);
+
+    // 읽을 때는 유튜브를 부르지 않음
+    const calls = meta.mock.calls.length;
+    expect((await request(server).get(`/api/blog/posts/${open.id}`).expect(200)).body.videos).toEqual([preview]);
+    expect(meta.mock.calls.length).toBe(calls);
+
+    // 본문을 못 읽는 사람에게는 영상도 없음
+    const locked = (await write('approved').expect(201)).body.post;
+    expect((await request(server).get(`/api/blog/posts/${locked.id}`).expect(200)).body).toMatchObject({ locked: true, videos: [] });
+    meta.mockRestore();
+  });
+
   it('잠긴 글의 증명은 채점평만 글자 그대로 흘려보내고, AI 를 못 쓰면 503', async () => {
     const server = app.getHttpServer();
     const posts = app.get(getConnectionToken()).collection('blog_posts');

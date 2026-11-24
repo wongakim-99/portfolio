@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { FeedModule } from '../feed/index.js';
 import { IdentityModule } from '../identity/index.js';
 import { BlogAccessService } from './application/blog-access.service.js';
 import { BlogDraftsService } from './application/blog-drafts.service.js';
@@ -28,7 +29,7 @@ import { BlogController } from './presentation/blog.controller.js';
 
 // 블로그 영역 (gawon-log): 주인장 글과 임시 글, 사진, 방, 공개 범위, 열람 요청과 허락, 잠긴 글의 증명 채점
 @Module({
-  imports: [IdentityModule, MongooseModule.forFeature([
+  imports: [IdentityModule, FeedModule, MongooseModule.forFeature([
     { name: BlogPost.name, schema: BlogPostSchema },
     { name: BlogAccessRequest.name, schema: BlogAccessRequestSchema },
     { name: BlogGrant.name, schema: BlogGrantSchema },

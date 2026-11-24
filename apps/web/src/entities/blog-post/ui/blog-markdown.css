@@ -5,6 +5,8 @@
 .md p { margin: .85em 0; }
 .md a { color: var(--pen); text-decoration: underline; text-decoration-thickness: 1px; text-underline-offset: 3px; }
 .md a:hover { text-decoration-thickness: 2px; }
+/* 유튜브 링크만 있는 문단은 피드와 같은 영상 카드로. 문단 사이 간격에 맞춤 */
+.md .yt-card { margin: 1.4em 0; }
 .md strong { font-weight: 700; }
 .md del { color: var(--ink-soft); }
 .md hr { margin: 2.2em 0; border: 0; border-top: 1px dashed var(--paper-rule); }

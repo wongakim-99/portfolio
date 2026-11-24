@@ -81,7 +81,7 @@ export function BlogPostPage({ postId }: { postId: string }) {
       ) : post?.locked ? (
         <BlogLock postId={post.id} request={post.request} onRequested={(request) => setPost((value) => value && { ...value, request })} />
       ) : (
-        <div className="blog-article-body">{post?.body && <BlogMarkdown source={post.body} />}</div>
+        <div className="blog-article-body">{post?.body && <BlogMarkdown source={post.body} videos={post.videos} />}</div>
       )}
       <FormStatus status={status} />
       {owner && post && !missing && (
