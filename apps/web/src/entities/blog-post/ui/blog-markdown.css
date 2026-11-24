@@ -1,5 +1,6 @@
 /* 블로그 본문 마크다운. 종이 위 글: 제목은 굵게, 콜아웃은 포스트잇, 사진은 종이에 올린 사진, 코드는 터미널 색 */
-.md { color: var(--ink); font-size: 17px; line-height: 1.85; overflow-wrap: anywhere; text-wrap: pretty; }
+/* 줄바꿈은 글쓰기 칸(편집기)과 같게 break-word. anywhere 면 Safari 의 text-wrap: pretty 가 "(" 뒤처럼 아무 데서나 줄을 끊음 */
+.md { color: var(--ink); font-size: 17px; line-height: 1.85; overflow-wrap: break-word; text-wrap: pretty; }
 .md > :first-child { margin-top: 0; }
 .md > :last-child { margin-bottom: 0; }
 .md p { margin: .85em 0; }
