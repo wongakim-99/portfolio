@@ -2,7 +2,7 @@
 
 import { TextSelection } from '@tiptap/pm/state';
 import { EditorContent, useEditor, useEditorState, type Editor } from '@tiptap/react';
-import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { errorMessage } from '@shared/api';
 import { cx, isImage, prepareImage } from '@shared/lib';
 import type { Status } from '@shared/ui';
@@ -259,8 +259,7 @@ export function RichEditor({ value, onChange, uploading, onUploading, onStatus }
     setLinkDraft((editor.getAttributes('link').href as string | undefined) ?? '');
   }
 
-  function applyLink(event: FormEvent) {
-    event.preventDefault();
+  function applyLink() {
     if (!editor || linkDraft === null) return;
     const href = linkDraft.trim();
     const chain = focus(editor).extendMarkRange('link');
@@ -338,8 +337,9 @@ export function RichEditor({ value, onChange, uploading, onUploading, onStatus }
             )}
           </div>
         )}
+        {/* 글쓰기 폼 안이라 <form> 으로 두지 않음. 폼 안의 폼은 제출 이벤트가 바깥 폼을 못 넘어 React 가 못 받고, 브라우저가 그대로 제출해 페이지가 다시 열림 */}
         {mode === 'write' && linkDraft !== null && (
-          <form className="md-link-form" onSubmit={applyLink}>
+          <div className="md-link-form" role="group" aria-label="링크 넣기">
             <input
               autoFocus
               type="text"
@@ -349,20 +349,26 @@ export function RichEditor({ value, onChange, uploading, onUploading, onStatus }
               aria-label="링크 주소"
               onChange={(event) => setLinkDraft(event.target.value)}
               onKeyDown={(event) => {
-                if (event.key === 'Escape') {
+                // 한글을 조합하는 중에 누른 Enter 는 글자를 마무리하는 키라서 넘김
+                if (event.nativeEvent.isComposing) return;
+                // Enter 를 그냥 두면 바깥 글쓰기 폼이 제출되어 글이 올라감
+                if (event.key === 'Enter') {
+                  event.preventDefault();
+                  applyLink();
+                } else if (event.key === 'Escape') {
                   event.preventDefault();
                   setLinkDraft(null);
                   editor?.commands.focus();
                 }
               }}
             />
-            <button type="submit" className="md-tool is-on">
+            <button type="button" className="md-tool is-on" onClick={applyLink}>
               {linkDraft.trim() ? '넣기' : '링크 빼기'}
             </button>
             <button type="button" className="md-tool" onClick={() => { setLinkDraft(null); editor?.commands.focus(); }}>
               그만두기
             </button>
-          </form>
+          </div>
         )}
         {uploading > 0 && <span className="md-uploading">사진 {uploading}장 올리는 중</span>}
       </div>
