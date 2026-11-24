@@ -21,6 +21,19 @@ export interface BlogPost {
   updatedAt: Date;
 }
 
+/** 글쓰기 칸에 적는 것. 올린 글과 임시 글이 같은 모양을 씀 */
+export type BlogPostContent = Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover' | 'roomId'>;
+
+/** 쓰다 만 글. 글쓴이마다 새 글 하나, 고치는 글마다 하나씩 남기고 글을 올리면 지움. postId 가 null 이면 새 글 */
+export interface BlogDraft extends BlogPostContent {
+  authorId: string;
+  postId: string | null;
+  updatedAt: Date;
+}
+
+/** 임시 글 주소 /drafts/new 는 아직 올리지 않은 새 글, 나머지는 고치는 글의 ID */
+export const NEW_DRAFT = 'new';
+
 /** 블로그 방. 주인장이 관리실에서 만들고 이름, 순서를 정함. 글은 방 하나에 들고, 태그는 따로 여럿 붙음 */
 export interface BlogRoom {
   id: string;

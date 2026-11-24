@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { routes } from '@shared/config';
 import { BackLink, Sheet, type Status } from '@shared/ui';
 import { BlogPostForm } from '@features/write-blog-post';
-import { getBlogPost, type BlogPostInput } from '@entities/blog-post';
+import { getBlogDraft, getBlogPost, type BlogDraft, type BlogPost } from '@entities/blog-post';
 import { useSession } from '@entities/user';
 import './blog-editor-page.css';
 
@@ -13,7 +13,7 @@ import './blog-editor-page.css';
 export function BlogEditorPage({ postId }: { postId?: string }) {
   const pathname = usePathname();
   const { user, ready, can, requestLogin } = useSession();
-  const [loaded, setLoaded] = useState<BlogPostInput | null>(null);
+  const [loaded, setLoaded] = useState<{ post: BlogPost | null; draft: BlogDraft | null } | null>(null);
   const [loadStatus, setLoadStatus] = useState<Status | undefined>(undefined);
   const userId = user?.id;
   const owner = can('blog:write');
@@ -22,11 +22,12 @@ export function BlogEditorPage({ postId }: { postId?: string }) {
     if (ready && !userId) requestLogin(pathname);
   }, [ready, userId, pathname, requestLogin]);
 
+  // 고칠 글과 서버 임시 글을 같이 받음. 임시 글을 못 받아도 이 브라우저에 남은 것으로 이어 씀
   useEffect(() => {
-    if (!owner || !postId) return;
+    if (!owner) return;
     let active = true;
-    getBlogPost(postId).then(
-      (post) => active && setLoaded({ title: post.title, body: post.body ?? '', visibility: post.visibility, tags: post.tags, cover: post.coverFile, roomId: post.room?.id ?? null }),
+    Promise.all([postId ? getBlogPost(postId) : null, getBlogDraft(postId).catch(() => null)]).then(
+      ([post, draft]) => active && setLoaded({ post, draft }),
       () => active && setLoadStatus({ message: '글을 불러오지 못했습니다.', tone: 'error' }),
     );
     return () => {
@@ -35,7 +36,7 @@ export function BlogEditorPage({ postId }: { postId?: string }) {
   }, [postId, owner]);
 
   // 로그인 확인 전, 불러오는 중, 다 받은 뒤마다 폼을 새로 그려 처음 값을 다시 넣음
-  const stage = !owner ? 'not-owner' : !postId ? 'draft' : loaded ? 'loaded' : loadStatus ? 'failed' : 'loading';
+  const stage = !owner ? 'not-owner' : loaded ? 'loaded' : loadStatus ? 'failed' : 'loading';
   return (
     <Sheet className="blog-editor" aria-labelledby="blog-editor-title">
       <BackLink href={postId ? routes.blogPost(postId) : routes.blog}>{postId ? '글로 돌아가기' : '블로그'}</BackLink>
@@ -46,9 +47,9 @@ export function BlogEditorPage({ postId }: { postId?: string }) {
       <BlogPostForm
         key={stage}
         postId={postId}
-        initial={loaded ?? undefined}
-        restoreDraft={stage === 'draft'}
-        disabled={stage !== 'draft' && stage !== 'loaded'}
+        post={loaded?.post ?? undefined}
+        serverDraft={loaded?.draft}
+        disabled={stage !== 'loaded'}
         initialStatus={loadStatus}
       />
     </Sheet>

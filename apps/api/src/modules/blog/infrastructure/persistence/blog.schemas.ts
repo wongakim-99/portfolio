@@ -39,6 +39,42 @@ BlogPostSchema.index({ visibility: 1, _id: -1 });
 BlogPostSchema.index({ tags: 1, _id: -1 });
 BlogPostSchema.index({ roomId: 1, _id: -1 });
 
+// 쓰다 만 글. 글쓰기 화면이 주기적으로 덮어쓰고, 글을 올리면 지움. postId 가 null 이면 아직 올리지 않은 새 글
+// 쓰는 중이라 제목, 본문이 비어 있을 수 있음 (required 는 빈 글자를 받지 않아 기본값으로 둠)
+@Schema({ collection: 'blog_drafts', versionKey: false, timestamps: true })
+export class BlogDraft {
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
+  authorId: Types.ObjectId;
+
+  @Prop({ type: SchemaTypes.ObjectId, default: null })
+  postId: Types.ObjectId | null;
+
+  @Prop({ type: String, default: '' })
+  title: string;
+
+  @Prop({ type: String, default: '' })
+  body: string;
+
+  @Prop({ type: String, required: true, enum: VISIBILITIES })
+  visibility: Visibility;
+
+  @Prop({ type: [String], default: [] })
+  tags: string[];
+
+  @Prop({ type: String, default: null })
+  cover: string | null;
+
+  @Prop({ type: SchemaTypes.ObjectId, default: null })
+  roomId: Types.ObjectId | null;
+
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export const BlogDraftSchema = SchemaFactory.createForClass(BlogDraft);
+BlogDraftSchema.index({ authorId: 1, postId: 1 }, { unique: true });
+BlogDraftSchema.index({ postId: 1 });
+
 // 블로그 방. 주인장이 관리실에서 만들고 order 순서로 사이드바에 놓임
 @Schema({ collection: 'blog_rooms', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })
 export class BlogRoom {

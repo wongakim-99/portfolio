@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Delete, Get, Header, HttpCode, NotFoundException, Patch, Post, Query, Req, Res, ServiceUnavailableException,
+  Body, Controller, Delete, Get, Header, HttpCode, NotFoundException, Patch, Post, Put, Query, Req, Res, ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SkipThrottle, Throttle } from '@nestjs/throttler';
@@ -10,11 +10,12 @@ import { assertSameOrigin } from '../../../shared/http/same-origin.js';
 import { ipHash } from '../../../shared/http/visitor-hash.js';
 import { CurrentUser, RequirePermission } from '../../identity/index.js';
 import { BlogAccessService } from '../application/blog-access.service.js';
+import { BlogDraftsService } from '../application/blog-drafts.service.js';
 import { BlogImagesService } from '../application/blog-images.service.js';
 import { BlogPostsService } from '../application/blog-posts.service.js';
 import { ProofGradingService } from '../application/proof-grading.service.js';
 import { BLOG_IMAGE_FILE, BLOG_IMAGE_TYPES } from '../domain/blog-image.js';
-import { AccessRequestDto, ProofDto, WriteBlogPostDto } from './blog.dto.js';
+import { AccessRequestDto, BlogDraftDto, ProofDto, WriteBlogPostDto } from './blog.dto.js';
 
 // ?tag=a&tag=b 처럼 같은 이름을 여러 번 보내면 배열로 오므로 글자 하나일 때만 씀
 const single = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
@@ -26,6 +27,7 @@ export class BlogController {
   constructor(
     private readonly posts: BlogPostsService,
     private readonly access: BlogAccessService,
+    private readonly drafts: BlogDraftsService,
     private readonly images: BlogImagesService,
     private readonly proofs: ProofGradingService,
     private readonly currentUser: CurrentUser,
@@ -76,6 +78,34 @@ export class BlogController {
     assertSameOrigin(req);
     jsonOnly(req);
     return { post: await this.posts.edit(req.params.id as string, dto, await this.currentUser.require(req)) };
+  }
+
+  // 쓰다 만 글. :key 는 새 글이면 new, 고치는 글이면 그 글 ID. 글쓴이 본인 것만 읽고 씀
+  @Get('drafts/:key')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-store')
+  @RequirePermission('blog:write')
+  async draft(@Req() req: Request) {
+    return { draft: await this.drafts.get(req.params.key as string, await this.currentUser.require(req)) };
+  }
+
+  // 글쓰기 화면이 쉬는 틈마다 덮어씀. 창 두 개를 띄워도 넉넉하게 1분에 60번까지
+  @Put('drafts/:key')
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @RequirePermission('blog:write')
+  async saveDraft(@Body() dto: BlogDraftDto, @Req() req: Request) {
+    assertSameOrigin(req);
+    jsonOnly(req);
+    const content = { title: dto.title, body: dto.body, visibility: dto.visibility, tags: dto.tags ?? [], cover: dto.cover ?? null, roomId: dto.roomId ?? null };
+    return this.drafts.save(req.params.key as string, content, await this.currentUser.require(req));
+  }
+
+  @Delete('drafts/:key')
+  @HttpCode(204)
+  @RequirePermission('blog:write')
+  async discardDraft(@Req() req: Request) {
+    assertSameOrigin(req);
+    await this.drafts.discard(req.params.key as string, await this.currentUser.require(req));
   }
 
   // 글에 넣을 사진. 본문은 사진 파일 그대로 받음 (setup.ts 의 raw 본문 파서). 브라우저가 줄이고 위치 정보를 뺀 뒤 올림

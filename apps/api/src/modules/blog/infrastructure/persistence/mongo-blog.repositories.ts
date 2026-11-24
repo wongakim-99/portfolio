@@ -2,18 +2,26 @@ import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import type { Model, QueryFilter } from 'mongoose';
 import { asObjectId, isDuplicateKey, toObjectId } from '../../../../shared/infrastructure/mongo.js';
-import { NO_ROOM, type AccessRequest, type BlogPost, type BlogRoom, type Grant, type Visibility } from '../../domain/blog.js';
 import {
-  AccessRequestRepository, BlogImageRepository, BlogPostRepository, BlogRoomRepository, GrantRepository, ProofUsageRepository,
-  type BlogListFilter,
+  NO_ROOM, type AccessRequest, type BlogDraft, type BlogPost, type BlogPostContent, type BlogRoom, type Grant, type Visibility,
+} from '../../domain/blog.js';
+import {
+  AccessRequestRepository, BlogDraftRepository, BlogImageRepository, BlogPostRepository, BlogRoomRepository, GrantRepository,
+  ProofUsageRepository, type BlogListFilter,
 } from '../../domain/blog.ports.js';
-import { BlogAccessRequest, BlogGrant, BlogImage, BlogPost as BlogPostDoc, BlogProofUsage, BlogRoom as BlogRoomDoc } from './blog.schemas.js';
+import {
+  BlogAccessRequest, BlogDraft as BlogDraftDoc, BlogGrant, BlogImage, BlogPost as BlogPostDoc, BlogProofUsage, BlogRoom as BlogRoomDoc,
+} from './blog.schemas.js';
 
 type Doc<T> = T & { _id: unknown };
 
 const toPost = (doc: Doc<BlogPostDoc>): BlogPost => ({
   id: String(doc._id), authorId: String(doc.authorId), title: doc.title, body: doc.body, visibility: doc.visibility,
   tags: doc.tags ?? [], cover: doc.cover ?? null, roomId: doc.roomId ? String(doc.roomId) : null, createdAt: doc.createdAt, updatedAt: doc.updatedAt,
+});
+const toDraft = (doc: Doc<BlogDraftDoc>): BlogDraft => ({
+  authorId: String(doc.authorId), postId: doc.postId ? String(doc.postId) : null, title: doc.title ?? '', body: doc.body ?? '',
+  visibility: doc.visibility, tags: doc.tags ?? [], cover: doc.cover ?? null, roomId: doc.roomId ? String(doc.roomId) : null, updatedAt: doc.updatedAt,
 });
 const toRoom = (doc: Doc<BlogRoomDoc>): BlogRoom => ({ id: String(doc._id), name: doc.name, order: doc.order ?? 0, createdAt: doc.createdAt });
 // 방이 생기기 전의 글은 roomId 가 아예 없어서, null 과 없는 필드를 같이 '방 없음' 으로 셈
@@ -84,7 +92,7 @@ export class MongoBlogPostRepository extends BlogPostRepository {
     return toPost(post.toObject());
   }
 
-  async update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover' | 'roomId'>) {
+  async update(id: string, input: BlogPostContent) {
     await this.posts.updateOne({ _id: toObjectId(id) }, { $set: { ...input, roomId: input.roomId ? asObjectId(input.roomId) : null } });
   }
 
@@ -106,6 +114,46 @@ export class MongoBlogPostRepository extends BlogPostRepository {
 
   async clearRoom(roomId: string) {
     await this.posts.updateMany({ roomId: asObjectId(roomId) }, { $set: { roomId: null } });
+  }
+}
+
+@Injectable()
+export class MongoBlogDraftRepository extends BlogDraftRepository {
+  constructor(@InjectModel(BlogDraftDoc.name) private readonly drafts: Model<BlogDraftDoc>) {
+    super();
+  }
+
+  private key(authorId: string, postId: string | null) {
+    return { authorId: asObjectId(authorId), postId: postId ? asObjectId(postId) : null };
+  }
+
+  async find(authorId: string, postId: string | null) {
+    const draft = await this.drafts.findOne(this.key(authorId, postId)).lean();
+    return draft && toDraft(draft);
+  }
+
+  async save(authorId: string, postId: string | null, content: BlogPostContent) {
+    const update = { $set: { ...content, roomId: content.roomId ? asObjectId(content.roomId) : null } };
+    const upsert = () => this.drafts.findOneAndUpdate(this.key(authorId, postId), update, { upsert: true, returnDocument: 'after' }).lean();
+    try {
+      return toDraft((await upsert())!);
+    } catch (error) {
+      // 두 창이 한꺼번에 처음 저장하면 하나는 유일 인덱스에 걸림. 그때는 먼저 생긴 문서를 덮어씀
+      if (!isDuplicateKey(error)) throw error;
+      return toDraft((await upsert())!);
+    }
+  }
+
+  async delete(authorId: string, postId: string | null) {
+    await this.drafts.deleteOne(this.key(authorId, postId));
+  }
+
+  async deleteForPost(postId: string) {
+    await this.drafts.deleteMany({ postId: asObjectId(postId) });
+  }
+
+  async contents() {
+    return (await this.drafts.find({}, { body: 1, cover: 1 }).lean()).map((draft) => ({ body: draft.body ?? '', cover: draft.cover ?? null }));
   }
 }
 
@@ -247,8 +295,9 @@ export class MongoBlogImageRepository extends BlogImageRepository {
     return (await this.images.find({ postId: post }, { file: 1 }).lean()).map((image) => image.file);
   }
 
-  async orphans(before: Date) {
-    return (await this.images.find({ postId: null, createdAt: { $lt: before } }, { file: 1 }).limit(100).lean()).map((image) => image.file);
+  async orphans(before: Date, keep: string[]) {
+    return (await this.images.find({ postId: null, createdAt: { $lt: before }, file: { $nin: keep } }, { file: 1 }).limit(100).lean())
+      .map((image) => image.file);
   }
 
   async delete(files: string[]) {

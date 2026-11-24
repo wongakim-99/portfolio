@@ -65,6 +65,11 @@ export interface BlogPostInput {
   roomId: string | null;
 }
 
+/** 쓰다 만 글. 서버(GET /drafts/:key)나 이 브라우저에 남김. savedAt 은 마지막으로 남긴 때 */
+export interface BlogDraft extends BlogPostInput {
+  savedAt: string;
+}
+
 /** 관리실의 방 목록 (나만 보기 글까지 센 글 수)과 아직 방이 없는 글 수 */
 export interface RoomOverview {
   rooms: BlogRoom[];

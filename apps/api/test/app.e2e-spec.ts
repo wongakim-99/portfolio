@@ -849,6 +849,85 @@ describe('blog', () => {
     await request(server).get(hidden.url).expect(200);
   });
 
+  it('임시 글은 주인장이 덮어쓰고, 글을 올리거나 고치거나 지우면 없어지며, 임시 글에 든 사진은 오래돼도 남김', async () => {
+    const server = app.getHttpServer();
+    const db = app.get(getConnectionToken());
+    const ip = '203.0.113.190, 172.18.0.1';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    };
+    const owner = await join('draft-owner@example.com', '임시 주인');
+    const member = await join('draft-member@example.com', '엿보는 사람');
+    await request(server).put('/api/community/admin/users/role').set('Authorization', `Bearer ${ADMIN_TOKEN}`)
+      .send({ email: 'draft-owner@example.com', role: 'owner' }).expect(200);
+    const read = (key: string, cookie = owner) => request(server).get(`/api/blog/drafts/${key}`).set('Cookie', cookie);
+    const save = (key: string, body: object, cookie = owner) => request(server).put(`/api/blog/drafts/${key}`).set('X-Forwarded-For', ip)
+      .set('Cookie', cookie).send({ title: '', body: '', visibility: 'approved', ...body });
+
+    await request(server).get('/api/blog/drafts/new').expect(401);
+    await read('new', member).expect(403);
+    await save('new', {}, member).expect(403);
+    const empty = await read('new').expect(200);
+    expect(empty.body).toEqual({ draft: null });
+    expect(empty.headers['cache-control']).toContain('no-store');
+
+    // 쓰는 중이라 빈 제목, 빈 본문도 받고, 다시 저장하면 덮어씀
+    expect((await save('new', {}).expect(200)).body.savedAt).toEqual(expect.any(String));
+    const room = (await request(server).post('/api/blog/admin/rooms').set('Cookie', owner).send({ name: '임시 방' }).expect(201)).body.room;
+    const photo = (await request(server).post('/api/blog/images').set('X-Forwarded-For', ip).set('Cookie', owner)
+      .set('Content-Type', 'image/png').send(png(400, 300)).expect(201)).body.image;
+    const loose = (await request(server).post('/api/blog/images').set('X-Forwarded-For', ip).set('Cookie', owner)
+      .set('Content-Type', 'image/png').send(png(200, 100)).expect(201)).body.image;
+    const content = { title: '쓰다 만 글', body: `첫 줄\n\n![사진](${photo.url})`, visibility: 'public', tags: ['#임시', '임시'], cover: photo.file, roomId: room.id };
+    const saved = (await save('new', content).expect(200)).body;
+    expect((await read('new').expect(200)).body.draft).toEqual({ ...content, tags: ['임시'], savedAt: saved.savedAt });
+    await save('new', { body: 'x'.repeat(50_001) }).expect(400);
+    await save('new', { visibility: 'friends' }).expect(400);
+    await save('new', { cover: '../../etc/passwd' }).expect(400);
+    await save('new', {}).set('Origin', 'https://evil.example').expect(403);
+    expect((await read('new').expect(200)).body.draft.title).toBe('쓰다 만 글');
+
+    // 그 사이 지운 방은 비워서 돌려줌
+    await request(server).delete(`/api/blog/admin/rooms/${room.id}`).set('Cookie', owner).expect(204);
+    expect((await read('new').expect(200)).body.draft.roomId).toBeNull();
+
+    // 글에 안 붙은 채 7일이 지난 사진은 다음 업로드 때 치우지만, 임시 글에 든 사진은 남김
+    const aged = new Date(Date.now() - 8 * 24 * 60 * 60_000);
+    await db.collection('blog_images').updateMany({ file: { $in: [photo.file, loose.file] } }, { $set: { createdAt: aged } });
+    await request(server).post('/api/blog/images').set('X-Forwarded-For', ip).set('Cookie', owner)
+      .set('Content-Type', 'image/png').send(png(10, 10)).expect(201);
+    await vi.waitFor(() => expect(storedFiles.has(`blog/${loose.file}`)).toBe(false));
+    await request(server).get(photo.url).expect(200);
+
+    // 새 글을 올리면 새 글 임시 글이 없어짐
+    const post = (await request(server).post('/api/blog/posts').set('Cookie', owner)
+      .send({ title: '쓰다 만 글', body: content.body, visibility: 'public' }).expect(201)).body.post;
+    expect((await read('new').expect(200)).body.draft).toBeNull();
+
+    // 고치는 글의 임시 글은 그 글 ID 로. 없는 글이면 404, 고쳐 저장하면 없어짐
+    await save('not-an-id', {}).expect(404);
+    await save(String(new Types.ObjectId()), {}).expect(404);
+    await read(String(new Types.ObjectId())).expect(404);
+    await save(post.id, { title: '고치는 중', body: '아직 안 올린 문장' }).expect(200);
+    expect((await read(post.id).expect(200)).body.draft).toMatchObject({ title: '고치는 중', body: '아직 안 올린 문장' });
+    expect((await read('new').expect(200)).body.draft).toBeNull();
+    await request(server).patch(`/api/blog/posts/${post.id}`).set('Cookie', owner)
+      .send({ title: '고친 글', body: '올린 문장', visibility: 'public' }).expect(200);
+    expect((await read(post.id).expect(200)).body.draft).toBeNull();
+
+    // 버리기와 글 지우기
+    await save('new', { title: '버릴 글' }).expect(200);
+    await request(server).delete('/api/blog/drafts/new').set('Cookie', owner).expect(204);
+    expect((await read('new').expect(200)).body.draft).toBeNull();
+    await save(post.id, { title: '지울 글을 고치는 중' }).expect(200);
+    await request(server).delete(`/api/blog/posts/${post.id}`).set('Cookie', owner).expect(204);
+    expect(await db.collection('blog_drafts').countDocuments({ postId: new Types.ObjectId(post.id) })).toBe(0);
+  });
+
   it('잠긴 글의 증명은 채점평만 글자 그대로 흘려보내고, AI 를 못 쓰면 503', async () => {
     const server = app.getHttpServer();
     const posts = app.get(getConnectionToken()).collection('blog_posts');

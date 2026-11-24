@@ -1,4 +1,4 @@
-import type { AccessRequest, BlogPost, BlogRoom, Grant, Visibility } from './blog.js';
+import type { AccessRequest, BlogDraft, BlogPost, BlogPostContent, BlogRoom, Grant, Visibility } from './blog.js';
 import type { ProofSubmission } from './proof.js';
 
 export interface BlogListFilter {
@@ -27,7 +27,7 @@ export abstract class BlogPostRepository {
   abstract findById(id: string): Promise<BlogPost | null>;
   abstract findMany(ids: string[]): Promise<BlogPost[]>;
   abstract create(input: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>): Promise<BlogPost>;
-  abstract update(id: string, input: Pick<BlogPost, 'title' | 'body' | 'visibility' | 'tags' | 'cover' | 'roomId'>): Promise<void>;
+  abstract update(id: string, input: BlogPostContent): Promise<void>;
   abstract delete(id: string): Promise<boolean>;
   /** 아직 방이 없는 글, 최근 것부터 */
   abstract withoutRoom(limit: number): Promise<BlogPost[]>;
@@ -35,6 +35,17 @@ export abstract class BlogPostRepository {
   abstract assignRooms(assignments: { postId: string; roomId: string }[]): Promise<number>;
   /** 이 방에 든 글을 모두 방 밖(null)으로 뺌. 방을 지울 때 씀 */
   abstract clearRoom(roomId: string): Promise<void>;
+}
+
+// 쓰다 만 글. 글쓴이와 글(새 글이면 null) 한 쌍에 하나만 있고, 다시 저장하면 덮어씀
+export abstract class BlogDraftRepository {
+  abstract find(authorId: string, postId: string | null): Promise<BlogDraft | null>;
+  abstract save(authorId: string, postId: string | null, content: BlogPostContent): Promise<BlogDraft>;
+  abstract delete(authorId: string, postId: string | null): Promise<void>;
+  /** 이 글을 고치던 임시 글을 글쓴이 상관없이 지움. 글을 고쳐 올리거나 지울 때 씀 */
+  abstract deleteForPost(postId: string): Promise<void>;
+  /** 모든 임시 글의 본문과 표지. 임시 글에 든 사진을 치우지 않으려고 씀 */
+  abstract contents(): Promise<Pick<BlogDraft, 'body' | 'cover'>[]>;
 }
 
 // 블로그 방 목록. 이름은 겹치지 않음
@@ -98,8 +109,8 @@ export abstract class BlogImageRepository {
   /** 아직 아무 글에도 붙지 않았거나 이 글에 붙은 사진만 이 글에 붙임 */
   abstract attach(files: string[], postId: string): Promise<void>;
   abstract filesForPost(postId: string): Promise<string[]>;
-  /** 글에 붙지 않은 채 before 보다 먼저 올린 사진 */
-  abstract orphans(before: Date): Promise<string[]>;
+  /** 글에 붙지 않은 채 before 보다 먼저 올린 사진. keep 에 든 파일은 뺌 */
+  abstract orphans(before: Date, keep: string[]): Promise<string[]>;
   abstract delete(files: string[]): Promise<void>;
 }
 

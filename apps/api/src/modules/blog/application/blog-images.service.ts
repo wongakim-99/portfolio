@@ -5,17 +5,18 @@ import { randomBytes } from 'node:crypto';
 import type { Readable } from 'node:stream';
 import { imageInfo } from '../../../shared/domain/image-info.js';
 import { ObjectStorage } from '../../../shared/infrastructure/storage/object-storage.js';
-import { BlogImageRepository } from '../domain/blog.ports.js';
+import { BlogDraftRepository, BlogImageRepository } from '../domain/blog.ports.js';
 import {
   BLOG_IMAGE_FILE, BLOG_IMAGE_MAX_BYTES, BLOG_IMAGE_MAX_SIDE, blogImageKey, blogImageUrl, imagesIn, ORPHAN_AGE_MS,
 } from '../domain/blog-image.js';
 
 // 블로그 글에 넣는 사진. 주인장이 올리고, 글을 저장할 때 본문과 표지에 남은 사진만 그 글에 붙여 둠
-// 글에서 빠진 사진, 지운 글의 사진, 쓰다 만 글의 오래된 사진은 사진 저장소에서도 지움
+// 글에서 빠진 사진, 지운 글의 사진, 쓰다 버린 글의 오래된 사진은 사진 저장소에서도 지움. 임시 글에 든 사진은 남김
 @Injectable()
 export class BlogImagesService {
   constructor(
     private readonly images: BlogImageRepository,
+    private readonly drafts: BlogDraftRepository,
     private readonly storage: ObjectStorage,
   ) {}
 
@@ -55,7 +56,8 @@ export class BlogImagesService {
   }
 
   private async sweep(): Promise<void> {
-    await this.discard(await this.images.orphans(new Date(Date.now() - ORPHAN_AGE_MS)));
+    const kept = (await this.drafts.contents()).flatMap((draft) => imagesIn(draft.body, draft.cover));
+    await this.discard(await this.images.orphans(new Date(Date.now() - ORPHAN_AGE_MS), kept));
   }
 
   // 저장소에서 먼저 지우고 기록을 지움. 저장소에서 못 지운 사진은 기록이 남아 다음에 다시 지움

@@ -20,6 +20,9 @@ export function formatStamp(value: string | number | Date) {
   return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}`;
 }
 
+/** 14:32. 오늘 한 일의 시각 */
+export const formatClock = (value: string | number | Date) => formatStamp(value).slice(-5);
+
 const dateFormat = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' });
 const dateTimeFormat = new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' });
 

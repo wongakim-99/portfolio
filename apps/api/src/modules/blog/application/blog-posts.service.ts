@@ -5,7 +5,7 @@ import {
   canRead, EXCERPT_LENGTH, isVisible, NO_ROOM, POSTS_PER_PAGE, readMinutes, retryAt, VISIBILITIES, type BlogPost, type BlogRoom, type Visibility,
 } from '../domain/blog.js';
 import { blogImageUrl, firstImage, plainText } from '../domain/blog-image.js';
-import { AccessRequestRepository, BlogPostRepository, GrantRepository } from '../domain/blog.ports.js';
+import { AccessRequestRepository, BlogDraftRepository, BlogPostRepository, GrantRepository } from '../domain/blog.ports.js';
 import { isEntityId } from '../../../shared/domain/entity-id.js';
 import { BlogImagesService } from './blog-images.service.js';
 import { BlogRoomsService } from './blog-rooms.service.js';
@@ -59,6 +59,7 @@ export class BlogPostsService {
     private readonly posts: BlogPostRepository,
     private readonly requests: AccessRequestRepository,
     private readonly grants: GrantRepository,
+    private readonly drafts: BlogDraftRepository,
     private readonly access: ReaderAccess,
     private readonly directory: UserDirectory,
     private readonly images: BlogImagesService,
@@ -150,6 +151,8 @@ export class BlogPostsService {
       title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [], cover: input.cover ?? null, roomId, authorId: author.id,
     });
     await this.images.syncPost(post.id, post.body, post.cover);
+    // 올렸으니 쓰던 새 글의 임시 글은 더 이어 쓸 일이 없음
+    await this.drafts.delete(author.id, null);
     return this.get(post.id, author);
   }
 
@@ -161,14 +164,18 @@ export class BlogPostsService {
     await this.posts.update(post.id, { title: input.title, body: input.body, visibility: input.visibility, tags: input.tags ?? [], cover, roomId });
     // 본문이나 표지에서 뺀 사진은 사진 저장소에서도 지움
     await this.images.syncPost(post.id, input.body, cover);
+    // 다른 기기에서 고치다 만 것도 이제 옛 글을 고친 것이라 같이 지움
+    await this.drafts.deleteForPost(post.id);
     // 공개하거나 나만 보기로 돌리면 이 글에 온 요청은 더 기다릴 일이 없음
     if (input.visibility !== 'approved') await this.requests.deleteForPost(post.id);
     return this.get(post.id, author);
   }
 
-  // 글을 지우면 그 글에 온 요청과 그 글만 허락한 것, 그 글의 사진도 같이 지움
+  // 글을 지우면 그 글에 온 요청과 그 글만 허락한 것, 그 글을 고치던 임시 글, 그 글의 사진도 같이 지움
   async remove(id: string): Promise<void> {
     if (!(await this.posts.delete(requireEntityId(id, POST_MISSING)))) throw new NotFoundException(POST_MISSING);
-    await Promise.all([this.requests.deleteForPost(id), this.grants.deleteForPost(id), this.images.removeForPost(id)]);
+    await Promise.all([
+      this.requests.deleteForPost(id), this.grants.deleteForPost(id), this.drafts.deleteForPost(id), this.images.removeForPost(id),
+    ]);
   }
 }

@@ -43,6 +43,37 @@ export class WriteBlogPostDto {
   roomId?: string | null;
 }
 
+// 임시저장. 쓰는 중이라 제목, 본문이 비어도 받고 길이 한도만 글과 같게 봄
+export class BlogDraftDto {
+  @Transform(oneLine)
+  @IsString()
+  @MaxLength(120)
+  title: string;
+
+  @IsString()
+  @MaxLength(50_000)
+  body: string;
+
+  @IsIn(VISIBILITIES)
+  visibility: Visibility;
+
+  @IsOptional()
+  @Transform(tagList)
+  @IsArray()
+  @ArrayMaxSize(TAG_MAX)
+  @IsString({ each: true })
+  @Length(1, 20, { each: true })
+  tags?: string[];
+
+  @IsOptional()
+  @Matches(BLOG_IMAGE_FILE)
+  cover?: string | null;
+
+  @IsOptional()
+  @IsMongoId()
+  roomId?: string | null;
+}
+
 export class RoomNameDto {
   @Transform(oneLine)
   @IsString()

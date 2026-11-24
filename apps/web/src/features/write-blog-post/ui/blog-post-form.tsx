@@ -1,30 +1,31 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { errorMessage } from '@shared/api';
 import { routes } from '@shared/config';
-import { cx, formatCount } from '@shared/lib';
+import { cx, formatClock, formatCount, formatDateTime } from '@shared/lib';
 import { FormStatus, NO_STATUS, type Status } from '@shared/ui';
 import {
   BLOG_LIMITS,
-  clearBlogDraft,
+  clearLocalDraft,
   createBlogPost,
-  readBlogDraft,
-  saveBlogDraft,
+  deleteBlogDraft,
+  readLocalDraft,
   updateBlogPost,
   VISIBILITY_LABEL,
+  type BlogDraft,
+  type BlogPost,
   type BlogPostInput,
   type Visibility,
 } from '@entities/blog-post';
+import { draftStart } from '../lib/draft-start';
+import { useAutosave, type AutosaveState } from '../lib/use-autosave';
 import { CoverPicker } from './cover-picker';
 import { RichEditor } from './rich-editor';
 import { RoomPicker } from './room-picker';
 import { TagInput } from './tag-input';
 import './blog-post-form.css';
-
-// 실수로 넋두리를 공개하는 쪽이 기술 글을 잠그는 쪽보다 곤란하므로 새 글은 '허락한 사람만'으로 시작함
-const EMPTY: BlogPostInput = { title: '', body: '', visibility: 'approved', tags: [], cover: null, roomId: null };
 
 const VISIBILITY_HINT: Record<Visibility, string> = {
   public: '누구나 읽습니다. 기술 글이나 남에게도 쓸모 있는 글',
@@ -35,30 +36,30 @@ const VISIBILITY_HINT: Record<Visibility, string> = {
 interface BlogPostFormProps {
   /** 고칠 글 ID. 없으면 새 글 */
   postId?: string;
-  initial?: BlogPostInput;
-  /** 새 글이면 이 브라우저에 남겨 둔 임시 글로 시작함. 로그인을 확인한 뒤에만 켬 */
-  restoreDraft?: boolean;
+  /** 고칠 글. 새 글이면 없음 */
+  post?: BlogPost;
+  /** 서버에 남은 임시 글. 이 브라우저에 남은 것과 견줘 늦게 남긴 쪽으로 이어 씀 */
+  serverDraft?: BlogDraft | null;
+  /** 로그인 확인 전, 불러오는 중, 주인장이 아닐 때. 임시 글을 불러오지도 남기지도 않음 */
   disabled?: boolean;
   initialStatus?: Status;
 }
 
-function startingDraft(initial: BlogPostInput | undefined, restoreDraft: boolean): BlogPostInput {
-  if (!restoreDraft) return initial ?? EMPTY;
-  const saved = readBlogDraft();
-  return { ...EMPTY, ...saved };
-}
+const AUTOSAVE_LABEL: Record<Exclude<AutosaveState['phase'], 'idle'>, string> = {
+  saving: '임시저장 중',
+  saved: '임시저장됨',
+  failed: '임시저장 못 함, 이 기기에만 둠',
+};
 
-export function BlogPostForm({ postId, initial, restoreDraft = false, disabled = false, initialStatus = NO_STATUS }: BlogPostFormProps) {
+export function BlogPostForm({ postId, post, serverDraft = null, disabled = false, initialStatus = NO_STATUS }: BlogPostFormProps) {
   const router = useRouter();
-  const [draft, setDraft] = useState(() => startingDraft(initial, restoreDraft));
+  const [start] = useState(() => draftStart(post ?? null, disabled ? null : serverDraft, disabled ? null : readLocalDraft(postId)));
+  const [draft, setDraft] = useState(start.restored?.content ?? start.base);
+  const [restoredAt, setRestoredAt] = useState(start.restored?.savedAt ?? null);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState(initialStatus);
   const [uploading, setUploading] = useState(0);
-
-  // 새 글은 고칠 때마다 이 브라우저에 임시로 남김. 사진을 올리는 중에도 본문이 바뀌므로 저장은 여기 한곳에서
-  useEffect(() => {
-    if (!postId) saveBlogDraft(draft);
-  }, [draft, postId]);
+  const autosave = useAutosave({ postId, draft, synced: start.synced, enabled: !disabled, paused: uploading > 0 });
 
   function change(next: Partial<BlogPostInput>) {
     setDraft((current) => ({ ...current, ...next }));
@@ -82,19 +83,54 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
     }
     setBusy(true);
     setStatus({ message: postId ? '고치는 중입니다.' : '글을 올리는 중입니다.' });
+    // 늦게 도착한 임시저장이 올린 뒤에 임시 글을 되살리지 않게 멈춰 둠. 서버 임시 글은 API 가 올리면서 지움
+    await autosave.hold();
     try {
-      const { post } = postId ? await updateBlogPost(postId, draft) : await createBlogPost(draft);
-      if (!postId) clearBlogDraft();
-      router.push(routes.blogPost(post.id));
+      const { post: saved } = postId ? await updateBlogPost(postId, draft) : await createBlogPost(draft);
+      clearLocalDraft(postId);
+      router.push(routes.blogPost(saved.id));
     } catch (error) {
+      autosave.release();
       setStatus({ message: errorMessage(error), tone: 'error' });
       setBusy(false);
     }
   }
 
+  // 이어 쓰던 임시 글을 버리고 올린 글(새 글이면 빈 글)로 돌아감
+  async function discard() {
+    if (!confirm(postId ? '고치던 내용을 버리고 올린 글로 되돌릴까요?' : '쓰던 글을 버리고 새로 쓸까요?')) return;
+    setBusy(true);
+    await autosave.hold();
+    try {
+      await deleteBlogDraft(postId);
+    } catch (error) {
+      autosave.release();
+      setStatus({ message: errorMessage(error), tone: 'error' });
+      setBusy(false);
+      return;
+    }
+    clearLocalDraft(postId);
+    autosave.reset(start.base);
+    autosave.release();
+    setDraft(start.base);
+    setRestoredAt(null);
+    setStatus({ message: postId ? '올린 글로 되돌렸습니다.' : '쓰던 글을 버렸습니다.' });
+    setBusy(false);
+  }
+
+  const saveState = autosave.state;
+
   return (
     <>
       <form className="blog-form" onSubmit={submit}>
+        {restoredAt && (
+          <p className="blog-draft-note">
+            <span>{formatDateTime(restoredAt)}에 임시저장한 글을 이어 씁니다.</span>
+            <button className="text-btn" type="button" disabled={busy} onClick={discard}>
+              {postId ? '버리고 올린 글로' : '버리고 새로 쓰기'}
+            </button>
+          </p>
+        )}
         <label className="sr" htmlFor="blog-title">
           제목
         </label>
@@ -146,6 +182,12 @@ export function BlogPostForm({ postId, initial, restoreDraft = false, disabled =
         {/* 글이 길어도 올리기 버튼이 늘 화면 아래에 보이게 붙여 둠 */}
         <div className="blog-form-bar">
           <span>{formatCount(draft.body.length, BLOG_LIMITS.bodyMax)}</span>
+          {saveState.phase !== 'idle' && (
+            <span className={cx('blog-form-saved', saveState.phase === 'failed' && 'is-failed')}>
+              {saveState.phase === 'saved' && `${formatClock(saveState.at)} `}
+              {AUTOSAVE_LABEL[saveState.phase]}
+            </span>
+          )}
           <FormStatus status={status} className="blog-form-status" />
           <button className="tape tape-lg" type="submit" disabled={busy || disabled}>
             {postId ? '고친 내용 저장' : '글 올리기'}

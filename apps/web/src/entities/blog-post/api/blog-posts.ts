@@ -1,5 +1,5 @@
 import { blogRequest } from '@shared/api';
-import type { AccessRequestState, BlogImage, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
+import type { AccessRequestState, BlogDraft, BlogImage, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
 
 /** 최근 글 10개씩. 잠긴 글은 제목과 태그만, 나만 보기 글은 주인장에게만 옴 */
 export function listBlogPosts({ before, room, tag, q, visibility }: BlogListQuery & { before?: string | null } = {}) {
@@ -21,6 +21,13 @@ export const createBlogPost = (input: BlogPostInput) => blogRequest<{ post: Blog
 export const updateBlogPost = (id: string, input: BlogPostInput) =>
   blogRequest<{ post: BlogPost }>(`/posts/${encodeURIComponent(id)}`, { method: 'PATCH', body: input });
 export const deleteBlogPost = (id: string) => blogRequest(`/posts/${encodeURIComponent(id)}`, { method: 'DELETE' });
+
+// 서버 임시 글. 새 글은 /drafts/new, 고치는 글은 그 글 ID. 주인장 본인 것만
+const draftPath = (postId?: string) => `/drafts/${postId ? encodeURIComponent(postId) : 'new'}`;
+export const getBlogDraft = (postId?: string) => blogRequest<{ draft: BlogDraft | null }>(draftPath(postId)).then(({ draft }) => draft);
+export const saveBlogDraft = (postId: string | undefined, input: BlogPostInput) =>
+  blogRequest<{ savedAt: string }>(draftPath(postId), { method: 'PUT', body: input });
+export const deleteBlogDraft = (postId?: string) => blogRequest(draftPath(postId), { method: 'DELETE' });
 
 /** 글에 넣을 사진. 주인장만. 브라우저에서 줄여 만든 파일을 본문 그대로 보냄 */
 export const uploadBlogImage = (photo: Blob) => blogRequest<{ image: BlogImage }>('/images', { method: 'POST', file: photo });

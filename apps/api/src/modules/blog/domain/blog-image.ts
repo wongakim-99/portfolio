@@ -6,7 +6,7 @@ export const BLOG_IMAGE_FILE = /^[a-f\d]{24}\.(?:jpg|png|webp)$/;
 export const BLOG_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 export const BLOG_IMAGE_MAX_SIDE = 4096;
 export const BLOG_IMAGE_TYPES = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' } as const;
-/** 글에 붙지 않은 채 이만큼 지난 사진은 쓰다 만 글의 것으로 보고 지움 (임시 글은 브라우저에 며칠씩 남음) */
+/** 글에 붙지 않은 채 이만큼 지난 사진은 쓰다 버린 글의 것으로 보고 지움. 서버 임시 글에 든 사진은 빼고 셈 */
 export const ORPHAN_AGE_MS = 7 * 24 * 60 * 60_000;
 
 export const blogImageKey = (file: string) => `blog/${file}`;
