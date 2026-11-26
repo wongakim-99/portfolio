@@ -7,11 +7,12 @@ import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 import { YoutubeCard, type YoutubeVideo } from '@shared/ui';
 import { loneVideoId, type ParagraphNode } from '../lib/lone-video';
+import { rehypeLineBreaks } from '../lib/rehype-line-breaks';
 import { remarkCallout } from '../lib/remark-callout';
 import './blog-markdown.css';
 
 // 블로그 본문 마크다운. 노션에서 쓰던 제목, 목록, 체크리스트, 표, 코드, 인용, 콜아웃, 사진을 그대로 그림
-// 글 안의 HTML 은 그리지 않고(react-markdown 기본), 링크 주소의 javascript: 같은 것도 걸러짐
+// 글 안의 HTML 은 그리지 않고(react-markdown 기본, 표 칸 안 줄바꿈 <br> 만 살림), 링크 주소의 javascript: 같은 것도 걸러짐
 // 줄바꿈은 쓴 그대로 살림(remark-breaks). 예전에 줄글로 쓴 글도 줄이 붙지 않음
 
 interface HastNode {
@@ -112,7 +113,7 @@ export function BlogMarkdown({ source, videos = [] }: { source: string; videos?:
 
   return (
     <div className="md">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkCallout]} rehypePlugins={[rehypeHighlight]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkCallout]} rehypePlugins={[rehypeLineBreaks, rehypeHighlight]} components={components}>
         {source}
       </ReactMarkdown>
     </div>

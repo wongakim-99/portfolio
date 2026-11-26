@@ -44,6 +44,8 @@
 .md .md-table { margin: 1.3em 0; overflow-x: auto; }
 .md table { width: 100%; border-collapse: collapse; font-size: 15px; line-height: 1.6; }
 .md th, .md td { padding: 9px 12px; border-bottom: 1px solid var(--paper-rule); text-align: left; vertical-align: top; }
+/* 칸 사이에도 가로줄과 같은 선을 그어 빈 칸도 몇 칸인지 보이게 함. 글쓰기 칸과 올린 글이 같은 모양 */
+.md th + th, .md td + td { border-left: 1px solid var(--paper-rule); }
 .md th { background: color-mix(in srgb, var(--desk) 30%, var(--paper)); font-weight: 700; }
 
 /* 코드 블록: 숨은 터미널과 같은 어두운 판. 위에 언어 이름과 복사 단추 */

@@ -104,9 +104,22 @@
 /* 표: 칸 너비는 올린 글처럼 내용 길이에 맞춰 저절로 정해지고, 종이보다 넓으면 표만 옆으로 밀어 봄. 칸을 누르면 고른 칸이 보이게 */
 .md-live .tableWrapper { margin: 1.3em 0; overflow-x: auto; }
 .md-live table { margin: 0; table-layout: auto; }
-.md-live th, .md-live td { position: relative; min-width: 4em; }
-/* 쓰는 동안만 칸 사이에 점선을 그어 빈 칸도 몇 칸인지 보이게 함. 올린 글은 지금처럼 가로줄만 */
-.md-live th + th, .md-live td + td { border-left: 1px dashed var(--paper-rule); }
+/* 커서가 든 표는 잰 너비로 묶어 둠 (editor-extensions 의 TableFit). 글자를 쳐도 칸이 움직이지 않고 칸 안에서 줄이 바뀜 */
+.md-live .tableWrapper[data-cols] table { table-layout: fixed; width: var(--table-width, 100%); }
+.md-live .tableWrapper[data-cols] col:nth-child(1) { width: var(--col-1); }
+.md-live .tableWrapper[data-cols] col:nth-child(2) { width: var(--col-2); }
+.md-live .tableWrapper[data-cols] col:nth-child(3) { width: var(--col-3); }
+.md-live .tableWrapper[data-cols] col:nth-child(4) { width: var(--col-4); }
+.md-live .tableWrapper[data-cols] col:nth-child(5) { width: var(--col-5); }
+.md-live .tableWrapper[data-cols] col:nth-child(6) { width: var(--col-6); }
+.md-live .tableWrapper[data-cols] col:nth-child(7) { width: var(--col-7); }
+.md-live .tableWrapper[data-cols] col:nth-child(8) { width: var(--col-8); }
+.md-live .tableWrapper[data-cols] col:nth-child(9) { width: var(--col-9); }
+.md-live .tableWrapper[data-cols] col:nth-child(10) { width: var(--col-10); }
+.md-live .tableWrapper[data-cols] col:nth-child(11) { width: var(--col-11); }
+.md-live .tableWrapper[data-cols] col:nth-child(12) { width: var(--col-12); }
+/* 쓰는 동안은 빈 칸도 들어가 쓸 만한 너비를 남김. 올린 글은 휴대폰에서도 표가 화면에 들어오게 최소 너비를 두지 않음 */
+.md-live th, .md-live td { position: relative; min-width: 7em; }
 .md-live th > p, .md-live td > p { margin: 0; }
 .md-live .selectedCell::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--pen) 14%, transparent); pointer-events: none; }
 /* 끝에 커서를 둘 수 없는 자리(표, 사진 뒤)에 나오는 가로 커서 */

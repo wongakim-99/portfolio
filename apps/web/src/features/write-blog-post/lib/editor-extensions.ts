@@ -90,14 +90,24 @@ const MarkdownLink = Extension.create({
   },
 });
 
-// 노션처럼 표 바로 아래 줄 맨 앞에서 Backspace 를 누르면 표 전체를 고르고, 한 번 더 누르면 표를 지움
+// 표 키보드. 노션처럼 표 바로 아래 줄 맨 앞에서 Backspace 를 누르면 표 전체를 고르고, 한 번 더 누르면 표를 지움
 // 두 번째는 TableKit 의 '모든 칸을 고르면 표를 지움'이 맡음. 그냥 두면 표는 앞 줄과 합쳐지지 않아 아무 일도 안 일어남
-const TableBackspace = Extension.create({
-  name: 'tableBackspace',
-  // 다른 Backspace 처리(목록, 인용 풀기 등)보다 먼저 봄. 표 바로 아래가 아니면 그냥 넘김
+const TableKeys = Extension.create({
+  name: 'tableKeys',
+  // TableKit 과 다른 Backspace 처리(목록, 인용 풀기 등)보다 먼저 봄. 해당하지 않으면 그냥 넘김
   priority: 1000,
   addKeyboardShortcuts() {
     return {
+      // 마지막 칸에서 Tab 을 눌러도 줄을 새로 만들지 않고 그 자리에 둠. 줄은 + 막대나 메뉴로만 더함
+      Tab: ({ editor }) => {
+        const { $head } = editor.state.selection;
+        for (let depth = $head.depth; depth > 2; depth -= 1) {
+          const name = $head.node(depth).type.name;
+          if (name !== 'tableCell' && name !== 'tableHeader') continue;
+          return $head.index(depth - 1) === $head.node(depth - 1).childCount - 1 && $head.index(depth - 2) === $head.node(depth - 2).childCount - 1;
+        }
+        return false;
+      },
       Backspace: ({ editor }) => {
         const { selection } = editor.state;
         const { $from } = selection;
@@ -113,6 +123,60 @@ const TableBackspace = Extension.create({
         });
       },
     };
+  },
+});
+
+// 표 칸 너비. 쉬고 있는 표는 올린 글처럼 내용 길이에 맞추고, 커서가 든 표는 그 너비로 묶어 둠
+// 묶지 않으면 글자를 칠 때마다 칸이 넓어지고 옆 칸이 줄어 듦. 커서가 표를 떠나거나 줄, 칸 수가 바뀌면 다시 맞춤
+// 너비는 표 상자(.tableWrapper, Tiptap TableView 가 그리고 편집기는 바뀜을 무시함)의 CSS 변수로만 줘서 문서와 마크다운은 그대로
+// blog-post-form.css 에 칸 너비 규칙(--col-1..12)을 둔 칸 수. 이보다 많은 표는 묶지 않고 자동 너비로 둠
+const FIT_MAX_COLS = 12;
+
+function fitTable(wrapper: HTMLElement): boolean {
+  const table = wrapper.querySelector('table');
+  const cells = table?.rows[0]?.cells;
+  if (!table || !cells?.length || cells.length > FIT_MAX_COLS) {
+    delete wrapper.dataset.cols;
+    return false;
+  }
+  delete wrapper.dataset.cols;
+  const total = table.getBoundingClientRect().width;
+  // 마크다운 칸으로 바꿔 둔 동안처럼 숨어 있으면 잴 수 없으니 자동 너비로 둠
+  if (!total) return false;
+  [...cells].forEach((cell, i) => wrapper.style.setProperty(`--col-${i + 1}`, `${(cell.getBoundingClientRect().width / total) * 100}%`));
+  // 종이보다 넓은 표는 그 너비 그대로 옆으로 밀어 봄
+  wrapper.style.setProperty('--table-width', total > wrapper.clientWidth + 1 ? `${total}px` : '100%');
+  wrapper.dataset.cols = String(cells.length);
+  return true;
+}
+
+const TableFit = Extension.create({
+  name: 'tableFit',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        key: new PluginKey('tableFit'),
+        view: (view) => {
+          // 마지막으로 맞춘 때의 줄 수, 칸 수, 글. 쉬고 있는 표는 이게 바뀐 때만 다시 잼
+          const fitted = new WeakMap<HTMLElement, string>();
+          const sync = () => {
+            const at = view.domAtPos(view.state.selection.from).node;
+            const active = (at instanceof Element ? at : at.parentElement)?.closest('.tableWrapper');
+            view.dom.querySelectorAll<HTMLElement>('.tableWrapper').forEach((wrapper) => {
+              const table = wrapper.querySelector('table');
+              const cols = table?.rows[0]?.cells.length ?? 0;
+              const sameShape = Number(wrapper.dataset.cols) === cols;
+              if (wrapper === active && sameShape) return;
+              const look = `${table?.rows.length}:${cols}:${table?.textContent}`;
+              if (sameShape && fitted.get(wrapper) === look) return;
+              if (fitTable(wrapper)) fitted.set(wrapper, look);
+            });
+          };
+          sync();
+          return { update: sync };
+        },
+      }),
+    ];
   },
 });
 
@@ -134,7 +198,8 @@ export function editorExtensions() {
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),
-    TableBackspace,
+    TableKeys,
+    TableFit,
     BlogImage.configure({ allowBase64: false }),
     CalloutLook,
     MarkdownLink,
