@@ -7,6 +7,7 @@ import { TableKit } from '@tiptap/extension-table';
 import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
+import { CellSelection, TableMap } from '@tiptap/pm/tables';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { StarterKit } from '@tiptap/starter-kit';
 import { common, createLowlight } from 'lowlight';
@@ -89,6 +90,32 @@ const MarkdownLink = Extension.create({
   },
 });
 
+// 노션처럼 표 바로 아래 줄 맨 앞에서 Backspace 를 누르면 표 전체를 고르고, 한 번 더 누르면 표를 지움
+// 두 번째는 TableKit 의 '모든 칸을 고르면 표를 지움'이 맡음. 그냥 두면 표는 앞 줄과 합쳐지지 않아 아무 일도 안 일어남
+const TableBackspace = Extension.create({
+  name: 'tableBackspace',
+  // 다른 Backspace 처리(목록, 인용 풀기 등)보다 먼저 봄. 표 바로 아래가 아니면 그냥 넘김
+  priority: 1000,
+  addKeyboardShortcuts() {
+    return {
+      Backspace: ({ editor }) => {
+        const { selection } = editor.state;
+        const { $from } = selection;
+        if (!selection.empty || $from.parentOffset !== 0 || !$from.parent.isTextblock) return false;
+        const blockStart = $from.before();
+        const table = editor.state.doc.resolve(blockStart).nodeBefore;
+        if (table?.type.name !== 'table') return false;
+        const map = TableMap.get(table);
+        const inside = blockStart - table.nodeSize + 1;
+        return editor.commands.command(({ tr }) => {
+          tr.setSelection(CellSelection.create(tr.doc, inside + map.map[0]!, inside + map.map[map.map.length - 1]!));
+          return true;
+        });
+      },
+    };
+  },
+});
+
 const EMPTY_HINT = '이야기를 적어 보세요. # 제목, - 목록, > 💡 콜아웃, ``` 코드처럼 치면 바로 바뀌고, 사진은 붙여넣거나 끌어다 놓으면 올라가요.';
 const LINE_HINT = '# 제목, - 목록, > 인용, ``` 코드';
 
@@ -107,6 +134,7 @@ export function editorExtensions() {
     TaskList,
     TaskItem.configure({ nested: true }),
     TableKit.configure({ table: { resizable: false } }),
+    TableBackspace,
     BlogImage.configure({ allowBase64: false }),
     CalloutLook,
     MarkdownLink,

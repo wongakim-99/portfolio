@@ -1,11 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, type FormEvent } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react';
 import { errorMessage } from '@shared/api';
 import { routes } from '@shared/config';
 import { cx, formatClock, formatCount, formatDateTime } from '@shared/lib';
-import { FormStatus, NO_STATUS, type Status } from '@shared/ui';
+import { ActionButton, FormStatus, NO_STATUS, type Status } from '@shared/ui';
 import {
   BLOG_LIMITS,
   clearLocalDraft,
@@ -20,7 +20,7 @@ import {
   type Visibility,
 } from '@entities/blog-post';
 import { draftStart } from '../lib/draft-start';
-import { useAutosave, type AutosaveState } from '../lib/use-autosave';
+import { useAutosave, type AutosaveState, type SaveOutcome } from '../lib/use-autosave';
 import { CoverPicker } from './cover-picker';
 import { RichEditor } from './rich-editor';
 import { RoomPicker } from './room-picker';
@@ -51,6 +51,14 @@ const AUTOSAVE_LABEL: Record<Exclude<AutosaveState['phase'], 'idle'>, string> = 
   failed: '임시저장 못 함, 이 기기에만 둠',
 };
 
+// 임시저장 단추를 누른 뒤 아래 막대에 남기는 말. 글을 올리는 중(held)에는 아무 말도 하지 않음
+const SAVE_MESSAGE: Record<Exclude<SaveOutcome, 'held'>, Status> = {
+  saved: { message: '임시저장했습니다.', tone: 'ok' },
+  unchanged: { message: '마지막 임시저장 뒤로 바뀐 내용이 없습니다.' },
+  uploading: { message: '사진을 다 올린 뒤에 임시저장됩니다.' },
+  failed: { message: '서버에 임시저장하지 못했습니다. 이 기기에는 남아 있습니다.', tone: 'error' },
+};
+
 export function BlogPostForm({ postId, post, serverDraft = null, disabled = false, initialStatus = NO_STATUS }: BlogPostFormProps) {
   const router = useRouter();
   const [start] = useState(() => draftStart(post ?? null, disabled ? null : serverDraft, disabled ? null : readLocalDraft(postId)));
@@ -60,6 +68,27 @@ export function BlogPostForm({ postId, post, serverDraft = null, disabled = fals
   const [status, setStatus] = useState(initialStatus);
   const [uploading, setUploading] = useState(0);
   const autosave = useAutosave({ postId, draft, synced: start.synced, enabled: !disabled, paused: uploading > 0 });
+  const saveNow = useRef(async () => {});
+
+  // 자동 임시저장은 그대로 두고, 단추나 ⌘S 로 바로 한 번 더 남김. 단축키는 한 번만 걸어서 늘 지금 함수를 부르게 ref 로 넘김
+  useLayoutEffect(() => {
+    saveNow.current = async () => {
+      const outcome = await autosave.saveNow();
+      if (outcome !== 'held') setStatus(SAVE_MESSAGE[outcome]);
+    };
+  });
+
+  useEffect(() => {
+    if (disabled) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.altKey || event.key.toLowerCase() !== 's') return;
+      // 브라우저의 '페이지 저장' 대신 임시저장
+      event.preventDefault();
+      void saveNow.current();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [disabled]);
 
   function change(next: Partial<BlogPostInput>) {
     setDraft((current) => ({ ...current, ...next }));
@@ -189,6 +218,9 @@ export function BlogPostForm({ postId, post, serverDraft = null, disabled = fals
             </span>
           )}
           <FormStatus status={status} className="blog-form-status" />
+          <ActionButton icon="save" className="blog-form-save" title="임시저장 (⌘S)" disabled={busy || disabled} onClick={() => void saveNow.current()}>
+            임시저장
+          </ActionButton>
           <button className="tape tape-lg" type="submit" disabled={busy || disabled}>
             {postId ? '고친 내용 저장' : '글 올리기'}
           </button>

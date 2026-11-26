@@ -10,6 +10,7 @@ import { BLOG_LIMITS, CALLOUT_EMOJI, uploadBlogImage } from '@entities/blog-post
 import { editorExtensions } from '../lib/editor-extensions';
 import { htmlToMarkdown, looksStructured } from '../lib/html-to-markdown';
 import { looksLikeMarkdown, vscodeLanguage } from '../lib/paste-kind';
+import { TableControls } from './table-controls';
 
 type Tool = { label: string; hint: string; active?: (editor: Editor) => boolean; run: (editor: Editor) => void };
 
@@ -123,6 +124,7 @@ export function RichEditor({ value, onChange, uploading, onUploading, onStatus }
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
   const [dropping, setDropping] = useState(false);
   const picker = useRef<HTMLInputElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   // 편집기가 마지막으로 내보낸 마크다운. 바깥(마크다운 칸)에서 바뀐 값만 편집기에 다시 넣음
   const emitted = useRef(value);
   // 편집기 설정은 한 번만 만들어지므로, 붙여넣기 같은 처리는 늘 지금 함수를 부르게 ref 로 넘김
@@ -279,6 +281,7 @@ export function RichEditor({ value, onChange, uploading, onUploading, onStatus }
 
   return (
     <div
+      ref={box}
       className={cx('md-editor', dropping && 'is-dropping')}
       onDragOver={(event) => {
         if (event.dataTransfer.types.includes('Files')) setDropping(true);
@@ -374,6 +377,7 @@ export function RichEditor({ value, onChange, uploading, onUploading, onStatus }
       </div>
 
       <EditorContent editor={editor} hidden={mode !== 'write'} />
+      {mode === 'write' && <TableControls editor={editor} host={box} />}
       {mode === 'source' && (
         <>
           <label className="sr" htmlFor="blog-body">

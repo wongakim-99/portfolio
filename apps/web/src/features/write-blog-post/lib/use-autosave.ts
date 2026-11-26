@@ -11,6 +11,9 @@ const RETRY_MS = 15_000;
 
 export type AutosaveState = { phase: 'idle' } | { phase: 'saving' } | { phase: 'saved'; at: string } | { phase: 'failed' };
 
+/** 한 번 남겨 본 결과. unchanged 는 서버에 이미 같은 내용이 있음, uploading 은 사진을 올리는 중이라 미룸, held 는 글을 올리는 중 */
+export type SaveOutcome = 'saved' | 'unchanged' | 'uploading' | 'held' | 'failed';
+
 interface AutosaveOptions {
   /** 고치는 글 ID. 새 글이면 없음 */
   postId?: string;
@@ -44,15 +47,19 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
     blocked.current = paused;
   });
 
-  const flush = useCallback(async () => {
+  const flush = useCallback(async (): Promise<SaveOutcome> => {
     // 한 번에 하나씩. 앞에 보낸 것이 끝난 뒤의 내용으로 다시 봄
     while (inflight.current) await inflight.current;
     const snapshot = latest.current;
     const snapshotKey = contentKey(snapshot);
-    if (held.current || blocked.current || snapshotKey === syncedKey.current) return;
+    if (held.current) return 'held';
+    if (blocked.current) return 'uploading';
+    if (snapshotKey === syncedKey.current) return 'unchanged';
     setState({ phase: 'saving' });
+    let saved = false;
     const run = saveBlogDraft(postId, snapshot).then(
       ({ savedAt }) => {
+        saved = true;
         syncedKey.current = snapshotKey;
         dirtySince.current = null;
         // 보내는 동안 더 쳤으면 이 기기 것은 남겨 둠
@@ -68,6 +75,7 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
     inflight.current = run;
     await run;
     inflight.current = null;
+    return saved ? 'saved' : 'failed';
   }, [postId]);
 
   useEffect(() => {
@@ -122,5 +130,6 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
     setState({ phase: 'idle' });
   }, []);
 
-  return { state, hold, release, reset };
+  // 임시저장 단추와 ⌘S. 쉬는 틈을 기다리지 않고 바로 남김
+  return { state, saveNow: flush, hold, release, reset };
 }

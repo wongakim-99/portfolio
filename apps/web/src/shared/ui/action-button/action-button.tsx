@@ -23,6 +23,13 @@ const ICONS = {
       <path d="M5 4h12l-2 4 2 4H5" />
     </>
   ),
+  save: (
+    <>
+      <path d="M5 3h11l3 3v13a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z" />
+      <path d="M7 3v5h8V3" />
+      <path d="M7 21v-7h10v7" />
+    </>
+  ),
 } satisfies Record<string, ReactNode>;
 
 interface ActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -33,7 +40,7 @@ interface ActionButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   size?: 'md' | 'sm';
 }
 
-/** 글과 댓글의 수정, 삭제, 신고 버튼 */
+/** 글과 댓글의 수정, 삭제, 신고 버튼과 블로그 글쓰기의 임시저장 버튼 */
 export function ActionButton({ icon, tone, size = 'md', className, children, type = 'button', ...rest }: ActionButtonProps) {
   return (
     <button type={type} className={cx('action-btn', tone === 'danger' && 'action-btn-danger', size === 'sm' && 'action-btn-sm', className)} {...rest}>

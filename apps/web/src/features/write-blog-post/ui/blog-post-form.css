@@ -51,7 +51,7 @@
 .blog-cover-actions .text-btn { font-size: 14px; }
 
 /* 편집기: 위에 붙어 따라오는 도구 막대, 노션처럼 바로 모양이 바뀌는 쓰기 칸, 마크다운 원문 칸 */
-.md-editor { border-top: 1px solid var(--paper-rule); }
+.md-editor { position: relative; border-top: 1px solid var(--paper-rule); }
 .md-editor.is-dropping .md-live { outline: 2px dashed var(--pen); outline-offset: 6px; border-radius: 4px; }
 .md-toolbar { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 0; border-bottom: 1px dashed var(--paper-rule); background: var(--paper); }
 .md-modes { display: inline-flex; gap: 2px; padding: 2px; border-radius: 999px; background: color-mix(in srgb, var(--desk) 35%, var(--paper)); }
@@ -101,10 +101,12 @@
 .md-live ul[data-type="taskList"] li > div { flex: 1; min-width: 0; }
 .md-live ul[data-type="taskList"] li > div > p { margin: 0; }
 .md-live ul[data-type="taskList"] li[data-checked="true"] > div { color: var(--ink-soft); text-decoration: line-through; }
-/* 표: 칸을 누르면 고른 칸이 보이게 */
+/* 표: 칸 너비는 올린 글처럼 내용 길이에 맞춰 저절로 정해지고, 종이보다 넓으면 표만 옆으로 밀어 봄. 칸을 누르면 고른 칸이 보이게 */
 .md-live .tableWrapper { margin: 1.3em 0; overflow-x: auto; }
-.md-live table { margin: 0; table-layout: fixed; }
+.md-live table { margin: 0; table-layout: auto; }
 .md-live th, .md-live td { position: relative; min-width: 4em; }
+/* 쓰는 동안만 칸 사이에 점선을 그어 빈 칸도 몇 칸인지 보이게 함. 올린 글은 지금처럼 가로줄만 */
+.md-live th + th, .md-live td + td { border-left: 1px dashed var(--paper-rule); }
 .md-live th > p, .md-live td > p { margin: 0; }
 .md-live .selectedCell::after { content: ""; position: absolute; inset: 0; background: color-mix(in srgb, var(--pen) 14%, transparent); pointer-events: none; }
 /* 끝에 커서를 둘 수 없는 자리(표, 사진 뒤)에 나오는 가로 커서 */
@@ -113,11 +115,36 @@
 .md-live .ProseMirror-gapcursor::after { content: ""; position: absolute; top: -2px; width: 20px; border-top: 2px solid var(--pen); animation: md-caret 1.1s steps(2, start) infinite; }
 @keyframes md-caret { to { visibility: hidden; } }
 
+/* 표 손잡이: 노션처럼 마우스를 올리면 줄 왼쪽, 칸 위에 점 손잡이와 오른쪽, 아래쪽에 + 막대가 나옴 */
+.md-table-ctl { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.md-table-ctl > * { pointer-events: auto; }
+.md-table-grip { position: absolute; display: grid; place-items: center; padding: 0; border: 1px solid var(--paper-rule); border-radius: 4px; background: var(--paper); color: var(--ink-soft); box-shadow: 0 1px 2px rgb(15 20 25 / .1); cursor: pointer; transform: translate(-50%, -50%); transition: background-color .15s ease, color .15s ease; }
+.md-table-grip.is-col { width: 26px; height: 16px; }
+.md-table-grip.is-row { width: 16px; height: 26px; margin-left: -14px; }
+.md-table-grip svg { width: 14px; height: 14px; fill: currentColor; }
+.md-table-grip:hover, .md-table-grip.is-open { background: var(--blog-tint); color: var(--ink); }
+.md-table-grip:focus-visible, .md-table-add:focus-visible { outline: 2px solid var(--pen); outline-offset: 1px; }
+.md-table-add { position: absolute; display: grid; place-items: center; padding: 0; border: 0; border-radius: 4px; background: color-mix(in srgb, var(--desk) 30%, transparent); color: var(--ink-soft); font: inherit; font-size: 15px; line-height: 1; opacity: .6; cursor: pointer; transition: opacity .15s ease, background-color .15s ease, color .15s ease; }
+.md-table-add.is-col { width: 18px; }
+.md-table-add.is-row { height: 18px; }
+.md-table-add:hover { opacity: 1; background: color-mix(in srgb, var(--pen) 14%, var(--paper)); color: var(--pen); }
+.md-table-menu { position: absolute; display: grid; min-width: 150px; padding: 6px; border: 1px solid var(--paper-rule); border-radius: 6px; background: var(--paper); box-shadow: 0 10px 24px -12px rgb(15 20 25 / .4); }
+.md-table-menu button { padding: 7px 10px; border: 0; border-radius: 4px; background: none; color: var(--ink); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.md-table-menu button:hover, .md-table-menu button:focus-visible { background: var(--blog-tint); outline: none; }
+.md-table-menu .is-danger { color: var(--stamp-red); }
+.md-table-menu hr { margin: 4px 2px; border: 0; border-top: 1px dashed var(--paper-rule); }
+/* 마우스가 없는 화면은 도구 막대의 표 단추를 씀 */
+@media (hover: none) {
+  .md-table-ctl { display: none; }
+}
+
 .blog-form-bar { position: sticky; bottom: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 14px 0 calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid var(--paper-rule); background: var(--paper); color: var(--ink-soft); font-family: var(--font-mono); font-size: 12px; }
 /* 본문 끝에서 입력해도 커서가 아래 막대에 가리지 않게 그만큼 띄워서 스크롤함 */
 html:has(.blog-form-bar) { scroll-padding-bottom: 96px; }
 .blog-form-bar .tape:disabled { opacity: .6; cursor: wait; transform: none; }
 .blog-form-bar .form-status.blog-form-status { flex: 1 1 0; min-width: 0; min-height: 0; margin: 0; font-family: var(--font-body); font-size: 13px; }
+/* 임시저장은 글 올리기 옆의 테두리 단추. 막대 글꼴이 고정폭이라 본문 글꼴로 돌림 */
+.blog-form-bar .blog-form-save { height: 46px; font-family: var(--font-body); }
 /* 임시저장 시각은 글자 수 옆에. 서버에 못 남기면 빨간 펜 색으로 */
 .blog-form-saved { white-space: nowrap; }
 .blog-form-saved.is-failed { color: var(--stamp-red); white-space: normal; }
