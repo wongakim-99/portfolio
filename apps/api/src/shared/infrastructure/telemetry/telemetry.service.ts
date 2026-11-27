@@ -11,7 +11,7 @@ export interface TelemetryEvent { seq: number; at: number; kind: TelemetryKind; 
 const KEEP_EVENTS = 400;
 const VISITOR_WINDOW_MS = 5 * 60_000;
 // 배포 헬스체크와 관리실이 2초마다 부르는 토폴로지 요청은 화면을 어지럽혀서 세지 않음
-const QUIET_PATHS = new Set(['/api/health', '/api/community/admin/topology']);
+const QUIET_PATHS = new Set(['/api/health', '/api/community/admin/topology', '/api/community/admin/performance']);
 const QUIET_COMMANDS = new Set(['ping', 'hello', 'isMaster', 'endSessions', 'buildInfo']);
 
 // 관리실 토폴로지에 흘려보낼 최근 요청, DB 명령, 사진 저장소 작업. 메모리에 최근 것만 두고 재시작하면 비움
@@ -21,6 +21,7 @@ export class TelemetryService implements OnModuleInit {
   private seq = 0;
   private events: TelemetryEvent[] = [];
   private readonly visitors = new Map<string, number>();
+  private readonly listeners = new Set<(event: TelemetryEvent) => void>();
 
   constructor(@InjectConnection() private readonly connection: Connection) {}
 
@@ -35,8 +36,16 @@ export class TelemetryService implements OnModuleInit {
   }
 
   record(kind: TelemetryKind, label: string, ms: number, status = 200): void {
-    this.events.push({ seq: ++this.seq, at: Date.now(), kind, label, status, ms: Math.round(ms) });
+    const event = { seq: ++this.seq, at: Date.now(), kind, label, status, ms: Math.round(ms) };
+    this.events.push(event);
     if (this.events.length > KEEP_EVENTS) this.events.splice(0, this.events.length - KEEP_EVENTS);
+    for (const listener of this.listeners) listener(event);
+  }
+
+  /** 기록이 생길 때마다 부름. 서버 상태의 1분 집계가 최근 400건 밖의 요청까지 세려고 씀. 돌려받은 함수로 끊음 */
+  listen(listener: (event: TelemetryEvent) => void): () => void {
+    this.listeners.add(listener);
+    return () => this.listeners.delete(listener);
   }
 
   middleware(salt: string) {

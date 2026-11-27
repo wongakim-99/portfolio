@@ -636,6 +636,37 @@ describe('community', () => {
     expect(events.some((event) => event.label.includes('topology'))).toBe(false);
     expect(next.body.rates.http).toBeGreaterThanOrEqual(2);
   });
+
+  it('관리실 서버 상태: 요청을 1분 줄로 세고, 점검표와 기간 그래프, 느린 경로, 컬렉션 크기를 줌', async () => {
+    const server = app.getHttpServer();
+    const performance = (range?: string) => request(server)
+      .get(`/api/community/admin/performance${range ? `?range=${range}` : ''}`)
+      .set('Authorization', `Bearer ${ADMIN_TOKEN}`);
+    await request(server).get('/api/community/admin/performance').expect(401);
+    await performance('2h').expect(400);
+    for (let i = 0; i < 6; i++) await request(server).get('/api/community/posts').expect(200);
+    await request(server).get('/api/wp-login.php').expect(404);
+
+    const hour = await performance().expect(200);
+    expect(hour.headers['cache-control']).toContain('no-store');
+    expect(hour.body.range).toBe('1h');
+    expect(hour.body.series).toHaveLength(60);
+    const checks = hour.body.health.checks as { key: string; level: string }[];
+    expect(checks.map((check) => check.key)).toEqual(['latency', 'errors', 'cpu', 'lag', 'heap', 'memory', 'temp', 'power', 'db', 'storage', 'disk']);
+    expect(checks.find((check) => check.key === 'db')).toMatchObject({ level: 'good' });
+    expect(checks.find((check) => check.key === 'storage')).toMatchObject({ level: 'unknown' });
+    expect(hour.body.totals.requests).toBeGreaterThanOrEqual(7);
+    expect(hour.body.totals.clientErrors).toBeGreaterThanOrEqual(1);
+    const routes = hour.body.slowRoutes as { route: string; count: number }[];
+    expect(routes).toEqual(expect.arrayContaining([expect.objectContaining({ route: 'GET /api/community/posts' })]));
+    // 서버 상태와 구성도를 묻는 요청 자신은 세지 않음
+    expect(routes.some((route) => /admin\/(performance|topology)/.test(route.route))).toBe(false);
+    expect(hour.body.database.up).toBe(true);
+    expect(hour.body.database.collections).toEqual(expect.arrayContaining([expect.objectContaining({ name: 'community_users' })]));
+
+    expect((await performance('6h').expect(200)).body.series).toHaveLength(72);
+    expect((await performance('7d').expect(200)).body.series).toHaveLength(84);
+  });
 });
 
 describe('blog', () => {

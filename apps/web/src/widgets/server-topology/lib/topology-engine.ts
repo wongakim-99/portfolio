@@ -1,6 +1,6 @@
 import type { TelemetryEvent, TelemetryKind, TopologySnapshot } from '@entities/server-status';
 
-// 관리실 '지금 서버' 구성도를 SVG 로 그리고, 받은 요청, DB 명령, 사진 저장소 작업을 일어난 간격 그대로 점으로 흘려보냄
+// 관리실 '지금 흐름' 구성도를 SVG 로 그리고, 받은 요청, DB 명령, 사진 저장소 작업을 일어난 간격 그대로 점으로 흘려보냄
 // 점이 초당 수십 번 움직여서 React 상태를 거치지 않고 SVG 요소를 바로 고침. 화면 조립은 server-topology.tsx 가 함
 // 페이지 요청은 방문자에서 api 까지 들어갔다가 응답 색으로 돌아오고, DB 와 저장소 작업은 api 에서 오감
 

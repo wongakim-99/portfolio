@@ -9,6 +9,7 @@ import { AdminBlogRooms } from '@widgets/admin-blog-rooms';
 import { AdminInbox } from '@widgets/admin-inbox';
 import { AdminMembers } from '@widgets/admin-members';
 import { AdminReports } from '@widgets/admin-reports';
+import { ServerConsole } from '@widgets/server-console';
 import { ServerTopology } from '@widgets/server-topology';
 import { listAccessRequests } from '@entities/blog-access';
 import { getRoomOverview } from '@entities/blog-post';
@@ -22,7 +23,7 @@ type SectionKey = 'server' | 'members' | 'blog-rooms' | 'blog-requests' | 'inbox
 
 // 관리실 칸. 칸마다 권한이 따로 있어서 가진 권한의 칸만 보임. 실제 허용 여부는 API 가 요청마다 다시 확인함
 const SECTIONS: { key: SectionKey; label: string; permission: Permission }[] = [
-  { key: 'server', label: '지금 서버', permission: 'server:read' },
+  { key: 'server', label: '서버 상태', permission: 'server:read' },
   { key: 'members', label: '회원', permission: 'members:read' },
   { key: 'blog-rooms', label: '블로그 방', permission: 'blog:write' },
   { key: 'blog-requests', label: '블로그 열람', permission: 'blog:grant' },
@@ -102,7 +103,7 @@ export function AdminPage() {
         <p className="community-meta admin-lead">
           {user && !active ? '관리자 권한이 있는 계정만 볼 수 있습니다.' : '지금 서버 상태와 회원, 블로그 방과 열람, 홈 엽서로 받은 쪽지, 피드 신고를 봅니다.'}
         </p>
-        {active === 'server' && <ServerTopology />}
+        {active === 'server' && <ServerConsole live={<ServerTopology />} />}
         {active === 'members' && <AdminMembers />}
         {active === 'blog-rooms' && <AdminBlogRooms onStatus={report} />}
         {active === 'blog-requests' && <AdminBlogAccess onStatus={report} />}

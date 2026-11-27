@@ -137,7 +137,7 @@
   color-scheme: dark;
 }
 
-/* 관리실 '지금 서버' 구성도의 점 색. DB 명령은 보라, 사진 저장소는 청록 */
+/* 관리실 '지금 흐름' 구성도의 점 색. DB 명령은 보라, 사진 저장소는 청록 */
 :root { --pkt-db: #7c3aed; --pkt-storage: #0d9488; }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) { --pkt-db: #a78bfa; --pkt-storage: #2dd4bf; }

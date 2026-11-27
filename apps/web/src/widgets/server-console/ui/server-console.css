@@ -1,0 +1,97 @@
+/* 관리실 '서버 상태'. 종이 위에 테이프로 붙인 점검표, 색인 카드 같은 그래프 카드, 장부처럼 점선 그은 표
+   LED 색은 홈 노트북 LED 와 같은 토큰(--led, --led-warn), 나쁜 것은 도장 빨강 */
+.console { --console-warn: color-mix(in srgb, var(--led-warn) 70%, var(--ink)); transition: opacity .2s ease; }
+.console.is-stale { opacity: .55; }
+.console h4 { margin: 0 0 8px; font-size: 15px; letter-spacing: -.01em; }
+.console-lead { margin: 14px 0 0; color: var(--ink-soft); font-size: 14px; }
+.console-empty { margin: 0; color: var(--ink-soft); font-size: 14px; }
+
+/* 점검표: 테이프 한 조각으로 종이에 붙인 영수증 종이 */
+.console-check { position: relative; margin-top: 22px; padding: 22px 20px 14px; background: var(--receipt); color: var(--receipt-ink); box-shadow: var(--shadow-sticker); }
+.console-check.is-waiting { height: 220px; }
+.console-check::before { content: ""; position: absolute; top: -9px; left: 50%; width: 96px; height: 20px; background: color-mix(in srgb, var(--sticky-1) 60%, transparent); transform: translateX(-50%) rotate(-2deg); }
+.console-check-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; }
+/* 판정 도장. 두 겹 테두리에 살짝 기울여 찍음 */
+.console-verdict { flex: none; margin: 0; padding: 6px 12px; border: 2px solid currentColor; border-radius: 6px; box-shadow: inset 0 0 0 2px var(--receipt), inset 0 0 0 3.5px currentColor; color: var(--ink-soft); font-size: 17px; font-weight: 800; letter-spacing: .04em; transform: rotate(-4deg); }
+.console-check.is-good .console-verdict { color: var(--pen); }
+.console-check.is-warn .console-verdict { color: var(--console-warn); }
+.console-check.is-bad .console-verdict { color: var(--stamp-red); }
+.console-problems { display: grid; flex: 1 1 260px; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 14px; font-weight: 600; }
+.console-problems li { display: flex; gap: 8px; }
+.console-problems li::before { content: "!"; flex: none; width: 1ch; color: var(--console-warn); font-family: var(--font-mono); font-weight: 800; }
+.console-problems li.is-bad::before { content: "✕"; color: var(--stamp-red); }
+.console-calm { flex: 1 1 260px; margin: 0; color: color-mix(in srgb, var(--receipt-ink) 75%, transparent); font-size: 13.5px; line-height: 1.6; }
+.console-leds { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); gap: 0 22px; margin: 16px 0 0; padding: 0; list-style: none; font-size: 13px; }
+.console-leds li { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed color-mix(in srgb, var(--receipt-ink) 22%, transparent); }
+.console-leds i { flex: none; width: 8px; height: 8px; border-radius: 50%; background: color-mix(in srgb, var(--receipt-ink) 25%, transparent); }
+.console-leds .is-good i { background: var(--led); box-shadow: 0 0 4px var(--led); }
+.console-leds .is-warn i { background: var(--led-warn); box-shadow: 0 0 4px var(--led-warn); }
+.console-leds .is-bad i { background: var(--stamp-red); box-shadow: 0 0 4px var(--stamp-red); }
+.console-leds span { flex: 1; min-width: 0; overflow: hidden; color: color-mix(in srgb, var(--receipt-ink) 80%, transparent); white-space: nowrap; text-overflow: ellipsis; }
+.console-leds b { font-family: var(--font-mono); font-size: 12px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.console-leds .is-unknown b { color: color-mix(in srgb, var(--receipt-ink) 55%, transparent); font-family: var(--font-body); font-weight: 400; }
+.console-leds .is-warn b { color: var(--console-warn); }
+.console-leds .is-bad b { color: var(--stamp-red); }
+.console-note { margin: 10px 0 0; color: color-mix(in srgb, var(--receipt-ink) 60%, transparent); font-size: 12px; }
+
+/* 기간 고르기: 블로그 목록 보기 고르기와 같은 둥근 칸 */
+.console-range { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: color-mix(in srgb, var(--desk) 45%, var(--paper)); }
+.console-range button { padding: 5px 12px; border: 0; border-radius: 999px; background: none; color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.console-range button:hover { color: var(--ink); }
+.console-range button[aria-pressed="true"] { background: var(--paper); color: var(--ink); box-shadow: 0 1px 2px rgb(15 20 25 / .14); }
+.console-range button:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
+
+/* 그래프 카드: 위에 빨간 줄 하나 그은 색인 카드 */
+.console-tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 14px; margin-top: 22px; }
+.console-tile { min-width: 0; padding: 12px 14px 10px; border-top: 2px solid color-mix(in srgb, var(--stamp-red) 40%, transparent); background: var(--receipt); color: var(--receipt-ink); box-shadow: var(--shadow-sticker); }
+.console-tile p { margin: 0; }
+.console-tile-label { color: color-mix(in srgb, var(--receipt-ink) 70%, transparent); font-size: 12px; font-weight: 600; }
+.console-tile-value { margin-top: 4px !important; font-family: var(--font-mono); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em; white-space: nowrap; }
+.console-tile-value.is-muted { padding: 5px 0 2px; color: color-mix(in srgb, var(--receipt-ink) 55%, transparent); font-family: var(--font-body); font-size: 16px; font-weight: 600; }
+.console-tile.is-warn .console-tile-value { color: var(--console-warn); }
+.console-tile.is-bad .console-tile-value { color: var(--stamp-red); }
+.console-tile-sub { min-height: 2.8em; margin-top: 2px !important; color: color-mix(in srgb, var(--receipt-ink) 62%, transparent); font-size: 11.5px; line-height: 1.4; }
+.console-spark { display: block; width: 100%; height: 30px; margin-top: 8px; overflow: visible; }
+.console-spark polyline { fill: none; stroke: var(--pen); stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+.console-spark circle, .console-spark rect { fill: color-mix(in srgb, var(--pen) 75%, transparent); }
+.console-spark.is-warn polyline { stroke: var(--console-warn); }
+.console-spark.is-warn rect, .console-spark.is-warn circle { fill: var(--console-warn); }
+.console-spark.is-bad polyline { stroke: var(--stamp-red); }
+.console-spark.is-bad rect, .console-spark.is-bad circle { fill: var(--stamp-red); }
+.console-spark-base { stroke: color-mix(in srgb, var(--receipt-ink) 18%, transparent); stroke-width: 1; vector-effect: non-scaling-stroke; }
+
+/* 장부 표: 머리줄은 연필로 긋고 줄마다 점선 */
+.console-table-wrap { overflow-x: auto; }
+.console-table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+.console-table th { padding: 6px 8px; border-bottom: 1.5px solid color-mix(in srgb, var(--ink) 55%, transparent); color: var(--ink-soft); font-size: 12px; font-weight: 600; text-align: right; white-space: nowrap; }
+.console-table td { padding: 7px 8px; border-bottom: 1px dashed var(--paper-rule); font-family: var(--font-mono); font-size: 12px; text-align: right; white-space: nowrap; }
+.console-table th:first-child, .console-table td:first-child { padding-left: 0; text-align: left; }
+.console-table td.is-bad { color: var(--stamp-red); font-weight: 700; }
+.console-route { max-width: 280px; overflow: hidden; text-overflow: ellipsis; }
+.console-share { display: inline-flex; align-items: center; justify-content: flex-end; gap: 6px; width: 92px; }
+.console-share i { display: block; height: 6px; max-width: 46px; border-radius: 1px; background: color-mix(in srgb, var(--pen) 70%, transparent); }
+
+.console-stores { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.5fr); gap: 28px 36px; margin-top: 22px; }
+.console-stores .console-panel h4:not(:first-child) { margin-top: 22px; }
+.console-panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 28px 36px; margin-top: 22px; }
+.console-panel { min-width: 0; }
+.console-rows { display: grid; gap: 6px; margin: 0; font-size: 13.5px; }
+.console-rows div { display: flex; justify-content: space-between; gap: 14px; padding-bottom: 6px; border-bottom: 1px dashed var(--paper-rule); }
+.console-rows dt { flex: none; color: var(--ink-soft); }
+.console-rows dd { min-width: 0; margin: 0; font-family: var(--font-mono); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+
+/* 최근 배포: 영수증 한 줄씩 */
+.console-deploys { display: grid; gap: 3px; margin: 12px 0 0; padding: 10px 12px; background: var(--receipt); color: var(--receipt-ink); box-shadow: var(--shadow-sticker); font-family: var(--font-mono); font-size: 11.5px; list-style: none; }
+.console-deploys:empty { display: none; }
+.console-deploys li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; }
+.console-deploys li span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.console-deploys li.is-bad span:last-child { color: var(--stamp-red); font-weight: 700; }
+
+@media (max-width: 720px) {
+  .console-stores { grid-template-columns: minmax(0, 1fr); }
+  .console-check { padding: 20px 16px 12px; }
+  /* 휴대폰에서도 카드를 두 장씩 놓아 여덟 장이 너무 길게 늘어서지 않게 함 */
+  .console-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .console-tile { padding: 10px 10px 8px; }
+  .console-tile-value { font-size: 18px; }
+}

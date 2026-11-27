@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { errorStatus } from '@shared/api';
-import { formatDuration } from '@shared/lib';
-import { getTopology, type TelemetryEvent, type TopologySnapshot } from '@entities/server-status';
+import { getTopology, type TelemetryEvent } from '@entities/server-status';
 import { TopologyEngine } from '../lib/topology-engine';
 import './server-topology.css';
 
@@ -21,26 +20,10 @@ const LEGEND = [
 
 const toneOf = (status: number) => (status >= 500 ? 'is-error' : status >= 400 ? 'is-warn' : undefined);
 
-function hostRows({ host, nodes }: TopologySnapshot): [string, string][] {
-  const battery = host.battery
-    ? `${host.battery.percent}% ${host.battery.charging ? '충전 중' : host.battery.pluggedIn ? '전원 연결' : '배터리 사용'}`
-    : '없음';
-  return [
-    ['CPU 온도', host.cpuTemp === null ? '센서 없음' : `${host.cpuTemp}°C`],
-    ['부하 (1분)', `${host.load} / ${host.cores}코어`],
-    ['메모리', `${host.memoryUsedPercent}%`],
-    ['배터리', battery],
-    ['노트북 가동', formatDuration(host.uptime)],
-    ['api 가동', `${formatDuration(nodes.api.uptime)}, ${nodes.api.memoryMb}MB`],
-    ['배포 버전', host.release?.commit ?? '로컬'],
-  ];
-}
-
-/** 관리실 맨 위 '지금 서버'. 권한(server:read)이 있을 때만 보임 */
+/** 관리실 '서버 상태' 가운데의 '지금 흐름'. 요청 하나하나를 점으로 흘려 보여 줌. 권한(server:read)이 있을 때만 보임 */
 export function ServerTopology() {
   const stageRef = useRef<HTMLDivElement>(null);
   const [meta, setMeta] = useState('연결하는 중');
-  const [snapshot, setSnapshot] = useState<TopologySnapshot | null>(null);
   const [recent, setRecent] = useState<TelemetryEvent[] | null>(null);
 
   useEffect(() => {
@@ -64,7 +47,6 @@ export function ServerTopology() {
         if (cursor !== null) engine.replay(data.events, Date.now() - data.now);
         cursor = data.cursor;
         engine.render(data);
-        setSnapshot(data);
         const http = data.events.filter((event) => event.kind === 'http').reverse();
         setRecent((list) => [...http, ...(list ?? [])].slice(0, RECENT));
         setMeta(`2초마다 갱신, ${clock.format(Date.now())}`);
@@ -101,7 +83,7 @@ export function ServerTopology() {
   return (
     <section className="admin-block" aria-labelledby="topology-title">
       <div className="community-section-head">
-        <h3 id="topology-title">지금 서버</h3>
+        <h3 id="topology-title">지금 흐름</h3>
         <span className="community-meta">{meta}</span>
       </div>
       <div className="topology-stage" ref={stageRef} />
@@ -113,16 +95,8 @@ export function ServerTopology() {
           </li>
         ))}
       </ul>
+      {/* 노트북과 api 숫자는 위 '서버 상태'의 노트북, 프로세스 칸에 있어서 여기는 최근 요청만 */}
       <div className="topology-panels">
-        <dl className="topology-host">
-          {snapshot &&
-            hostRows(snapshot).map(([term, value]) => (
-              <div key={term}>
-                <dt>{term}</dt>
-                <dd>{value}</dd>
-              </div>
-            ))}
-        </dl>
         <div className="topology-log-wrap">
           <p className="topology-log-title">최근 요청</p>
           <ol className="topology-log">
