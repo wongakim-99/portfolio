@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { routes } from '@shared/config';
-import { cx, formatDate, readStore, writeStore } from '@shared/lib';
+import { cx, formatStamp, readStore, writeStore } from '@shared/lib';
 import { listBlogPosts, type BlogListQuery, type BlogPostSummary } from '@entities/blog-post';
 import { useSession } from '@entities/user';
 import { boardLayout, threadsOf, yarnPath, type Thread } from '../lib/board';
@@ -54,10 +54,11 @@ function BoardCard({ post, threads }: { post: BlogPostSummary; threads: Thread[]
       )}
       <p className="thread-card-meta">
         {post.room && <span className="thread-card-room">{post.room.name}</span>}
-        <span>{formatDate(post.createdAt)}</span>
+        {/* 카드가 좁아서 방 이름과 한 줄에 들도록 2026.11.21 처럼 짧게 */}
+        <span>{formatStamp(post.createdAt).slice(0, 10)}</span>
       </p>
       <h3 className="thread-card-title">
-        <Link href={routes.blogPost(post.id)} draggable={false}>
+        <Link href={routes.blogPost(post.id)} draggable={false} title={post.title}>
           {post.title}
         </Link>
       </h3>
