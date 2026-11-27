@@ -1,5 +1,5 @@
 import { blogRequest } from '@shared/api';
-import type { AccessRequestState, BlogDraft, BlogImage, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
+import type { AccessRequestState, BlogCalendar, BlogDraft, BlogImage, BlogListQuery, BlogPost, BlogPostInput, BlogPostPage, BlogSummary } from '../model/types';
 
 /** 최근 글 10개씩. 잠긴 글은 제목과 태그만, 나만 보기 글은 주인장에게만 옴 */
 export function listBlogPosts({ before, room, tag, q, visibility }: BlogListQuery & { before?: string | null } = {}) {
@@ -28,6 +28,11 @@ export const getBlogDraft = (postId?: string) => blogRequest<{ draft: BlogDraft 
 export const saveBlogDraft = (postId: string | undefined, input: BlogPostInput) =>
   blogRequest<{ savedAt: string }>(draftPath(postId), { method: 'PUT', body: input });
 export const deleteBlogDraft = (postId?: string) => blogRequest(draftPath(postId), { method: 'DELETE' });
+
+/** 책상 달력 한 달(month 는 2026-11). 쓴 시간과 그날 올린 글 */
+export const getBlogCalendar = (month: string) => blogRequest<BlogCalendar>(`/calendar?${new URLSearchParams({ month })}`);
+/** 글쓰기 화면에서 글을 고친 분(Date.now() / 60000 을 내림)을 남김. 주인장만 */
+export const logWritingMinutes = (minutes: number[]) => blogRequest('/writing-minutes', { method: 'PUT', body: { minutes } });
 
 /** 글에 넣을 사진. 주인장만. 브라우저에서 줄여 만든 파일을 본문 그대로 보냄 */
 export const uploadBlogImage = (photo: Blob) => blogRequest<{ image: BlogImage }>('/images', { method: 'POST', file: photo });

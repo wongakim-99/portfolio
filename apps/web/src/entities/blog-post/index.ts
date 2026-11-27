@@ -1,6 +1,6 @@
 export {
-  blogImageFile, blogImageUrl, createBlogPost, firstImageUrl, deleteBlogDraft, deleteBlogPost, getBlogDraft, getBlogPost, getBlogSummary, listBlogPosts,
-  requestBlogAccess, saveBlogDraft, streamProofGrade, updateBlogPost, uploadBlogImage,
+  blogImageFile, blogImageUrl, createBlogPost, firstImageUrl, deleteBlogDraft, deleteBlogPost, getBlogCalendar, getBlogDraft, getBlogPost, getBlogSummary,
+  listBlogPosts, logWritingMinutes, requestBlogAccess, saveBlogDraft, streamProofGrade, updateBlogPost, uploadBlogImage,
 } from './api/blog-posts';
 export type { ProofInput } from './api/blog-posts';
 export {
@@ -12,6 +12,7 @@ export { clearLocalDraft, readLocalDraft, saveLocalDraft } from './model/draft';
 export { BLOG_LIMITS, NO_ROOM, ROOM_NAME_MAX, VISIBILITY_LABEL } from './model/types';
 export type {
   AccessRequestState,
+  BlogCalendar,
   BlogDraft,
   BlogImage,
   BlogListQuery,
@@ -22,6 +23,7 @@ export type {
   BlogRoom,
   BlogRoomRef,
   BlogSummary,
+  CalendarDay,
   RoomOverview,
   RoomSuggestion,
   Visibility,

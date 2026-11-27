@@ -69,6 +69,20 @@ export interface BlogPostInput {
   roomId: string | null;
 }
 
+/** 책상 달력 하루 (GET /calendar?month=). minutes 는 그날 글을 고친 분 수, posts 는 그날 올린 글 가운데 보이는 것 */
+export interface CalendarDay {
+  /** 서울 날짜 2026-11-27 */
+  day: string;
+  minutes: number;
+  posts: { id: string; title: string }[];
+}
+
+export interface BlogCalendar {
+  month: string;
+  /** 쓴 분이나 올린 글이 있는 날만 */
+  days: CalendarDay[];
+}
+
 /** 쓰다 만 글. 서버(GET /drafts/:key)나 이 브라우저에 남김. savedAt 은 마지막으로 남긴 때 */
 export interface BlogDraft extends BlogPostInput {
   savedAt: string;

@@ -7,10 +7,11 @@ import {
 } from '../../domain/blog.js';
 import {
   AccessRequestRepository, BlogDraftRepository, BlogImageRepository, BlogPostRepository, BlogRoomRepository, GrantRepository,
-  ProofUsageRepository, type BlogListFilter,
+  ProofUsageRepository, WritingLogRepository, type BlogListFilter,
 } from '../../domain/blog.ports.js';
 import {
   BlogAccessRequest, BlogDraft as BlogDraftDoc, BlogGrant, BlogImage, BlogPost as BlogPostDoc, BlogProofUsage, BlogRoom as BlogRoomDoc,
+  BlogWritingDay,
 } from './blog.schemas.js';
 
 type Doc<T> = T & { _id: unknown };
@@ -100,6 +101,11 @@ export class MongoBlogPostRepository extends BlogPostRepository {
     return Boolean(await this.posts.findByIdAndDelete(toObjectId(id)));
   }
 
+  async createdBetween(from: Date, to: Date, includePrivate: boolean) {
+    const posts = await this.posts.find({ $and: [visibleFilter(includePrivate), { createdAt: { $gte: from, $lt: to } }] }).sort({ createdAt: 1 }).lean();
+    return posts.map(toPost);
+  }
+
   async withoutRoom(limit: number) {
     return (await this.posts.find(roomFilter(null)).sort({ _id: -1 }).limit(limit).lean()).map(toPost);
   }
@@ -114,6 +120,30 @@ export class MongoBlogPostRepository extends BlogPostRepository {
 
   async clearRoom(roomId: string) {
     await this.posts.updateMany({ roomId: asObjectId(roomId) }, { $set: { roomId: null } });
+  }
+}
+
+@Injectable()
+export class MongoWritingLogRepository extends WritingLogRepository {
+  constructor(@InjectModel(BlogWritingDay.name) private readonly days: Model<BlogWritingDay>) {
+    super();
+  }
+
+  async add(authorId: string, byDay: Map<string, number[]>) {
+    if (!byDay.size) return;
+    const author = asObjectId(authorId);
+    await this.days.bulkWrite([...byDay].map(([day, minutes]) => ({
+      updateOne: { filter: { authorId: author, day }, update: { $addToSet: { minutes: { $each: minutes } } }, upsert: true },
+    })));
+  }
+
+  async between(first: string, last: string) {
+    return this.days.aggregate<{ day: string; minutes: number }>([
+      { $match: { day: { $gte: first, $lte: last } } },
+      { $group: { _id: '$day', minutes: { $sum: { $size: '$minutes' } } } },
+      { $project: { _id: 0, day: '$_id', minutes: 1 } },
+      { $sort: { day: 1 } },
+    ]);
   }
 }
 

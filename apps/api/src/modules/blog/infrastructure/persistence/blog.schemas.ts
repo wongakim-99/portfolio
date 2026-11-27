@@ -75,6 +75,24 @@ export const BlogDraftSchema = SchemaFactory.createForClass(BlogDraft);
 BlogDraftSchema.index({ authorId: 1, postId: 1 }, { unique: true });
 BlogDraftSchema.index({ postId: 1 });
 
+// 책상 달력의 쓴 시간. 글쓴이의 서울 날짜 하나에 그날 글을 고친 분(UTC 분)을 겹치지 않게 모음. 쓴 분 수는 minutes 길이
+@Schema({ collection: 'blog_writing_days', versionKey: false })
+export class BlogWritingDay {
+  @Prop({ type: SchemaTypes.ObjectId, required: true })
+  authorId: Types.ObjectId;
+
+  // 서울 날짜 '2026-11-27'
+  @Prop({ type: String, required: true })
+  day: string;
+
+  @Prop({ type: [Number], default: [] })
+  minutes: number[];
+}
+
+export const BlogWritingDaySchema = SchemaFactory.createForClass(BlogWritingDay);
+BlogWritingDaySchema.index({ authorId: 1, day: 1 }, { unique: true });
+BlogWritingDaySchema.index({ day: 1 });
+
 // 블로그 방. 주인장이 관리실에서 만들고 order 순서로 사이드바에 놓임
 @Schema({ collection: 'blog_rooms', versionKey: false, timestamps: { createdAt: true, updatedAt: false } })
 export class BlogRoom {

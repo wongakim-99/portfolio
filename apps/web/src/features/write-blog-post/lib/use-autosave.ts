@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { clearLocalDraft, saveBlogDraft, saveLocalDraft, type BlogPostInput } from '@entities/blog-post';
+import { clearLocalDraft, logWritingMinutes, saveBlogDraft, saveLocalDraft, type BlogPostInput } from '@entities/blog-post';
 import { contentKey } from './draft-start';
 
 // 손을 멈추고 3초 뒤에 서버에 남기되, 쉬지 않고 쳐도 30초는 넘기지 않음. 못 남기면 15초 뒤에 다시
@@ -29,6 +29,7 @@ interface AutosaveOptions {
 /**
  * 글쓰기 임시저장. 이 기기에는 칠 때마다, 서버에는 쉬는 틈마다 남겨서 다른 기기에서도 이어 씀
  * 서버에 남기면 이 기기 것은 지움. 이 기기에는 서버에 아직 못 남긴 것만 있음
+ * 글이 바뀐 '분'도 모아 두었다가 서버에 남기려 할 때마다 같이 보냄 (책상 달력의 쓴 시간)
  */
 export function useAutosave({ postId, draft, synced, enabled, paused }: AutosaveOptions) {
   const key = contentKey(draft);
@@ -39,6 +40,9 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
   const dirtySince = useRef<number | null>(null);
   const inflight = useRef<Promise<void> | null>(null);
   const held = useRef(!enabled);
+  // 아직 서버에 못 보낸 '글이 바뀐 분'. 같은 분은 한 번만 셈
+  const pendingMinutes = useRef(new Set<number>());
+  const lastKey = useRef(key);
   const [round, setRound] = useState(0);
   const [state, setState] = useState<AutosaveState>({ phase: 'idle' });
 
@@ -47,9 +51,22 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
     blocked.current = paused;
   });
 
+  // 모아 둔 분을 보냄. 못 보내면 남겨 두었다가 다음에 다시 (서버가 같은 분은 한 번만 셈)
+  const sendMinutes = useCallback(async () => {
+    const minutes = [...pendingMinutes.current];
+    if (!minutes.length) return;
+    try {
+      await logWritingMinutes(minutes);
+      minutes.forEach((minute) => pendingMinutes.current.delete(minute));
+    } catch {
+      // 다음 임시저장 때 다시 보냄
+    }
+  }, []);
+
   const flush = useCallback(async (): Promise<SaveOutcome> => {
     // 한 번에 하나씩. 앞에 보낸 것이 끝난 뒤의 내용으로 다시 봄
     while (inflight.current) await inflight.current;
+    void sendMinutes();
     const snapshot = latest.current;
     const snapshotKey = contentKey(snapshot);
     if (held.current) return 'held';
@@ -76,10 +93,15 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
     await run;
     inflight.current = null;
     return saved ? 'saved' : 'failed';
-  }, [postId]);
+  }, [postId, sendMinutes]);
 
   useEffect(() => {
     if (!enabled) return;
+    // 글이 바뀌었으면 지금 분을 쓴 시간으로 셈
+    if (lastKey.current !== key) {
+      lastKey.current = key;
+      pendingMinutes.current.add(Math.floor(Date.now() / 60_000));
+    }
     if (key === syncedKey.current) {
       clearLocalDraft(postId);
       return;
@@ -114,7 +136,9 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
   const hold = useCallback(async () => {
     held.current = true;
     while (inflight.current) await inflight.current;
-  }, []);
+    // 올리기 바로 전까지 쓴 분도 남김
+    await sendMinutes();
+  }, [sendMinutes]);
 
   /** 올리기가 실패해 계속 쓸 때. 그동안 친 것이 있으면 다시 쉬는 틈을 기다려 남김 */
   const release = useCallback(() => {
@@ -126,6 +150,8 @@ export function useAutosave({ postId, draft, synced, enabled, paused }: Autosave
   /** 임시 글을 버린 뒤. 이 내용을 서버에 있는 것으로 보고 처음부터 셈 */
   const reset = useCallback((content: BlogPostInput) => {
     syncedKey.current = contentKey(content);
+    // 버리고 되돌린 것은 쓴 시간으로 세지 않음
+    lastKey.current = syncedKey.current;
     dirtySince.current = null;
     setState({ phase: 'idle' });
   }, []);

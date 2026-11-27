@@ -959,6 +959,63 @@ describe('blog', () => {
     meta.mockRestore();
   });
 
+  it('책상 달력: 글을 고친 분을 서울 날짜별로 겹치지 않게 모으고, 올린 날에는 보이는 글만 도장으로 줌', async () => {
+    const server = app.getHttpServer();
+    const db = app.get(getConnectionToken());
+    const ip = '203.0.113.210, 172.18.0.1';
+    const join = async (email: string, name: string) => {
+      await request(server).post('/api/community/auth/register').set('X-Forwarded-For', ip)
+        .send({ email, name, password: 'correct horse battery staple' }).expect(202);
+      const token = sentMail.findLast((mail) => mail.kind === 'verify' && mail.to === email)!.token;
+      const res = await request(server).post('/api/community/auth/verify').set('X-Forwarded-For', ip).send({ token }).expect(200);
+      return (res.headers['set-cookie'] as unknown as string[])[0].split(';')[0];
+    };
+    const owner = await join('calendar-owner@example.com', '달력 주인');
+    const member = await join('calendar-member@example.com', '달력 구경꾼');
+    await request(server).put('/api/community/admin/users/role').set('Authorization', `Bearer ${ADMIN_TOKEN}`)
+      .send({ email: 'calendar-owner@example.com', role: 'owner' }).expect(200);
+    const log = (minutes: unknown, cookie = owner) => request(server).put('/api/blog/writing-minutes').set('X-Forwarded-For', ip).set('Cookie', cookie).send({ minutes });
+
+    // 같은 분은 한 번만 세고, 지난 날을 꾸며 넣은 분과 먼 미래의 분은 버림
+    // 서울 자정 바로 뒤에 돌면 네 분이 이틀에 걸치므로 몇 분 앞으로 당김
+    let now = Math.floor(Date.now() / 60_000);
+    if ((now + 9 * 60) % 1440 < 3) now -= 5;
+    const seoulDay = (time: number) => new Date(time + 9 * 60 * 60_000).toISOString().slice(0, 10);
+    const day = seoulDay(now * 60_000);
+    await request(server).put('/api/blog/writing-minutes').send({ minutes: [now] }).expect(401);
+    await log([now], member).expect(403);
+    await log('많이').expect(400);
+    await log([now + 0.5]).expect(400);
+    await log(Array.from({ length: 501 }, (_, i) => now - i)).expect(400);
+    await log([now, now, now - 1, now - 2]).expect(204);
+    await log([now - 1, now - 3, now - 60 * 24 * 30, now + 60 * 24]).expect(204);
+    await log([now]).set('Origin', 'https://evil.example').expect(403);
+    const stored = await db.collection('blog_writing_days').findOne({ day });
+    expect(stored?.minutes).toHaveLength(4);
+
+    // 그날 올린 글: 누구나 읽는 글과 허락한 사람만 읽는 글은 도장이 보이고, 나만 보기 글은 주인장에게만
+    const write = (title: string, visibility: string) => request(server).post('/api/blog/posts').set('Cookie', owner).send({ title, body: `${title} 본문`, visibility });
+    const open = (await write('달력 공개 글', 'public').expect(201)).body.post;
+    const locked = (await write('달력 잠긴 글', 'approved').expect(201)).body.post;
+    const secret = (await write('달력 나만 보는 글', 'private').expect(201)).body.post;
+    const dayOf = async (target: string, cookie?: string) => {
+      const req = request(server).get(`/api/blog/calendar?month=${target.slice(0, 7)}`);
+      const res = await (cookie ? req.set('Cookie', cookie) : req).expect(200);
+      expect(res.headers['cache-control']).toContain('no-store');
+      return res.body.days.find((item: { day: string }) => item.day === target);
+    };
+    expect((await dayOf(day)).minutes).toBe(4);
+    const postDay = seoulDay(Date.now());
+    const anonymous = await dayOf(postDay);
+    const titles = (found: { posts: { title: string }[] }) => found.posts.map((post) => post.title);
+    expect(titles(anonymous)).toEqual(expect.arrayContaining(['달력 공개 글', '달력 잠긴 글']));
+    expect(titles(anonymous)).not.toContain('달력 나만 보는 글');
+    expect(titles(await dayOf(postDay, owner))).toEqual(expect.arrayContaining(['달력 공개 글', '달력 잠긴 글', '달력 나만 보는 글']));
+    await request(server).get('/api/blog/calendar?month=2026-13').expect(400);
+    await request(server).get('/api/blog/calendar').expect(400);
+    for (const post of [open, locked, secret]) await request(server).delete(`/api/blog/posts/${post.id}`).set('Cookie', owner).expect(204);
+  });
+
   it('잠긴 글의 증명은 채점평만 글자 그대로 흘려보내고, AI 를 못 쓰면 503', async () => {
     const server = app.getHttpServer();
     const posts = app.get(getConnectionToken()).collection('blog_posts');

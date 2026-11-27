@@ -6,6 +6,7 @@ import { oneLine, trim } from '../../../shared/http/transforms.js';
 import { normalizeTags, ROOM_MAX, ROOM_NAME_MAX, TAG_MAX, VISIBILITIES, type Visibility } from '../domain/blog.js';
 import { BLOG_IMAGE_FILE } from '../domain/blog-image.js';
 import { PROOF_MAX, PROOF_PROBLEM_IDS } from '../domain/proof.js';
+import { MINUTES_MAX } from '../domain/writing.js';
 
 const tagList = ({ value }: { value: unknown }) => (Array.isArray(value) ? normalizeTags(value) : value);
 
@@ -72,6 +73,14 @@ export class BlogDraftDto {
   @IsOptional()
   @IsMongoId()
   roomId?: string | null;
+}
+
+// 책상 달력의 쓴 시간. 글쓰기 화면이 글을 고친 분(UTC 분)을 모아 보냄. 받을 수 있는 때인지는 서비스가 거름
+export class WritingMinutesDto {
+  @IsArray()
+  @ArrayMaxSize(MINUTES_MAX)
+  @IsInt({ each: true })
+  minutes: number[];
 }
 
 export class RoomNameDto {

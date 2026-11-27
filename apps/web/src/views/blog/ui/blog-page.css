@@ -24,12 +24,16 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
-.blog-hero { grid-area: hero; padding: var(--blog-hero-top) clamp(4px, 2vw, 16px) clamp(40px, 5vw, 64px); }
+/* 제목 글과 책상 달력을 나란히. 단이 좁아 달력이 들어갈 자리가 없으면 달력은 소개 글 아래로 내려감 */
+.blog-hero { display: flex; flex-wrap: wrap; align-items: center; gap: 36px clamp(28px, 4vw, 48px); grid-area: hero; padding: var(--blog-hero-top) clamp(4px, 2vw, 16px) clamp(40px, 5vw, 64px); }
+.blog-hero-text { flex: 1 1 360px; min-width: 0; }
+/* 나란히 설 때는 남는 자리가 없어 그대로 오른쪽, 아래로 내려가 혼자 한 줄이면 가운데 */
+.blog-hero > .desk-calendar { margin-inline: auto; }
 .blog-hero-hand { margin: 0 0 -8px; color: var(--pen); font-size: clamp(25px, 3vw, 34px); transform: rotate(-2deg); transform-origin: left; }
 .blog-hero h1 { margin: 0; font-family: var(--font-display); font-size: clamp(76px, 10vw, 112px); font-weight: 700; line-height: 1.12; letter-spacing: -.035em; }
-.blog-hero > p:last-child { max-width: 58ch; margin: 12px 0 0; font-size: clamp(16px, 1.8vw, 19px); line-height: 1.7; text-wrap: pretty; }
+.blog-hero-text > p:last-child { max-width: 58ch; margin: 12px 0 0; font-size: clamp(16px, 1.8vw, 19px); line-height: 1.7; text-wrap: pretty; }
 /* 두 문장은 각자 한 줄에서 시작하고, 좁아서 접힐 때는 쉼표 근처에서 고르게 나뉘게 함 */
-.blog-hero > p:last-child > span { display: block; text-wrap: balance; }
+.blog-hero-text > p:last-child > span { display: block; text-wrap: balance; }
 /* 칸 너비를 단에 고정해서, 주인장에게 보이는 '나만 보기' 칩까지 한 줄로 늘어서도 휴대폰에서 칸이 밀려 넓어지지 않음 (칩은 옆으로 밀어 봄) */
 .blog-board-main { grid-area: main; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; align-content: start; min-width: 0; }
 

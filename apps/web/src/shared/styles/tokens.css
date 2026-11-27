@@ -159,3 +159,10 @@
   --cork: #4d3922; --cork-speck: #3b2b18; --cork-light: #64492b; --cork-frame: #2a1c0f;
   --yarn-1: #ff6255; --yarn-2: #74a0ff; --yarn-3: #5cc98d; --yarn-4: #f2a64a;
 }
+
+/* 블로그 책상 달력의 커피 자국. 어두운 화면에서는 밝은 갈색이라 어두운 종이 위에서도 보임 */
+:root { --coffee: #7b4a1f; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --coffee: #d29a5f; }
+}
+:root[data-theme="dark"] { --coffee: #d29a5f; }

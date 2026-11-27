@@ -10,12 +10,13 @@ import { assertSameOrigin } from '../../../shared/http/same-origin.js';
 import { ipHash } from '../../../shared/http/visitor-hash.js';
 import { CurrentUser, RequirePermission } from '../../identity/index.js';
 import { BlogAccessService } from '../application/blog-access.service.js';
+import { BlogCalendarService } from '../application/blog-calendar.service.js';
 import { BlogDraftsService } from '../application/blog-drafts.service.js';
 import { BlogImagesService } from '../application/blog-images.service.js';
 import { BlogPostsService } from '../application/blog-posts.service.js';
 import { ProofGradingService } from '../application/proof-grading.service.js';
 import { BLOG_IMAGE_FILE, BLOG_IMAGE_TYPES } from '../domain/blog-image.js';
-import { AccessRequestDto, BlogDraftDto, ProofDto, WriteBlogPostDto } from './blog.dto.js';
+import { AccessRequestDto, BlogDraftDto, ProofDto, WriteBlogPostDto, WritingMinutesDto } from './blog.dto.js';
 
 // ?tag=a&tag=b 처럼 같은 이름을 여러 번 보내면 배열로 오므로 글자 하나일 때만 씀
 const single = (value: unknown) => (typeof value === 'string' && value ? value : undefined);
@@ -28,6 +29,7 @@ export class BlogController {
     private readonly posts: BlogPostsService,
     private readonly access: BlogAccessService,
     private readonly drafts: BlogDraftsService,
+    private readonly calendar: BlogCalendarService,
     private readonly images: BlogImagesService,
     private readonly proofs: ProofGradingService,
     private readonly currentUser: CurrentUser,
@@ -55,6 +57,25 @@ export class BlogController {
   @Header('Cache-Control', 'private, no-store')
   async summary(@Req() req: Request) {
     return this.posts.summary(await this.currentUser.find(req));
+  }
+
+  // 책상 달력 한 달. ?month=2026-11. 보는 사람에 따라 나만 보기 글 도장이 달라져 캐시하지 않음
+  @Get('calendar')
+  @SkipThrottle()
+  @Header('Cache-Control', 'private, no-store')
+  async calendarMonth(@Req() req: Request, @Query('month') month?: unknown) {
+    return this.calendar.month(await this.currentUser.find(req), single(month) ?? '');
+  }
+
+  // 글쓰기 화면이 임시저장하며 보내는 '글을 고친 분'. 책상 달력의 쓴 시간이 됨
+  @Put('writing-minutes')
+  @HttpCode(204)
+  @Throttle({ default: { limit: 60, ttl: 60_000 } })
+  @RequirePermission('blog:write')
+  async logWriting(@Body() dto: WritingMinutesDto, @Req() req: Request) {
+    assertSameOrigin(req);
+    jsonOnly(req);
+    await this.calendar.log(await this.currentUser.require(req), dto.minutes);
   }
 
   @Get('posts/:id')

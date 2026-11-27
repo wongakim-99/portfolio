@@ -29,6 +29,8 @@ export abstract class BlogPostRepository {
   abstract create(input: Omit<BlogPost, 'id' | 'createdAt' | 'updatedAt'>): Promise<BlogPost>;
   abstract update(id: string, input: BlogPostContent): Promise<void>;
   abstract delete(id: string): Promise<boolean>;
+  /** from 이후 to 전에 올린 글. 책상 달력의 도장 */
+  abstract createdBetween(from: Date, to: Date, includePrivate: boolean): Promise<BlogPost[]>;
   /** 아직 방이 없는 글, 최근 것부터 */
   abstract withoutRoom(limit: number): Promise<BlogPost[]>;
   /** 글마다 방을 정함. 없는 글은 넘어감 */
@@ -46,6 +48,14 @@ export abstract class BlogDraftRepository {
   abstract deleteForPost(postId: string): Promise<void>;
   /** 모든 임시 글의 본문과 표지. 임시 글에 든 사진을 치우지 않으려고 씀 */
   abstract contents(): Promise<Pick<BlogDraft, 'body' | 'cover'>[]>;
+}
+
+// 책상 달력의 쓴 시간. 글쓴이와 서울 날짜마다 글을 고친 분을 겹치지 않게 모음
+export abstract class WritingLogRepository {
+  /** 날짜마다 분을 더함. 이미 있는 분은 다시 세지 않음 */
+  abstract add(authorId: string, byDay: Map<string, number[]>): Promise<void>;
+  /** first 부터 last 까지(서울 날짜, 둘 다 포함) 날짜마다 쓴 분 수. 글쓴이는 모두 더함 */
+  abstract between(first: string, last: string): Promise<{ day: string; minutes: number }[]>;
 }
 
 // 블로그 방 목록. 이름은 겹치지 않음
