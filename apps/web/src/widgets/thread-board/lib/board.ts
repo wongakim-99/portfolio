@@ -1,3 +1,4 @@
+import { formatStamp } from '@shared/lib';
 import type { BlogPostSummary } from '@entities/blog-post';
 
 // 코르크판 보기의 계산. 같은 태그, 같은 방에 든 글을 실 하나로 꿰고, 카드를 꽂을 자리를 정함
@@ -130,3 +131,50 @@ export function yarnPath(from: { x: number; y: number }, to: { x: number; y: num
   const cy = sameRow ? Math.max(Math.min(from.y, to.y) - bend, 12 - (from.y + to.y) / 2) : Math.max(from.y, to.y) + bend;
   return `M${from.x.toFixed(1)} ${from.y.toFixed(1)} Q${cx.toFixed(1)} ${cy.toFixed(1)} ${to.x.toFixed(1)} ${to.y.toFixed(1)}`;
 }
+
+/** 이보다 좁은 화면(휴대폰)은 판 전체 대신 실 한 가닥을 따라 내려가는 수사 기록으로 보여 줌 */
+export const TRAIL_BELOW = 560;
+
+export interface TrailLayout {
+  width: number;
+  height: number;
+  cardWidth: number;
+  cardHeight: number;
+  /** 글 차례대로(위에서 아래로) 카드 자리 */
+  slots: Slot[];
+  /** 카드 사이 간격. 실 꼬리표가 이 틈에 매달림 */
+  gap: number;
+}
+
+/**
+ * 실 따라가기의 카드 자리. 카드는 한 줄로 위에서 아래로 꽂고, 왼쪽 여백은 실이 지나가게 비워 둠
+ * 카드마다 조금씩 들쭉날쭉하고 비스듬히 꽂아 손으로 꽂은 것처럼 보이게 함
+ */
+export function trailLayout(ids: string[], width: number): TrailLayout {
+  const top = 22;
+  const margin = 34;
+  const cardHeight = 182;
+  const gap = 46;
+  const cardWidth = Math.max(160, width - margin - 22);
+  const slots = ids.map((id, i) => ({
+    x: margin + seeded(id, 4) * 8,
+    y: top + i * (cardHeight + gap),
+    tilt: (seeded(id, 5) - 0.5) * 3,
+  }));
+  // 마지막 카드 아래로 실 끝이 늘어지고 손글씨 한 줄이 들어갈 자리
+  return { width, height: top + ids.length * cardHeight + Math.max(0, ids.length - 1) * gap + 84, cardWidth, cardHeight, slots, gap };
+}
+
+const seoulDay = (iso: string) => Date.parse(formatStamp(iso).slice(0, 10).replace(/\./g, '-'));
+
+/** 꿴 두 글 사이가 얼마나 떨어졌는지. 서울 날짜로 셈 */
+export function gapLabel(from: string, to: string): string {
+  const days = Math.round((seoulDay(to) - seoulDay(from)) / 86_400_000);
+  if (days < 1) return '같은 날';
+  if (days < 30) return `${days}일 뒤`;
+  if (days < 365) return `${Math.round(days / 30)}달 뒤`;
+  return `${Math.round(days / 365)}년 뒤`;
+}
+
+/** 실 꼬리표의 대략 너비(px). 한글은 넓고 영문, 숫자는 좁게 셈 */
+export const labelWidth = (text: string) => [...text].reduce((sum, char) => sum + (char.codePointAt(0)! > 0x1100 ? 12.5 : 7), 18);

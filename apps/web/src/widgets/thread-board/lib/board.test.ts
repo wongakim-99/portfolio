@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BlogPostSummary } from '@entities/blog-post';
-import { boardLayout, MAX_THREADS, threadsOf, yarnPath } from './board';
+import { boardLayout, gapLabel, MAX_THREADS, threadsOf, trailLayout, yarnPath } from './board';
 
 const post = (id: string, createdAt: string, tags: string[] = [], room: { id: string; name: string } | null = null): BlogPostSummary => ({
   id, title: id, visibility: 'public', locked: false, tags, cover: null, room, excerpt: '', readMinutes: 1, createdAt, updatedAt: createdAt,
@@ -73,5 +73,27 @@ describe('yarnPath', () => {
   it('위로 걸어도 곡선 꼭대기가 판 위 끝을 넘지 않음', () => {
     const d = yarnPath({ x: 0, y: 40 }, { x: 600, y: 40 }, 4);
     expect((40 + 2 * controlY(d) + 40) / 4).toBeGreaterThanOrEqual(6);
+  });
+});
+
+describe('trailLayout', () => {
+  it('카드를 위에서 아래로 겹치지 않게 꽂고, 왼쪽 여백은 실 자리로 비워 둠', () => {
+    const layout = trailLayout(['a', 'b', 'c'], 342);
+    layout.slots.forEach((slot, i) => {
+      expect(slot.x).toBeGreaterThanOrEqual(34);
+      expect(slot.x + layout.cardWidth).toBeLessThanOrEqual(342);
+      if (i) expect(slot.y - layout.slots[i - 1]!.y).toBe(layout.cardHeight + layout.gap);
+    });
+    expect(layout.height).toBeGreaterThan(layout.slots[2]!.y + layout.cardHeight);
+  });
+});
+
+describe('gapLabel', () => {
+  it('서울 날짜로 며칠, 몇 달, 몇 년 뒤인지 적음', () => {
+    // 서울 기준 같은 날 (UTC 로는 하루가 넘어감)
+    expect(gapLabel('2026-11-21T15:30:00Z', '2026-11-22T14:00:00Z')).toBe('같은 날');
+    expect(gapLabel('2026-11-21T01:00:00Z', '2026-11-23T01:00:00Z')).toBe('2일 뒤');
+    expect(gapLabel('2026-01-01T01:00:00Z', '2026-04-01T01:00:00Z')).toBe('3달 뒤');
+    expect(gapLabel('2024-11-01T01:00:00Z', '2026-11-01T01:00:00Z')).toBe('2년 뒤');
   });
 });

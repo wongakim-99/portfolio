@@ -3,24 +3,27 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { routes } from '@shared/config';
-import { cx, formatStamp, readStore, writeStore } from '@shared/lib';
+import { cx } from '@shared/lib';
 import { listBlogPosts, type BlogListQuery, type BlogPostSummary } from '@entities/blog-post';
 import { useSession } from '@entities/user';
-import { boardLayout, threadsOf, yarnPath, type Thread } from '../lib/board';
+import { boardLayout, labelWidth, threadsOf, TRAIL_BELOW, yarnPath } from '../lib/board';
+import { saveMovedCards, useMovedCards } from '../model/moved-cards';
+import { BoardCard } from './board-card';
+import { ThreadTrail } from './thread-trail';
 import './thread-board.css';
 
 // 블로그 '코르크판에 꽂기' 보기. 글을 압정으로 꽂은 메모 카드로 늘어놓고, 같은 태그나 같은 방의 글끼리 털실로 이음
 // 카드에 마우스를 올리면 그 글에서 뻗은 실만 진해지고 실 위에 무엇으로 이어졌는지 꼬리표가 붙음
-// 카드는 끌어서 옮길 수 있고, 옮긴 자리는 이 브라우저에만 남음
+// 카드는 끌어서 옮길 수 있고, 옮긴 자리는 이 브라우저에만 남음. 휴대폰처럼 좁은 화면은 실 하나를 따라 내려가는 보기(ThreadTrail)
+
+/** 코르크판 나무 틀 두께(px). thread-board.css 의 .thread-board border 와 같게 */
+const FRAME = 12;
 
 /** 판에 꽂는 글 수. 목록 API 를 이만큼까지 이어 받음 */
 const MAX_POSTS = 60;
-const MOVED_KEY = 'blog-board-moved';
 /** 손을 떼기 전에 이만큼 움직여야 끌기로 봄. 덜 움직이면 그냥 누른 것 */
 const DRAG_START = 5;
 
-/** 끌어서 옮긴 카드 자리. x 는 판 너비에 대한 비율이라 화면 폭이 바뀌어도 비슷한 자리 */
-type Moved = Record<string, { fx: number; y: number }>;
 type Focus = { post: string } | { thread: string } | null;
 
 interface Drag {
@@ -31,47 +34,14 @@ interface Drag {
   fromX: number;
   fromY: number;
   moving: boolean;
+  /** 끄는 동안 마지막 자리. 놓을 때 이것을 남김 */
+  last?: { fx: number; y: number };
 }
-
-// 실 꼬리표의 대략 너비. 한글은 넓고 영문, 숫자는 좁게 셈
-const labelWidth = (text: string) => [...text].reduce((sum, char) => sum + (char.codePointAt(0)! > 0x1100 ? 12.5 : 7), 18);
 
 // 두 압정 사이 곡선의 한가운데 (2차 베지어의 t=0.5)
 function middleOf(from: { x: number; y: number }, to: { x: number; y: number }, color: number) {
   const control = yarnPath(from, to, color).split('Q')[1]!.trim().split(' ').map(Number);
   return { x: (from.x + 2 * control[0]! + to.x) / 4, y: (from.y + 2 * control[1]! + to.y) / 4 };
-}
-
-function BoardCard({ post, threads }: { post: BlogPostSummary; threads: Thread[] }) {
-  return (
-    <article className="thread-card-paper" data-locked={post.locked || undefined}>
-      {post.cover && (
-        <span className="thread-card-photo" aria-hidden="true">
-          {/* 글 사진은 API 가 줄여 둔 파일이라 next/image 최적화를 거치지 않음 */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={post.cover} alt="" loading="lazy" decoding="async" draggable={false} />
-        </span>
-      )}
-      <p className="thread-card-meta">
-        {post.room && <span className="thread-card-room">{post.room.name}</span>}
-        {/* 카드가 좁아서 방 이름과 한 줄에 들도록 2026.11.21 처럼 짧게 */}
-        <span>{formatStamp(post.createdAt).slice(0, 10)}</span>
-      </p>
-      <h3 className="thread-card-title">
-        <Link href={routes.blogPost(post.id)} draggable={false} title={post.title}>
-          {post.title}
-        </Link>
-      </h3>
-      {post.excerpt && <p className="thread-card-excerpt">{post.excerpt}</p>}
-      {post.locked && (
-        <span className="thread-card-stamp" aria-label="잠긴 글">
-          기밀
-        </span>
-      )}
-      {post.tags.length > 0 && <p className="thread-card-tags">{post.tags.map((tag) => `#${tag}`).join(' ')}</p>}
-      {threads.length > 0 && <span className="sr">이어진 실: {threads.map((thread) => thread.label).join(', ')}</span>}
-    </article>
-  );
 }
 
 export function ThreadBoard({ query }: { query: BlogListQuery }) {
@@ -80,11 +50,12 @@ export function ThreadBoard({ query }: { query: BlogListQuery }) {
   const { room = null, tag = null, q = null, visibility = null } = query;
   const [state, setState] = useState<{ posts: BlogPostSummary[]; status: 'loading' | 'ready' | 'error' }>({ posts: [], status: 'loading' });
   const [width, setWidth] = useState(0);
-  const [moved, setMoved] = useState<Moved>(() => readStore<Moved>(MOVED_KEY) ?? {});
+  const moved = useMovedCards();
+  // 끄는 중인 카드와 그 자리. 놓기 전까지는 화면에만 그리고 저장하지 않음
+  const [live, setLive] = useState<{ id: string; fx: number; y: number } | null>(null);
   const [focus, setFocus] = useState<Focus>(null);
-  const [dragging, setDragging] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
-  const board = useRef<HTMLDivElement>(null);
+  const wrap = useRef<HTMLElement>(null);
   const drag = useRef<Drag | null>(null);
   const justDragged = useRef(false);
 
@@ -110,33 +81,30 @@ export function ThreadBoard({ query }: { query: BlogListQuery }) {
     };
   }, [ready, userId, room, tag, q, visibility, attempt]);
 
-  // 판 너비에 맞춰 카드 자리를 다시 정함
+  // 화면 폭에 맞춰 판과 실 따라가기 가운데 고르고 카드 자리를 다시 정함
   useEffect(() => {
-    const element = board.current;
+    const element = wrap.current;
     if (!element) return;
     const observer = new ResizeObserver(([entry]) => setWidth(Math.round(entry!.contentRect.width)));
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
 
-  // 옮긴 자리는 손을 뗀 뒤에 한 번 남김
-  useEffect(() => {
-    if (!dragging) writeStore(MOVED_KEY, Object.keys(moved).length ? moved : null);
-  }, [moved, dragging]);
-
   const { posts, status } = state;
   const threads = useMemo(() => threadsOf(posts), [posts]);
-  const layout = useMemo(() => (width ? boardLayout(posts, width) : null), [posts, width]);
+  const narrow = width > 0 && width < TRAIL_BELOW;
+  const dragging = live?.id ?? null;
+  const layout = useMemo(() => (width && !narrow ? boardLayout(posts, width - FRAME * 2) : null), [posts, width, narrow]);
 
   const places = useMemo(() => {
     const result = new Map<string, { x: number; y: number; tilt: number }>();
     if (!layout) return result;
     for (const [id, slot] of layout.slots) {
-      const own = moved[id];
+      const own = live?.id === id ? live : moved[id];
       result.set(id, own ? { x: Math.min(Math.max(own.fx * layout.width, 0), layout.width - layout.cardWidth), y: Math.max(own.y, 0), tilt: slot.tilt } : slot);
     }
     return result;
-  }, [layout, moved]);
+  }, [layout, moved, live]);
 
   const height = layout ? Math.max(layout.height, ...[...places.values()].map((place) => place.y + layout.cardHeight + 30)) : 0;
   const pin = (id: string) => {
@@ -169,22 +137,26 @@ export function ThreadBoard({ query }: { query: BlogListQuery }) {
       } catch {
         // 그새 손을 뗀 포인터라 붙잡지 못해도 끌기는 이어 감
       }
-      setDragging(current.id);
     }
-    setMoved((prev) => ({ ...prev, [current.id]: { fx: (current.fromX + dx) / layout.width, y: current.fromY + dy } }));
+    current.last = { fx: (current.fromX + dx) / layout.width, y: current.fromY + dy };
+    setLive({ id: current.id, ...current.last });
   };
   const onPointerUp = () => {
     const current = drag.current;
     drag.current = null;
     if (!current?.moving) return;
     justDragged.current = true;
-    setDragging(null);
+    if (current.last) saveMovedCards({ ...moved, [current.id]: current.last });
+    setLive(null);
   };
 
   return (
-    <section className="thread-board-wrap" aria-label="코르크판에 꽂은 글" aria-busy={status === 'loading'}>
-      <p className="hand thread-board-note">같은 태그나 같은 방에 든 글끼리 실로 이었어요. 카드는 끌어서 옮길 수 있어요.</p>
-      <div className={cx('thread-board', focus && 'has-focus')} ref={board} style={{ height: height || undefined }}>
+    <section className="thread-board-wrap" ref={wrap} aria-label="코르크판에 꽂은 글" aria-busy={status === 'loading'}>
+      <p className="hand thread-board-note">
+        {narrow ? '실을 하나 골라 따라 내려가 보세요. 같은 태그나 같은 방의 글을 오래된 순서로 꿰었어요.' : '같은 태그나 같은 방에 든 글끼리 실로 이었어요. 카드는 끌어서 옮길 수 있어요.'}
+      </p>
+      {narrow && posts.length > 0 && <ThreadTrail posts={posts} threads={threads} width={width - FRAME} />}
+      <div className={cx('thread-board', focus && 'has-focus')} hidden={narrow && posts.length > 0} style={{ height: height || undefined }}>
         {layout && (
           <ul className="thread-board-cards">
             {posts.map((post, i) => {
@@ -289,7 +261,7 @@ export function ThreadBoard({ query }: { query: BlogListQuery }) {
           </p>
         )}
       </div>
-      {(threads.length > 0 || Object.keys(moved).length > 0) && (
+      {!narrow && (threads.length > 0 || Object.keys(moved).length > 0) && (
         <div className="thread-board-foot">
           {threads.length > 0 && (
             <ul className="thread-legend" aria-label="걸려 있는 실">
@@ -312,7 +284,7 @@ export function ThreadBoard({ query }: { query: BlogListQuery }) {
             </ul>
           )}
           {Object.keys(moved).length > 0 && (
-            <button className="text-btn" type="button" onClick={() => setMoved({})}>
+            <button className="text-btn" type="button" onClick={() => saveMovedCards({})}>
               카드 처음 자리로
             </button>
           )}
