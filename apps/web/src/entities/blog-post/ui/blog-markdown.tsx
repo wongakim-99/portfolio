@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { YoutubeCard, type YoutubeVideo } from '@shared/ui';
 import { loneVideoId, type ParagraphNode } from '../lib/lone-video';
 import { rehypeLineBreaks } from '../lib/rehype-line-breaks';
+import { rehypeTableWidths } from '../lib/rehype-table-widths';
 import { remarkCallout } from '../lib/remark-callout';
 import './blog-markdown.css';
 
@@ -81,9 +82,12 @@ const COMPONENTS: Components = {
       </span>
     );
   },
-  table: ({ children }) => (
+  // 글쓰기에서 칸 너비를 정한 표는 rehype-table-widths 가 단 너비(style)를 그대로 넘김
+  table: ({ children, style, className }) => (
     <div className="md-table">
-      <table>{children}</table>
+      <table style={style} className={className}>
+        {children}
+      </table>
     </div>
   ),
   pre: ({ node, children }) => <CodeBlock node={node as HastNode | undefined}>{children}</CodeBlock>,
@@ -113,7 +117,7 @@ export function BlogMarkdown({ source, videos = [] }: { source: string; videos?:
 
   return (
     <div className="md">
-      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkCallout]} rehypePlugins={[rehypeLineBreaks, rehypeHighlight]} components={components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks, remarkCallout]} rehypePlugins={[rehypeTableWidths, rehypeLineBreaks, rehypeHighlight]} components={components}>
         {source}
       </ReactMarkdown>
     </div>

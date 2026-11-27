@@ -4,9 +4,11 @@ import { TextSelection } from '@tiptap/pm/state';
 import type { Editor } from '@tiptap/react';
 import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent, type RefObject } from 'react';
 import { cx } from '@shared/lib';
+import { commitTableWidths, MIN_COL_WIDTH, paintWidths, reshapeTableWidths, type WidthsChange } from '../lib/table-widths';
 
 // 노션처럼 표에 마우스를 올리면 나오는 손잡이
 // 줄 왼쪽, 칸 위 손잡이를 누르면 넣기와 지우기 메뉴가 열리고, 오른쪽 끝과 아래쪽 막대를 누르면 칸과 줄을 끝에 하나 더함
+// 칸 경계를 끌면 그 칸 너비가 바뀌고(놓을 때 문서에 남김), 경계를 두 번 누르면 내용에 맞춘 자동 너비로 돌아감
 // 마우스가 없는 터치 화면에서는 커서를 표에 두면 도구 막대에 나오는 표 단추를 씀
 
 // 손잡이와 막대가 표 밖에 있어서, 표에서 이만큼 벗어나도 손잡이를 남겨 둠
@@ -30,9 +32,13 @@ interface View extends Hover {
   box: Box;
   rowBox: Box;
   colBox: Box;
+  /** 보이는 칸 경계의 가로 자리와 그 경계 왼쪽 칸 번호 */
+  edges: { x: number; col: number }[];
+  /** 칸 경계를 끌어 너비를 정한 표인지 */
+  sized: boolean;
 }
 
-type Action = 'rowAbove' | 'rowBelow' | 'rowEnd' | 'rowDelete' | 'colLeft' | 'colRight' | 'colEnd' | 'colDelete' | 'tableDelete';
+type Action = 'rowAbove' | 'rowBelow' | 'rowEnd' | 'rowDelete' | 'colLeft' | 'colRight' | 'colEnd' | 'colDelete' | 'autoWidth' | 'tableDelete';
 
 const ROW_MENU: [Action, string][] = [['rowAbove', '위에 줄 넣기'], ['rowBelow', '아래에 줄 넣기'], ['rowDelete', '이 줄 지우기']];
 const COL_MENU: [Action, string][] = [['colLeft', '왼쪽에 칸 넣기'], ['colRight', '오른쪽에 칸 넣기'], ['colDelete', '이 칸 지우기']];
@@ -54,12 +60,26 @@ function measure(host: HTMLElement, hover: Hover): View | null {
   const left = Math.max(table.left, frame.left);
   const width = Math.min(table.right, frame.right) - left;
   const at = cell.getBoundingClientRect();
+  const edges = [...(hover.table.rows[0]?.cells ?? [])]
+    .map((head, col) => ({ x: head.getBoundingClientRect().right - hostRect.left, col }))
+    .filter(({ x }) => x > left - hostRect.left + 1 && x <= left - hostRect.left + width + 1);
   return {
     ...hover,
     box: relative(left, table.top, width, table.height, hostRect),
     rowBox: relative(left, at.top, width, at.height, hostRect),
     colBox: relative(at.left, table.top, at.width, table.height, hostRect),
+    edges,
+    sized: Boolean(hover.table.parentElement?.dataset.sized),
   };
+}
+
+// 칸을 넣거나 지우는 일이 너비 목록의 어디를 바꾸는지
+function widthsChange(action: Action, col: number, cols: number): WidthsChange | null {
+  if (action === 'colLeft') return { insert: col };
+  if (action === 'colRight') return { insert: col + 1 };
+  if (action === 'colEnd') return { insert: cols };
+  if (action === 'colDelete') return { remove: [col, col + 1] };
+  return null;
 }
 
 // 고른 칸에 커서를 두고 표 명령을 부름. 마지막 남은 줄이나 칸을 지우면 표를 지움 (노션과 같게)
@@ -78,14 +98,17 @@ function act(editor: Editor, { table, row, col }: Hover, action: Action) {
       tr.setSelection(TextSelection.near(tr.doc.resolve(pos)));
       return true;
     });
-  const only = (action === 'rowDelete' && rows.length === 1) || (action === 'colDelete' && (firstRow?.cells.length ?? 0) === 1);
-  if (only || action === 'tableDelete') chain.deleteTable().run();
+  const cols = firstRow?.cells.length ?? 0;
+  const only = (action === 'rowDelete' && rows.length === 1) || (action === 'colDelete' && cols === 1);
+  const widths = reshapeTableWidths(widthsChange(action, col, cols));
+  if (action === 'autoWidth') commitTableWidths(editor, table, null);
+  else if (only || action === 'tableDelete') chain.deleteTable().run();
   else if (action === 'rowAbove') chain.addRowBefore().run();
   else if (action === 'rowBelow' || action === 'rowEnd') chain.addRowAfter().run();
   else if (action === 'rowDelete') chain.deleteRow().run();
-  else if (action === 'colLeft') chain.addColumnBefore().run();
-  else if (action === 'colRight' || action === 'colEnd') chain.addColumnAfter().run();
-  else chain.deleteColumn().run();
+  else if (action === 'colLeft') chain.addColumnBefore().command(widths).run();
+  else if (action === 'colRight' || action === 'colEnd') chain.addColumnAfter().command(widths).run();
+  else chain.deleteColumn().command(widths).run();
 }
 
 // 노션의 끌기 손잡이처럼 점 여섯 개. 줄 손잡이는 세로로, 칸 손잡이는 가로로 놓음
@@ -108,6 +131,10 @@ export function TableControls({ editor, host }: { editor: Editor | null; host: R
   const [view, setView] = useState<View | null>(null);
   const [menu, setMenu] = useState<'row' | 'col' | null>(null);
   const menuOpen = useRef(false);
+  // 칸 경계를 끄는 동안에는 손잡이를 다른 칸으로 옮기지 않음
+  const dragging = useRef(false);
+  // 끄는 동안 바뀐 너비에 맞춰 손잡이 자리를 다시 잼
+  const refresh = useRef<() => void>(() => {});
 
   useEffect(() => {
     menuOpen.current = menu !== null;
@@ -126,7 +153,7 @@ export function TableControls({ editor, host }: { editor: Editor | null; host: R
       if (!measured) setMenu(null);
     };
     const onMove = (event: MouseEvent) => {
-      if (menuOpen.current) return;
+      if (menuOpen.current || dragging.current) return;
       const target = event.target as Element;
       if (target.closest('.md-table-ctl')) return;
       const cell = target.closest<HTMLTableCellElement>('.md-live td, .md-live th');
@@ -142,11 +169,12 @@ export function TableControls({ editor, host }: { editor: Editor | null; host: R
       if (!near) show(null);
     };
     const onLeave = () => {
-      if (!menuOpen.current) show(null);
+      if (!menuOpen.current && !dragging.current) show(null);
     };
     const remeasure = () => {
       if (current) show(current);
     };
+    refresh.current = remeasure;
     root.addEventListener('mousemove', onMove);
     root.addEventListener('mouseleave', onLeave);
     // 표 상자의 가로 밀기는 위로 올라오지 않아서 붙잡는 단계에서 들음
@@ -185,11 +213,50 @@ export function TableControls({ editor, host }: { editor: Editor | null; host: R
     setMenu(null);
     act(editor, view, action);
   };
-  const items = menu === 'row' ? ROW_MENU : COL_MENU;
+  const items: [Action, string][] = menu === 'row' ? ROW_MENU : view.sized ? [...COL_MENU, ['autoWidth', '칸 너비 자동으로']] : COL_MENU;
+
+  // 칸 경계 끌기. 끄는 동안에는 표 상자에만 너비를 그리고, 놓을 때 한 번 문서에 남겨 되돌리기도 한 번에 됨
+  const startResize = (event: ReactMouseEvent, col: number) => {
+    event.preventDefault();
+    const table = view.table;
+    const wrapper = table.parentElement;
+    const heads = table.rows[0]?.cells;
+    if (!wrapper || !heads) return;
+    const start = [...heads].map((head) => head.getBoundingClientRect().width);
+    const from = event.clientX;
+    let widths: number[] | null = null;
+    dragging.current = true;
+    setMenu(null);
+    document.documentElement.classList.add('is-resizing-col');
+    const move = (moveEvent: MouseEvent) => {
+      widths = start.map((width, i) => (i === col ? Math.max(MIN_COL_WIDTH, width + moveEvent.clientX - from) : width));
+      paintWidths(wrapper, widths.map((width) => `${width}px`), `${widths.reduce((sum, width) => sum + width, 0)}px`);
+      wrapper.dataset.sized = 'dragging';
+      refresh.current();
+    };
+    const stop = () => {
+      window.removeEventListener('mousemove', move);
+      document.documentElement.classList.remove('is-resizing-col');
+      dragging.current = false;
+      if (widths) commitTableWidths(editor, table, widths);
+    };
+    window.addEventListener('mousemove', move);
+    window.addEventListener('mouseup', stop, { once: true });
+  };
   const menuAt = menu === 'row' ? { left: box.left - 4, top: rowBox.top + rowBox.height / 2 + 14 } : { left: colBox.left + colBox.width / 2 - 8, top: box.top + 12 };
 
   return (
     <div className="md-table-ctl">
+      {view.edges.map(({ x, col }) => (
+        <span
+          key={col}
+          className="md-table-resize"
+          style={{ left: x, top: box.top, height: box.height }}
+          title="끌어서 칸 너비 바꾸기, 두 번 누르면 자동 너비"
+          onMouseDown={(event) => startResize(event, col)}
+          onDoubleClick={() => commitTableWidths(editor, view.table, null)}
+        />
+      ))}
       <button
         type="button"
         className={cx('md-table-grip', 'is-col', menu === 'col' && 'is-open')}

@@ -146,6 +146,12 @@
 .md-table-menu button:hover, .md-table-menu button:focus-visible { background: var(--blog-tint); outline: none; }
 .md-table-menu .is-danger { color: var(--stamp-red); }
 .md-table-menu hr { margin: 4px 2px; border: 0; border-top: 1px dashed var(--paper-rule); }
+/* 칸 경계 끌기 손잡이. 평소에는 안 보이고 경계에 마우스를 대면 펜 색 세로줄이 나옴 */
+.md-table-resize { position: absolute; width: 9px; margin-left: -5px; cursor: col-resize; }
+.md-table-resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 3px; border-radius: 2px; background: var(--pen); opacity: 0; transition: opacity .15s ease; }
+.md-table-resize:hover::after, .is-resizing-col .md-table-resize::after { opacity: .7; }
+/* 끄는 동안은 어디에 마우스가 있든 같은 커서이고 글자가 골라지지 않게 함 */
+.is-resizing-col, .is-resizing-col * { cursor: col-resize !important; user-select: none; }
 /* 마우스가 없는 화면은 도구 막대의 표 단추를 씀 */
 @media (hover: none) {
   .md-table-ctl { display: none; }

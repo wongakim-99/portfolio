@@ -10,6 +10,7 @@ import { BLOG_LIMITS, CALLOUT_EMOJI, uploadBlogImage } from '@entities/blog-post
 import { editorExtensions } from '../lib/editor-extensions';
 import { htmlToMarkdown, looksStructured } from '../lib/html-to-markdown';
 import { looksLikeMarkdown, vscodeLanguage } from '../lib/paste-kind';
+import { reshapeTableWidths, selectedColumns } from '../lib/table-widths';
 import { TableControls } from './table-controls';
 
 type Tool = { label: string; hint: string; active?: (editor: Editor) => boolean; run: (editor: Editor) => void };
@@ -60,9 +61,24 @@ const ALL_TOOLS = TOOLS.flat();
 // 표 안에 있을 때만 보이는 도구
 const TABLE_TOOLS: Tool[] = [
   { label: '줄 추가', hint: '아래에 줄 추가', run: (e) => focus(e).addRowAfter().run() },
-  { label: '칸 추가', hint: '오른쪽에 칸 추가', run: (e) => focus(e).addColumnAfter().run() },
+  {
+    label: '칸 추가',
+    hint: '오른쪽에 칸 추가',
+    run: (e) => {
+      // 칸 너비를 정한 표면 새 칸 자리에 너비도 하나 끼움
+      const cols = selectedColumns(e.state);
+      focus(e).addColumnAfter().command(reshapeTableWidths(cols && { insert: cols.right })).run();
+    },
+  },
   { label: '줄 지우기', hint: '이 줄 지우기', run: (e) => focus(e).deleteRow().run() },
-  { label: '칸 지우기', hint: '이 칸 지우기', run: (e) => focus(e).deleteColumn().run() },
+  {
+    label: '칸 지우기',
+    hint: '이 칸 지우기',
+    run: (e) => {
+      const cols = selectedColumns(e.state);
+      focus(e).deleteColumn().command(reshapeTableWidths(cols && { remove: [cols.left, cols.right] })).run();
+    },
+  },
   { label: '표 지우기', hint: '표 전체 지우기', run: (e) => focus(e).deleteTable().run() },
 ];
 

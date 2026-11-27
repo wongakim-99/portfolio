@@ -7,6 +7,7 @@ export {
   assignRooms, createRoom, deleteRoom, getRoomOverview, renameRoom, reorderRooms, suggestDraftRoom, suggestRooms,
 } from './api/blog-rooms';
 export { LEADING_EMOJI as CALLOUT_EMOJI } from './lib/remark-callout';
+export { parseTableWidths, tableWidthsComment } from './lib/table-widths';
 export { clearLocalDraft, readLocalDraft, saveLocalDraft } from './model/draft';
 export { BLOG_LIMITS, NO_ROOM, ROOM_NAME_MAX, VISIBILITY_LABEL } from './model/types';
 export type {

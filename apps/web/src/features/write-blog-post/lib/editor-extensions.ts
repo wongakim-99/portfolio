@@ -3,7 +3,7 @@ import { CodeBlockLowlight } from '@tiptap/extension-code-block-lowlight';
 import { Heading } from '@tiptap/extension-heading';
 import { Image } from '@tiptap/extension-image';
 import { TaskItem, TaskList } from '@tiptap/extension-list';
-import { TableKit } from '@tiptap/extension-table';
+import { renderTableToMarkdown, Table, TableKit } from '@tiptap/extension-table';
 import { Placeholder } from '@tiptap/extensions';
 import { Markdown } from '@tiptap/markdown';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
@@ -11,7 +11,8 @@ import { CellSelection, TableMap } from '@tiptap/pm/tables';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
 import { StarterKit } from '@tiptap/starter-kit';
 import { common, createLowlight } from 'lowlight';
-import { CALLOUT_EMOJI } from '@entities/blog-post';
+import { CALLOUT_EMOJI, parseTableWidths, tableWidthsComment } from '@entities/blog-post';
+import { MAX_SIZED_COLS, paintWidths } from './table-widths';
 
 // 노션처럼 쓰는 블로그 편집기(Tiptap)의 확장 모음. 화면에서는 바로 모양이 바뀌고, 저장은 지금처럼 마크다운으로 함
 // 읽는 화면(BlogMarkdown)과 같은 .md 스타일을 입혀서 쓰는 모양이 올린 모양과 같게 보임
@@ -126,27 +127,18 @@ const TableKeys = Extension.create({
   },
 });
 
-// 표 칸 너비. 쉬고 있는 표는 올린 글처럼 내용 길이에 맞추고, 커서가 든 표는 그 너비로 묶어 둠
+// 표 칸 너비. 칸 경계를 끌어 정한 표(widths 속성)는 그 px 너비로 그림
+// 정하지 않은 표는 쉬고 있을 때 올린 글처럼 내용 길이에 맞추고, 커서가 든 동안은 그 너비로 묶어 둠
 // 묶지 않으면 글자를 칠 때마다 칸이 넓어지고 옆 칸이 줄어 듦. 커서가 표를 떠나거나 줄, 칸 수가 바뀌면 다시 맞춤
-// 너비는 표 상자(.tableWrapper, Tiptap TableView 가 그리고 편집기는 바뀜을 무시함)의 CSS 변수로만 줘서 문서와 마크다운은 그대로
-// blog-post-form.css 에 칸 너비 규칙(--col-1..12)을 둔 칸 수. 이보다 많은 표는 묶지 않고 자동 너비로 둠
-const FIT_MAX_COLS = 12;
-
-function fitTable(wrapper: HTMLElement): boolean {
-  const table = wrapper.querySelector('table');
-  const cells = table?.rows[0]?.cells;
-  if (!table || !cells?.length || cells.length > FIT_MAX_COLS) {
-    delete wrapper.dataset.cols;
-    return false;
-  }
+// 너비는 표 상자(.tableWrapper, Tiptap TableView 가 그리고 편집기는 바뀜을 무시함)의 CSS 변수로만 그려서 문서는 그대로
+function fitTable(wrapper: HTMLElement, table: HTMLTableElement, cols: number): boolean {
   delete wrapper.dataset.cols;
   const total = table.getBoundingClientRect().width;
   // 마크다운 칸으로 바꿔 둔 동안처럼 숨어 있으면 잴 수 없으니 자동 너비로 둠
-  if (!total) return false;
-  [...cells].forEach((cell, i) => wrapper.style.setProperty(`--col-${i + 1}`, `${(cell.getBoundingClientRect().width / total) * 100}%`));
+  if (!total || !cols) return false;
+  const widths = [...table.rows[0]!.cells].map((cell) => `${(cell.getBoundingClientRect().width / total) * 100}%`);
   // 종이보다 넓은 표는 그 너비 그대로 옆으로 밀어 봄
-  wrapper.style.setProperty('--table-width', total > wrapper.clientWidth + 1 ? `${total}px` : '100%');
-  wrapper.dataset.cols = String(cells.length);
+  paintWidths(wrapper, widths, total > wrapper.clientWidth + 1 ? `${total}px` : '100%');
   return true;
 }
 
@@ -157,19 +149,41 @@ const TableFit = Extension.create({
       new Plugin({
         key: new PluginKey('tableFit'),
         view: (view) => {
-          // 마지막으로 맞춘 때의 줄 수, 칸 수, 글. 쉬고 있는 표는 이게 바뀐 때만 다시 잼
+          // 자동 너비 표를 마지막으로 맞춘 때의 줄 수, 칸 수, 글. 쉬고 있는 표는 이게 바뀐 때만 다시 잼
           const fitted = new WeakMap<HTMLElement, string>();
           const sync = () => {
             const at = view.domAtPos(view.state.selection.from).node;
             const active = (at instanceof Element ? at : at.parentElement)?.closest('.tableWrapper');
-            view.dom.querySelectorAll<HTMLElement>('.tableWrapper').forEach((wrapper) => {
-              const table = wrapper.querySelector('table');
-              const cols = table?.rows[0]?.cells.length ?? 0;
+            view.state.doc.descendants((node, pos) => {
+              if (node.type.name !== 'table') return true;
+              const wrapper = view.nodeDOM(pos);
+              const table = wrapper instanceof HTMLElement ? wrapper.querySelector('table') : null;
+              if (!(wrapper instanceof HTMLElement) || !table) return false;
+              const cols = table.rows[0]?.cells.length ?? 0;
+              if (cols > MAX_SIZED_COLS) {
+                delete wrapper.dataset.cols;
+                return false;
+              }
+              const widths = node.attrs.widths as number[] | null;
+              if (widths?.length === cols) {
+                const key = widths.join(' ');
+                if (wrapper.dataset.sized !== key) {
+                  paintWidths(wrapper, widths.map((width) => `${width}px`), `${widths.reduce((sum, width) => sum + width, 0)}px`);
+                  wrapper.dataset.sized = key;
+                }
+                return false;
+              }
+              // 너비를 지웠으면(자동 너비) 처음부터 다시 맞춤
+              if (wrapper.dataset.sized) {
+                delete wrapper.dataset.sized;
+                delete wrapper.dataset.cols;
+              }
               const sameShape = Number(wrapper.dataset.cols) === cols;
-              if (wrapper === active && sameShape) return;
-              const look = `${table?.rows.length}:${cols}:${table?.textContent}`;
-              if (sameShape && fitted.get(wrapper) === look) return;
-              if (fitTable(wrapper)) fitted.set(wrapper, look);
+              if (wrapper === active && sameShape) return false;
+              const look = `${table.rows.length}:${cols}:${table.textContent}`;
+              if (sameShape && fitted.get(wrapper) === look) return false;
+              if (fitTable(wrapper, table, cols)) fitted.set(wrapper, look);
+              return false;
             });
           };
           sync();
@@ -177,6 +191,49 @@ const TableFit = Extension.create({
         },
       }),
     ];
+  },
+});
+
+// 칸 너비(widths)를 단 표. 마크다운에는 표 바로 위 줄에 너비 주석을 같이 쓰고, 읽을 때 주석과 표를 한 덩어리로 읽어 너비를 되살림
+const tableTokenizer = Table.config.markdownTokenizer!;
+const BlogTable = Table.extend({
+  addAttributes() {
+    return {
+      ...this.parent?.(),
+      widths: { default: null, parseHTML: () => null, renderHTML: () => ({}) },
+    };
+  },
+  markdownTokenizer: {
+    ...tableTokenizer,
+    start: (src: string) => {
+      const comment = src.search(/(^|\n)<!--\s*widths:/);
+      const table = tableTokenizer.start ? (tableTokenizer.start as (src: string) => number)(src) : -1;
+      const at = comment < 0 ? -1 : comment + (src[comment] === '\n' ? 1 : 0);
+      return at < 0 ? table : table < 0 ? at : Math.min(at, table);
+    },
+    tokenize(src, tokens, helper) {
+      const firstLine = src.slice(0, src.indexOf('\n') + 1);
+      const widths = firstLine ? parseTableWidths(firstLine) : null;
+      if (!widths) return tableTokenizer.tokenize(src, tokens, helper);
+      // 주석과 표 사이 빈 줄은 건너뜀 (손으로 고친 마크다운이나 예전 꼴)
+      const gap = /^(?:[ \t]*\n)*/.exec(src.slice(firstLine.length))![0];
+      const rest = src.slice(firstLine.length + gap.length);
+      const table = tableTokenizer.tokenize(rest, tokens, helper) ?? helper.blockTokens(rest)[0];
+      if (table?.type !== 'table' || !table.raw) return undefined;
+      return { ...table, raw: src.slice(0, firstLine.length + gap.length + table.raw.length), widths };
+    },
+  },
+  parseMarkdown(token, helpers) {
+    const node = this.parent!(token, helpers) as JSONContent;
+    const widths = (token as { widths?: number[] }).widths;
+    const cols = node.content?.[0]?.content?.length ?? 0;
+    return widths?.length === cols ? { ...node, attrs: { ...node.attrs, widths } } : node;
+  },
+  renderMarkdown(node, helpers) {
+    const table = renderTableToMarkdown(node, helpers);
+    const widths = (node.attrs?.widths as number[] | null | undefined) ?? null;
+    // 표 마크다운 앞에 붙는 빈 줄을 떼어 주석 바로 다음 줄에 표가 오게 함
+    return widths?.length && table ? `${tableWidthsComment(widths)}\n${table.replace(/^\n+/, '')}` : table;
   },
 });
 
@@ -197,7 +254,9 @@ export function editorExtensions() {
     CodeBlockLowlight.configure({ lowlight: createLowlight(common), enableTabIndentation: true, tabSize: 2 }),
     TaskList,
     TaskItem.configure({ nested: true }),
-    TableKit.configure({ table: { resizable: false } }),
+    // 표는 칸 너비를 마크다운에 남기는 BlogTable 로 바꿔 끼움
+    TableKit.configure({ table: false }),
+    BlogTable.configure({ resizable: false }),
     TableKeys,
     TableFit,
     BlogImage.configure({ allowBase64: false }),
