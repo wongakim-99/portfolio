@@ -143,3 +143,19 @@
   :root:not([data-theme="light"]) { --pkt-db: #a78bfa; --pkt-storage: #2dd4bf; }
 }
 :root[data-theme="dark"] { --pkt-db: #a78bfa; --pkt-storage: #2dd4bf; }
+
+/* 블로그 코르크판(실로 잇기 보기): 코르크, 코르크 알갱이, 나무 틀, 털실 네 가지. 스탠드를 끄면 어두운 방의 코르크판 */
+:root {
+  --cork: #c99a62; --cork-speck: #a5763f; --cork-light: #dfb47f; --cork-frame: #8a5a2e;
+  --yarn-1: #c8322a; --yarn-2: #2c5fb8; --yarn-3: #2f8a57; --yarn-4: #b8690f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --cork: #4d3922; --cork-speck: #3b2b18; --cork-light: #64492b; --cork-frame: #2a1c0f;
+    --yarn-1: #ff6255; --yarn-2: #74a0ff; --yarn-3: #5cc98d; --yarn-4: #f2a64a;
+  }
+}
+:root[data-theme="dark"] {
+  --cork: #4d3922; --cork-speck: #3b2b18; --cork-light: #64492b; --cork-frame: #2a1c0f;
+  --yarn-1: #ff6255; --yarn-2: #74a0ff; --yarn-3: #5cc98d; --yarn-4: #f2a64a;
+}

@@ -10,13 +10,14 @@ export const routes = {
   blog: '/blog',
   /** 그 태그가 붙은 블로그 글만 */
   blogTag: (tag: string) => `/blog?${new URLSearchParams({ tag })}`,
-  /** 방, 태그, 검색어, 공개 범위로 거른 블로그 목록. 빈 값은 주소에서 뺌 */
-  blogList: ({ room, tag, q, visibility }: { room?: string | null; tag?: string | null; q?: string | null; visibility?: string | null }) => {
+  /** 방, 태그, 검색어, 공개 범위로 거른 블로그 목록. view 가 board 면 코르크판 보기. 빈 값은 주소에서 뺌 */
+  blogList: ({ room, tag, q, visibility, view }: { room?: string | null; tag?: string | null; q?: string | null; visibility?: string | null; view?: string | null }) => {
     const params = new URLSearchParams();
     if (room) params.set('room', room);
     if (tag) params.set('tag', tag);
     if (q) params.set('q', q);
     if (visibility) params.set('visibility', visibility);
+    if (view === 'board') params.set('view', 'board');
     return params.size ? `/blog?${params}` : '/blog';
   },
   blogWrite: '/blog/write',

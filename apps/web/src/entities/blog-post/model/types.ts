@@ -100,6 +100,8 @@ export interface BlogListQuery {
   tag?: string | null;
   q?: string | null;
   visibility?: Visibility | null;
+  /** 목록 모양. board 면 코르크판에 꽂아 보기. API 거르기에는 쓰지 않고 주소로만 이어 감 */
+  view?: 'board' | null;
 }
 
 /** 방 없는 글을 고르는 ?room= 값 (API 의 NO_ROOM) */

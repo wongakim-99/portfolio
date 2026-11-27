@@ -16,7 +16,8 @@ export function BlogSearch({ query }: { query: BlogListQuery }) {
   const router = useRouter();
   const { can } = useSession();
   const owner = can('blog:write');
-  const { room = null, tag = null, q = null, visibility = null } = query;
+  // view 는 코르크판 보기. 찾거나 공개 범위를 골라도 보던 모양 그대로 둠
+  const { room = null, tag = null, q = null, visibility = null, view = null } = query;
   const [text, setText] = useState(q ?? '');
   const [lastQ, setLastQ] = useState(q ?? '');
 
@@ -30,9 +31,9 @@ export function BlogSearch({ query }: { query: BlogListQuery }) {
   useEffect(() => {
     const next = text.trim();
     if (next === (q ?? '')) return;
-    const timer = window.setTimeout(() => router.replace(routes.blogList({ room, tag, visibility, q: next }), { scroll: false }), SEARCH_DELAY_MS);
+    const timer = window.setTimeout(() => router.replace(routes.blogList({ room, tag, visibility, view, q: next }), { scroll: false }), SEARCH_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [text, room, tag, q, visibility, router]);
+  }, [text, room, tag, q, visibility, view, router]);
 
   const chips: { label: string; visibility: Visibility | null }[] = [
     { label: '전체', visibility: null },
@@ -48,7 +49,7 @@ export function BlogSearch({ query }: { query: BlogListQuery }) {
         role="search"
         onSubmit={(event) => {
           event.preventDefault();
-          router.replace(routes.blogList({ room, tag, visibility, q: text.trim() }), { scroll: false });
+          router.replace(routes.blogList({ room, tag, visibility, view, q: text.trim() }), { scroll: false });
         }}
       >
         <label className="sr" htmlFor="blog-search-input">
@@ -73,7 +74,7 @@ export function BlogSearch({ query }: { query: BlogListQuery }) {
           <Link
             key={chip.label}
             className={cx('blog-chip', visibility === chip.visibility && 'is-active')}
-            href={routes.blogList({ room, tag, q, visibility: chip.visibility })}
+            href={routes.blogList({ room, tag, q, view, visibility: chip.visibility })}
             aria-current={visibility === chip.visibility ? 'page' : undefined}
             scroll={false}
           >

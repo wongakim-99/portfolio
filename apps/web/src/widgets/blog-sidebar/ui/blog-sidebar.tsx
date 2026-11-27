@@ -18,7 +18,8 @@ export function BlogSidebar({ query }: { query: BlogListQuery }) {
   const canGrant = can('blog:grant');
   const [summary, setSummary] = useState<BlogSummary | null>(null);
   const [pending, setPending] = useState(0);
-  const { room = null, tag = null, q = null, visibility = null } = query;
+  // view 는 코르크판 보기. 방이나 태그를 골라도 보던 모양 그대로 둠
+  const { room = null, tag = null, q = null, visibility = null, view = null } = query;
 
   useEffect(() => {
     if (!ready) return;
@@ -77,7 +78,7 @@ export function BlogSidebar({ query }: { query: BlogListQuery }) {
             <li key={group.room ?? 'all'}>
               <Link
                 className={cx(room === group.room && 'is-active')}
-                href={routes.blogList({ room: group.room, tag, q, visibility })}
+                href={routes.blogList({ room: group.room, tag, q, visibility, view })}
                 aria-current={room === group.room ? 'page' : undefined}
                 scroll={false}
               >
@@ -97,7 +98,7 @@ export function BlogSidebar({ query }: { query: BlogListQuery }) {
               <li key={item.name}>
                 <Link
                   className={cx('blog-tag', tag === item.name && 'is-active')}
-                  href={routes.blogList({ room, tag: tag === item.name ? null : item.name, q, visibility })}
+                  href={routes.blogList({ room, tag: tag === item.name ? null : item.name, q, visibility, view })}
                   aria-current={tag === item.name ? 'page' : undefined}
                   scroll={false}
                 >

@@ -1,0 +1,123 @@
+/* 코르크판 보기. 나무 틀에 끼운 코르크판 위에 메모 카드를 압정으로 꽂고, 털실을 압정에서 압정으로 걸어 둠
+   카드와 실의 자리는 판 안 절대 위치. 실과 압정은 카드 위 SVG 한 장에 그리고 마우스는 통과시킴 */
+.thread-board-wrap { margin-top: 6px; }
+.thread-board-note { margin: 0 0 10px 4px; color: var(--pen); font-size: clamp(19px, 2.2vw, 23px); transform: rotate(-1deg); transform-origin: left; }
+
+.thread-board {
+  position: relative;
+  min-height: 260px;
+  overflow: hidden;
+  border: 12px solid var(--cork-frame);
+  border-radius: 6px;
+  background-color: var(--cork);
+  /* 코르크 알갱이. 크기가 다른 점무늬를 겹쳐 되풀이가 눈에 띄지 않게 함 */
+  background-image:
+    radial-gradient(circle at 20% 30%, var(--cork-speck) 0 1px, transparent 1.7px),
+    radial-gradient(circle at 70% 60%, var(--cork-speck) 0 1.3px, transparent 2.1px),
+    radial-gradient(circle at 40% 80%, var(--cork-light) 0 1px, transparent 1.8px),
+    radial-gradient(circle at 85% 15%, var(--cork-light) 0 .9px, transparent 1.6px),
+    radial-gradient(circle at 55% 45%, var(--cork-speck) 0 .7px, transparent 1.3px);
+  background-size: 13px 11px, 17px 19px, 23px 17px, 29px 31px, 7px 9px;
+  box-shadow: inset 0 2px 10px rgb(0 0 0 / .32), inset 0 0 0 1px rgb(0 0 0 / .18), var(--shadow-sticker);
+}
+.thread-board-cards { position: absolute; inset: 0; margin: 0; padding: 0; list-style: none; }
+
+/* 카드 한 장. 압정 자리(위 가운데)를 축으로 비스듬히 꽂혀 있고, 마우스를 올리면 압정을 축으로 살짝 들림 */
+.thread-card {
+  position: absolute;
+  z-index: 1;
+  transform: rotate(var(--tilt));
+  transform-origin: 50% 9px;
+  transition: transform .22s ease, opacity .2s ease, filter .2s ease;
+  animation: thread-pin .5s cubic-bezier(.2, .9, .3, 1.25) both;
+  animation-delay: var(--delay);
+  touch-action: pan-y;
+}
+@media (pointer: fine) {
+  .thread-card { cursor: grab; }
+}
+.thread-card.is-hot { z-index: 2; transform: rotate(calc(var(--tilt) * .4)) translateY(-3px); }
+.thread-card.is-dim { opacity: .5; filter: saturate(.6); }
+.thread-card.is-dragging { z-index: 4; cursor: grabbing; transition: none; transform: rotate(calc(var(--tilt) * .4)) scale(1.04); }
+.thread-card.is-dragging .thread-card-paper { box-shadow: 0 14px 28px -10px rgb(0 0 0 / .45), var(--shadow-sticker); }
+@keyframes thread-pin {
+  from { opacity: 0; transform: translateY(-14px) rotate(calc(var(--tilt) - 5deg)); }
+}
+
+/* 메모 카드: 위에 빨간 머리줄, 아래로 흐린 파란 줄을 그은 종이 */
+.thread-card-paper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: 100%;
+  padding: 24px 14px 12px;
+  border-radius: 2px;
+  background:
+    linear-gradient(transparent 0 46px, color-mix(in srgb, var(--stamp-red) 45%, transparent) 46px 47px, transparent 47px),
+    repeating-linear-gradient(transparent 0 21px, color-mix(in srgb, var(--pen) 12%, transparent) 21px 22px) 0 47px / 100% calc(100% - 47px) no-repeat,
+    var(--paper);
+  color: var(--ink);
+  box-shadow: var(--shadow-sticker);
+  overflow: hidden;
+}
+.thread-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin: 0; color: var(--ink-soft); font-family: var(--font-mono); font-size: 11px; }
+.thread-card-room { padding: 1px 6px; background: var(--tape); color: var(--tape-text); font-family: var(--font-body); font-size: 11px; font-weight: 700; }
+.thread-card-title { display: -webkit-box; margin: 2px 0 0; overflow: hidden; font-family: var(--font-display); font-size: 15px; font-weight: 700; line-height: 1.45; letter-spacing: -.01em; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.thread-card-title a { color: inherit; text-decoration: none; }
+/* 제목 링크가 카드 전체를 덮어 어디를 눌러도 글이 열림 */
+.thread-card-title a::after { content: ""; position: absolute; inset: 0; z-index: 1; }
+.thread-card-title a:focus-visible { outline: none; }
+.thread-card:has(a:focus-visible) .thread-card-paper { outline: 3px solid var(--pen); outline-offset: 3px; }
+/* 글 앞부분은 카드의 파란 줄 위에 맞춰 적음 (줄 간격 22px) */
+.thread-card-excerpt { display: -webkit-box; margin: 0; overflow: hidden; color: var(--ink-soft); font-size: 12.5px; line-height: 22px; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.thread-card-tags { margin: auto 0 0; overflow: hidden; color: var(--pen); font-size: 12px; font-weight: 600; white-space: nowrap; text-overflow: ellipsis; }
+/* 잠긴 글은 빨간 '기밀' 도장 */
+.thread-card-stamp { position: absolute; right: 10px; bottom: 30px; padding: 1px 8px; border: 2px solid var(--stamp-red); border-radius: 3px; color: var(--stamp-red); font-size: 13px; font-weight: 800; letter-spacing: .12em; opacity: .85; transform: rotate(-12deg); }
+.thread-card-paper[data-locked] .thread-card-title { color: color-mix(in srgb, var(--ink) 70%, transparent); }
+/* 표지 사진이 있으면 모서리에 집게로 집어 둔 즉석사진 */
+.thread-card-photo { position: absolute; top: 6px; right: 8px; width: 48px; padding: 3px 3px 9px; background: var(--paper); box-shadow: 0 1px 3px rgb(0 0 0 / .3); transform: rotate(7deg); }
+.thread-card-photo img { display: block; width: 42px; height: 34px; object-fit: cover; }
+.thread-card-paper:has(.thread-card-photo) .thread-card-meta { padding-right: 52px; }
+
+/* 털실과 압정 */
+.thread-board-yarn { position: absolute; inset: 0; z-index: 3; overflow: visible; pointer-events: none; }
+.yarn { fill: none; stroke: var(--yarn-color); stroke-width: 2.2; stroke-linecap: round; stroke-dasharray: 1; stroke-dashoffset: 1; filter: drop-shadow(0 1.5px 1px rgb(0 0 0 / .35)); animation: yarn-draw .8s ease-out forwards; animation-delay: var(--delay); transition: stroke-width .2s ease, opacity .2s ease; }
+.yarn.is-hot { stroke-width: 3.4; }
+.yarn.is-dim { opacity: .22; }
+@keyframes yarn-draw { to { stroke-dashoffset: 0; } }
+.yarn-1 { --yarn-color: var(--yarn-1); }
+.yarn-2 { --yarn-color: var(--yarn-2); }
+.yarn-3 { --yarn-color: var(--yarn-3); }
+.yarn-4 { --yarn-color: var(--yarn-4); }
+.pin circle:first-child { fill: var(--yarn-color, var(--ink-soft)); stroke: rgb(0 0 0 / .25); stroke-width: 1; filter: drop-shadow(0 2px 1.5px rgb(0 0 0 / .4)); }
+.pin.is-plain circle:first-child { fill: color-mix(in srgb, var(--ink-soft) 80%, var(--paper)); }
+.pin .pin-shine { fill: rgb(255 255 255 / .6); }
+/* 실 꼬리표: 마우스를 올린 실 가운데에 매단 종이 쪽지 */
+.yarn-label rect { fill: var(--paper); stroke: var(--yarn-color); stroke-width: 1.5; filter: drop-shadow(0 2px 2px rgb(0 0 0 / .3)); }
+.yarn-label text { fill: var(--ink); font-family: var(--font-body); font-size: 12px; font-weight: 700; text-anchor: middle; }
+
+.thread-board-empty { position: absolute; inset: 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px 12px; margin: 0; padding: 20px; color: var(--paper); font-weight: 600; text-align: center; text-shadow: 0 1px 2px rgb(0 0 0 / .5); }
+.thread-board-empty .text-btn { color: var(--paper); }
+
+/* 판 아래: 걸려 있는 실 목록(마우스를 올리면 그 실만 진하게)과 카드 되돌리기 */
+.thread-board-foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; margin-top: 14px; }
+.thread-legend { display: flex; flex-wrap: wrap; gap: 6px 8px; margin: 0; padding: 0; list-style: none; }
+.thread-legend button { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 4px 12px; border: 1px solid var(--paper-rule); border-radius: 999px; background: var(--paper); color: var(--ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; transition: border-color .15s ease, transform .15s ease; }
+.thread-legend button:hover, .thread-legend button.is-hot { border-color: var(--ink); transform: translateY(-1px); }
+.thread-legend button:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
+.thread-legend small { color: var(--ink-soft); font-size: 12px; font-weight: 500; }
+.thread-swatch { width: 16px; height: 3px; border-radius: 2px; background: var(--yarn-color); box-shadow: 0 1px 1px rgb(0 0 0 / .25); }
+
+@media (max-width: 520px) {
+  .thread-board { border-width: 8px; }
+  .thread-card-paper { padding: 20px 11px 10px; gap: 4px; }
+  .thread-card-title { font-size: 14px; -webkit-line-clamp: 3; }
+  .thread-card-excerpt { display: none; }
+  .thread-card-photo { display: none; }
+  .thread-card-paper:has(.thread-card-photo) .thread-card-meta { padding-right: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .thread-card, .yarn { animation: none; transition: none; }
+  .yarn { stroke-dashoffset: 0; }
+}
