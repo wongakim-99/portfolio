@@ -36,4 +36,6 @@ export interface GuardOverview {
   bans: GuardBan[];
   topIps: { ip: string; count: number; kinds: GuardKind[] }[];
   events: GuardEvent[];
+  /** 관리 패널(gawon-control) 'IP 차단' 목록. blocked 는 api 가 다시 뜬 뒤 돌려보낸 수 */
+  panel: { ips: string[]; blocked: number };
 }

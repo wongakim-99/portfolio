@@ -1402,6 +1402,36 @@ describe('guard', () => {
   });
 });
 
+describe('guard 관리 패널 목록', () => {
+  let app: INestApplication<App>;
+  let dir: string;
+  beforeAll(async () => {
+    dir = await mkdtemp(path.join(os.tmpdir(), 'gawon-blocklist-'));
+    await writeFile(path.join(dir, 'ip-blocklist.txt'), '# 관리 패널이 쓴 목록\n198.51.100.40\ndeny 2001:db8::40;\n잘못된 줄\n100.101.102.104\n');
+    process.env.GUARD_BLOCKLIST_FILE = path.join(dir, 'ip-blocklist.txt');
+    app = await createApp();
+  });
+  afterAll(async () => {
+    delete process.env.GUARD_BLOCKLIST_FILE;
+    await app.close();
+    await rm(dir, { recursive: true, force: true });
+  });
+
+  it('관리 패널에서 막은 주소는 API 를 403 으로 돌려보내고, tailnet 주소는 목록에 있어도 막지 않음', async () => {
+    const server = app.getHttpServer();
+    const posts = (ip: string) => request(server).get('/api/community/posts').set('X-Forwarded-For', `${ip}, 172.18.0.1`);
+    await posts('198.51.100.40').expect(403);
+    await posts('2001:db8::40').expect(403);
+    await posts('198.51.100.41').expect(200);
+    await posts('100.101.102.104').expect(200);
+    const overview = (await request(server).get('/api/community/admin/guard').set('Authorization', `Bearer ${ADMIN_TOKEN}`).expect(200)).body;
+    expect(overview.panel.ips).toContain('198.51.100.*');
+    expect(overview.panel.ips).toHaveLength(3);
+    expect(overview.panel.blocked).toBe(2);
+    expect(JSON.stringify(overview)).not.toContain('198.51.100.40');
+  });
+});
+
 describe('high-fives', () => {
   let app: INestApplication<App>;
   beforeAll(async () => (app = await createApp()));

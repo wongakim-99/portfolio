@@ -106,6 +106,22 @@ export function AdminGuard({ onStatus }: { onStatus: (status: Status) => void })
             <p className="guard-empty">지금 막힌 주소가 없어요.</p>
           )}
 
+          <h4 className="guard-subtitle">관리 패널에서 막은 주소</h4>
+          {data.panel.ips.length ? (
+            <>
+              <ul className="guard-panel">
+                {data.panel.ips.map((ip, index) => (
+                  <li key={`${ip}-${index}`} className="guard-ip">
+                    {ip}
+                  </li>
+                ))}
+              </ul>
+              <p className="guard-note">gawon-control 의 IP 차단 목록을 30초마다 읽어요. 서버가 다시 뜬 뒤 {data.panel.blocked.toLocaleString('ko-KR')}건 돌려보냈어요.</p>
+            </>
+          ) : (
+            <p className="guard-empty">관리 패널의 IP 차단 목록이 비어 있어요.</p>
+          )}
+
           <div className="guard-columns">
             <div>
               <h4 className="guard-subtitle">많이 두드린 주소</h4>

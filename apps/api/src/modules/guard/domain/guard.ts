@@ -52,6 +52,9 @@ export const banReason = (kind: GuardKind) => `10분 안에 ${GUARD_LABEL[kind]}
 
 const unmapped = (ip: string) => (ip.startsWith('::ffff:') ? ip.slice(7) : ip);
 
+/** 비교할 때 쓰는 모양. IPv4 를 담은 IPv6(::ffff:1.2.3.4)는 IPv4 로, IPv6 는 소문자로 */
+export const normalizeIp = (ip: string) => unmapped(ip.trim()).toLowerCase();
+
 /** IPv4 는 마지막 칸, IPv6 는 앞 세 칸 뒤를 가림 */
 export function maskIp(raw: string): string {
   const ip = unmapped(raw);
@@ -92,4 +95,9 @@ export abstract class GuardStore {
   /** 지금 풂. 없으면 null */
   abstract lift(id: string, now: Date): Promise<GuardBan | null>;
   abstract addBlocked(counts: ReadonlyMap<string, number>): Promise<void>;
+}
+
+/** 관리 패널(gawon-control)의 'IP 차단' 목록. 패널이 서버의 공유 폴더에 파일로 쓰고 api 가 읽음. 못 읽으면 빈 목록 */
+export abstract class GuardBlocklist {
+  abstract read(): Promise<string[]>;
 }

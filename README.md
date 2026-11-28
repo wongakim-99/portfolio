@@ -336,13 +336,13 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
 - IP 원문은 남기지 않음. 맞춰 보는 데는 salt 섞은 해시, 화면에는 끝을 가린 주소(`203.0.113.*`)만. 기록은 `guard_events`(30일), 차단은 `guard_bans`(풀린 뒤 7일)
 - 관리실 `이상 징후` 칸에서 최근 24시간 숫자, 막은 주소, 많이 두드린 주소, 최근 기록을 보고 차단을 풂 (`server:read`)
 - 홈 방문 수는 봇이라고 밝힌 User-Agent(검색 엔진, curl, headless 브라우저 등)와 User-Agent 없는 요청을 세지 않음. `robots.txt` 는 관리실, 글쓰기 화면, API 를 긁지 않게 함
-- 관리 패널(gawon-control)의 `IP 차단` 은 원본처럼 nginx 설정에 쓰는 기능이라 Caddy 를 쓰는 이 사이트에는 듣지 않음
+- 관리 패널(gawon-control)의 `IP 차단` 목록도 막음. 패널이 서버의 `~/.local/state/gawon-blocklist/ip-blocklist.txt` 에 주소를 쓰고, api 가 그 폴더를 읽기 전용으로 붙여 30초마다 다시 읽음. 패널에서 막은 주소도 API 만 막고, 집과 tailnet 주소는 목록에 있어도 막지 않음
 
 자주 쓰는 명령 (서버에서):
 
 ```bash
 cd ~/actions-runner/_work/portfolio/portfolio
-export PORTFOLIO_CONFIG=~/.config/portfolio RELEASE=$(cat ~/portfolio/docker-release)
+export PORTFOLIO_CONFIG=~/.config/portfolio BLOCKLIST_DIR=~/.local/state/gawon-blocklist RELEASE=$(cat ~/portfolio/docker-release)
 docker compose -f deploy/docker-compose.yml ps          # 상태
 docker compose -f deploy/docker-compose.yml logs -f api  # API 로그
 # 버킷에 든 프로필 사진 보기 (root 비밀번호는 컨테이너 환경변수에서 읽음)

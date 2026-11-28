@@ -49,6 +49,9 @@ services:
     networks: [edge, data]
     read_only: true
     tmpfs: [/tmp]
+    # 관리 패널(gawon-control)이 쓰는 IP 차단 목록. api 는 읽기만 하고 30초마다 다시 읽음 (deploy.sh 가 폴더를 만듦)
+    volumes:
+      - ${BLOCKLIST_DIR:?BLOCKLIST_DIR 가 필요함}:/run/gawon-blocklist:ro
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     logging: *logging

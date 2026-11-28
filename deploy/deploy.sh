@@ -17,6 +17,10 @@ PROXY_URL=http://127.0.0.1:8090
 SHA=$(git rev-parse --short HEAD)
 PREV=$(cat "$STATE" 2>/dev/null || true)
 export PORTFOLIO_CONFIG="$CONFIG"
+# 관리 패널과 같이 쓰는 IP 차단 목록 폴더. 패널(gawon-control/deploy/deploy.sh)도 같은 경로를 씀
+# Docker 가 대신 만들면 root 소유가 되어 패널이 못 쓰므로 여기서 먼저 만듦
+export BLOCKLIST_DIR="$HOME/.local/state/gawon-blocklist"
+mkdir -p "$BLOCKLIST_DIR"
 
 compose() {
   local release=$1

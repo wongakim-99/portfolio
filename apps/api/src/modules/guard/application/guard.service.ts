@@ -3,7 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import type { Env } from '../../../config/env.js';
 import { hashIp } from '../../../shared/http/visitor-hash.js';
 import {
-  BAN_RULES, banReason, GUARD_KINDS, GuardStore, isExempt, KEEP_EVENT_DAYS, maskIp, WINDOW_MS, WRITES_PER_MINUTE, type GuardBan, type GuardKind,
+  BAN_RULES, banReason, GUARD_KINDS, GuardBlocklist, GuardStore, isExempt, KEEP_EVENT_DAYS, maskIp, normalizeIp, WINDOW_MS, WRITES_PER_MINUTE, type GuardBan,
+  type GuardKind,
 } from '../domain/guard.js';
 
 const FLUSH_MS = 30_000;
@@ -29,10 +30,14 @@ export class GuardService implements OnModuleInit, OnModuleDestroy {
   private readonly recent = new Map<string, number[]>();
   private readonly writes = new Map<string, { minute: number; count: number }>();
   private readonly blocked = new Map<string, number>();
+  /** 관리 패널에서 막은 주소. 30초마다 파일에서 다시 읽음 */
+  private panel = new Set<string>();
+  private panelBlocked = 0;
   private timer?: NodeJS.Timeout;
 
   constructor(
     private readonly store: GuardStore,
+    private readonly blocklist: GuardBlocklist,
     config: ConfigService<Env, true>,
   ) {
     this.salt = config.get('HASH_SALT', { infer: true });
@@ -44,6 +49,7 @@ export class GuardService implements OnModuleInit, OnModuleDestroy {
     } catch (error) {
       this.logger.warn(`막은 주소를 읽지 못함: ${String(error)}`);
     }
+    await this.loadPanel();
     this.timer = setInterval(() => void this.flush(), FLUSH_MS);
     this.timer.unref();
   }
@@ -53,18 +59,22 @@ export class GuardService implements OnModuleInit, OnModuleDestroy {
     await this.flush();
   }
 
-  /** 막혀 있으면 그 기록. 돌려보낸 수도 셈 */
-  banned(ip: string): GuardBan | null {
-    if (!this.bans.size || isExempt(ip)) return null;
+  /** 막힌 주소인지. 관리 패널 목록이나 자동 차단에 있으면 돌려보낸 수도 셈 */
+  banned(ip: string): boolean {
+    if ((!this.bans.size && !this.panel.size) || isExempt(ip)) return false;
+    if (this.panel.has(normalizeIp(ip))) {
+      this.panelBlocked++;
+      return true;
+    }
     const ipHash = hashIp(ip, this.salt);
     const ban = this.bans.get(ipHash);
-    if (!ban) return null;
+    if (!ban) return false;
     if (ban.until.getTime() <= Date.now()) {
       this.bans.delete(ipHash);
-      return null;
+      return false;
     }
     this.blocked.set(ban.id, (this.blocked.get(ban.id) ?? 0) + 1);
-    return ban;
+    return true;
   }
 
   /** 수상한 요청 하나. 기록하고, 10분 창 안에서 기준을 넘으면 막음 */
@@ -118,6 +128,8 @@ export class GuardService implements OnModuleInit, OnModuleDestroy {
       bans: bans.map((ban) => ({ ...ban, ipHash: undefined, blocked: ban.blocked + (this.blocked.get(ban.id) ?? 0) })),
       topIps,
       events: events.map(({ ipHash: _hash, ...event }) => event),
+      // 패널 목록은 화면에도 끝을 가린 주소로만
+      panel: { ips: [...this.panel].map(maskIp), blocked: this.panelBlocked },
     };
   }
 
@@ -130,7 +142,16 @@ export class GuardService implements OnModuleInit, OnModuleDestroy {
     return true;
   }
 
+  private async loadPanel(): Promise<void> {
+    try {
+      this.panel = new Set((await this.blocklist.read()).map(normalizeIp));
+    } catch (error) {
+      this.logger.warn(`관리 패널 차단 목록을 읽지 못함: ${String(error)}`);
+    }
+  }
+
   private async flush(): Promise<void> {
+    await this.loadPanel();
     const now = Date.now();
     for (const [key, times] of this.recent) if (!times.some((time) => time > now - WINDOW_MS)) this.recent.delete(key);
     const minute = Math.floor(now / 60_000);

@@ -25,6 +25,9 @@
 /* 풀기 단추: 라벨 테이프 */
 .guard-lift { padding: 4px 10px; border: 0; border-radius: 2px; background: var(--tape); color: var(--tape-text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 
+/* 패널에서 막은 주소: 라벨 테이프 조각처럼 */
+.guard-panel { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.guard-panel li { padding: 3px 8px; border-radius: 2px; background: var(--tape); color: var(--tape-text); font-size: 12px; }
 .guard-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 0 36px; }
 .guard-top { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; font-size: 13px; }
 .guard-top li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--paper-rule); }
