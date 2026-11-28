@@ -660,6 +660,8 @@ describe('community', () => {
       .set('Authorization', `Bearer ${ADMIN_TOKEN}`);
     await request(server).get('/api/community/admin/performance').expect(401);
     await performance('2h').expect(400);
+    // 서버 상태를 묻는 요청은 세지 않으므로 앞뒤 합계 차이가 이 사이 요청 수와 같음
+    const before = (await performance().expect(200)).body.totals;
     for (let i = 0; i < 6; i++) await request(server).get('/api/community/posts').expect(200);
     await request(server).get('/api/wp-login.php').expect(404);
 
@@ -671,10 +673,14 @@ describe('community', () => {
     expect(checks.map((check) => check.key)).toEqual(['latency', 'errors', 'cpu', 'lag', 'heap', 'memory', 'temp', 'power', 'db', 'storage', 'disk']);
     expect(checks.find((check) => check.key === 'db')).toMatchObject({ level: 'good' });
     expect(checks.find((check) => check.key === 'storage')).toMatchObject({ level: 'unknown' });
-    expect(hour.body.totals.requests).toBeGreaterThanOrEqual(7);
-    expect(hour.body.totals.clientErrors).toBeGreaterThanOrEqual(1);
-    const routes = hour.body.slowRoutes as { route: string; count: number }[];
-    expect(routes).toEqual(expect.arrayContaining([expect.objectContaining({ route: 'GET /api/community/posts' })]));
+    expect(hour.body.totals.requests - before.requests).toBe(7);
+    expect(hour.body.totals.clientErrors - before.clientErrors).toBe(1);
+    // 느린 경로는 앞선 테스트들의 요청까지 섞여 어느 경로가 들지 정해져 있지 않음. 규칙만 봄
+    const routes = hour.body.slowRoutes as { route: string; count: number; avgMs: number }[];
+    expect(routes.length).toBeGreaterThan(0);
+    expect(routes.length).toBeLessThanOrEqual(8);
+    expect(routes.every((route) => route.count >= 5)).toBe(true);
+    expect(routes.map((route) => route.avgMs)).toEqual([...routes.map((route) => route.avgMs)].sort((a, b) => b - a));
     // 서버 상태와 구성도를 묻는 요청 자신은 세지 않음
     expect(routes.some((route) => /admin\/(performance|topology)/.test(route.route))).toBe(false);
     expect(hour.body.database.up).toBe(true);
