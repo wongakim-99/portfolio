@@ -70,6 +70,7 @@ src/
     deploys/           배포 기록
     ops/               헬스체크, 홈서버 노트북 상태, 관리실 '서버 상태'(1분 집계, 점검표, 지금 흐름 구성도)
     backoffice/        관리실 요약 (새 쪽지, 신고 수). 여러 영역 숫자를 모으기만 함
+    guard/             봇 방어. 털기 주소 덫, 횟수 초과와 로그인 실패 세기, 자동 차단, 관리실 '이상 징후'
 ```
 
 | 계층 | 하는 일 | 쓸 수 있는 것 |
@@ -323,9 +324,19 @@ curl -X DELETE -H "Authorization: Bearer $ADMIN_TOKEN" http://127.0.0.1:8090/api
 | Mongo 계정 | `~/.config/portfolio/mongo.env` (root 와 앱 계정 비밀번호, 권한 600) |
 | MinIO 계정 | `~/.config/portfolio/minio.env` (root 와 `portfolio-api` 계정 비밀번호, 권한 600), `~/.config/portfolio/minio-backup.env` (사진 백업용 읽기 전용 `portfolio-backup` 계정 비밀번호, 권한 600, 없으면 deploy.sh 가 만듦) |
 | 사진 백업 | `~/backups/minio/portfolio/<UTC 시각>/community-media/`, 매일 04:30(한국 시간) 사용자 타이머 `portfolio-minio-backup.timer`. 아래 '사진 백업' 참고 |
-| 접속 로그 | `docker logs portfolio-proxy-1` (Caddy, JSON, 10MB 5개까지 보관). 페이지 서버 로그는 `docker logs portfolio-web-1` |
+| 접속 로그 | `docker logs portfolio-proxy-1` (Caddy, JSON, 10MB 5개까지 보관). 배포 때 컨테이너가 바뀌면 지워짐. 오래 볼 것은 관리실 '서버 상태'(ops_minutes)와 '이상 징후'(guard_events). 페이지 서버 로그는 `docker logs portfolio-web-1` |
 | Actions runner | `~/actions-runner`, `github-runner.service` (사용자 유닛, docker 그룹) |
 | 예전 방식 | Docker 이전의 `portfolio-api.service`, `caddy.service`, `~/portfolio/site` 는 더 쓰지 않음. 배포 코드에서도 지움. 서버에서 정리하려면 `systemctl --user disable --now portfolio-api caddy && rm ~/.config/systemd/user/{portfolio-api,caddy}.service && rm -rf ~/portfolio/site` |
+
+### 봇 방어
+
+- 흔한 털기 주소(`*.php`, `/wp-*`, `/.env`, `/.git` 같은 것, 목록은 `deploy/Caddyfile` 의 `@scanner`)는 Caddy 가 페이지 서버로 보내지 않고 api 의 덫(`/api/guard/trap`)으로 보냄. 원래 주소는 `X-Trap-Path` 에 실려 기록되고 404 로 끝남
+- api 는 주소마다 털기 주소, 횟수 제한 초과(429), 로그인 실패(401), 쪽지 숨은 칸을 셈. 10분 안에 털기 주소 3번이나 숨은 칸 1번이면 하루, 로그인 실패 8번이나 횟수 초과 30번이면 1시간 그 주소의 API 요청을 403 으로 돌려보냄 (기준은 `apps/api/src/modules/guard/domain/guard.ts`)
+- 막는 것은 API 뿐이고 페이지는 그대로 열림. 집과 tailnet(100.64.0.0/10), 서버 안쪽(loopback, Docker 사설망) 주소는 세지도 막지도 않음
+- IP 원문은 남기지 않음. 맞춰 보는 데는 salt 섞은 해시, 화면에는 끝을 가린 주소(`203.0.113.*`)만. 기록은 `guard_events`(30일), 차단은 `guard_bans`(풀린 뒤 7일)
+- 관리실 `이상 징후` 칸에서 최근 24시간 숫자, 막은 주소, 많이 두드린 주소, 최근 기록을 보고 차단을 풂 (`server:read`)
+- 홈 방문 수는 봇이라고 밝힌 User-Agent(검색 엔진, curl, headless 브라우저 등)와 User-Agent 없는 요청을 세지 않음. `robots.txt` 는 관리실, 글쓰기 화면, API 를 긁지 않게 함
+- 관리 패널(gawon-control)의 `IP 차단` 은 원본처럼 nginx 설정에 쓰는 기능이라 Caddy 를 쓰는 이 사이트에는 듣지 않음
 
 자주 쓰는 명령 (서버에서):
 

@@ -6,6 +6,7 @@ import { prefersReducedMotion, useDocumentTitle } from '@shared/lib';
 import { BackLink, FormStatus, NO_STATUS, Sheet, type Status } from '@shared/ui';
 import { AdminBlogAccess } from '@widgets/admin-blog-access';
 import { AdminBlogRooms } from '@widgets/admin-blog-rooms';
+import { AdminGuard } from '@widgets/admin-guard';
 import { AdminInbox } from '@widgets/admin-inbox';
 import { AdminMembers } from '@widgets/admin-members';
 import { AdminReports } from '@widgets/admin-reports';
@@ -19,11 +20,12 @@ import { replaceHash, useHash } from '../model/use-hash';
 import { AdminNav } from './admin-nav';
 import './admin-page.css';
 
-type SectionKey = 'server' | 'members' | 'blog-rooms' | 'blog-requests' | 'inbox' | 'reports';
+type SectionKey = 'server' | 'guard' | 'members' | 'blog-rooms' | 'blog-requests' | 'inbox' | 'reports';
 
 // 관리실 칸. 칸마다 권한이 따로 있어서 가진 권한의 칸만 보임. 실제 허용 여부는 API 가 요청마다 다시 확인함
 const SECTIONS: { key: SectionKey; label: string; permission: Permission }[] = [
   { key: 'server', label: '서버 상태', permission: 'server:read' },
+  { key: 'guard', label: '이상 징후', permission: 'server:read' },
   { key: 'members', label: '회원', permission: 'members:read' },
   { key: 'blog-rooms', label: '블로그 방', permission: 'blog:write' },
   { key: 'blog-requests', label: '블로그 열람', permission: 'blog:grant' },
@@ -101,9 +103,10 @@ export function AdminPage() {
         <p className="hand profile-hand">운영자에게만 보이는 곳</p>
         <h1 id="admin-title">관리실</h1>
         <p className="community-meta admin-lead">
-          {user && !active ? '관리자 권한이 있는 계정만 볼 수 있습니다.' : '지금 서버 상태와 회원, 블로그 방과 열람, 홈 엽서로 받은 쪽지, 피드 신고를 봅니다.'}
+          {user && !active ? '관리자 권한이 있는 계정만 볼 수 있습니다.' : '지금 서버 상태와 봇 방어, 회원, 블로그 방과 열람, 홈 엽서로 받은 쪽지, 피드 신고를 봅니다.'}
         </p>
         {active === 'server' && <ServerConsole live={<ServerTopology />} />}
+        {active === 'guard' && <AdminGuard onStatus={report} />}
         {active === 'members' && <AdminMembers />}
         {active === 'blog-rooms' && <AdminBlogRooms onStatus={report} />}
         {active === 'blog-requests' && <AdminBlogAccess onStatus={report} />}

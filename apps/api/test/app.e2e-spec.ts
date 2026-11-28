@@ -171,12 +171,28 @@ describe('views', () => {
   it('처음 온 IP 는 1 증가하고, 표식은 시간이 지나도 남아 다시 세지 않음', async () => {
     const server = app.getHttpServer();
     const before = await request(server).get('/api/views').expect(200);
-    const firstVisit = await request(server).post('/api/views').set('X-Forwarded-For', '203.0.113.9, 172.18.0.1').expect(200);
+    const firstVisit = await request(server).post('/api/views').set('User-Agent', 'visitor-new').set('X-Forwarded-For', '203.0.113.9, 172.18.0.1').expect(200);
     expect(firstVisit.body.total).toBe(before.body.total + 1);
     const visitors = app.get(getConnectionToken()).collection('view_visitors');
     expect(await visitors.countDocuments()).toBe(firstVisit.body.total);
     const indexes = await visitors.indexes();
     expect(indexes.some((index: { expireAfterSeconds?: number }) => index.expireAfterSeconds !== undefined)).toBe(false);
+  });
+
+  it('봇이라고 밝힌 User-Agent 와 User-Agent 없는 요청은 방문으로 세지 않음', async () => {
+    const server = app.getHttpServer();
+    const before = (await request(server).get('/api/views').expect(200)).body.total;
+    const via = (agent: string | null, ip: string) => {
+      const req = request(server).post('/api/views').set('X-Forwarded-For', `${ip}, 172.18.0.1`);
+      return (agent === null ? req : req.set('User-Agent', agent)).expect(200);
+    };
+    await via('Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)', '203.0.113.31');
+    await via('python-requests/2.32.3', '203.0.113.32');
+    await via('Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/140.0.0.0 Safari/537.36', '203.0.113.33');
+    await via(null, '203.0.113.34');
+    expect((await request(server).get('/api/views').expect(200)).body.total).toBe(before);
+    const person = await via('Mozilla/5.0 (iPhone; CPU iPhone OS 26_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.1 Mobile/15E148 Safari/604.1', '203.0.113.35');
+    expect(person.body.total).toBe(before + 1);
   });
 });
 
@@ -1335,6 +1351,54 @@ describe('members', () => {
     await request(server).get('/api/community/admin/members').set('Cookie', member.cookie).expect(200);
     expect((await roleOf(member.id, 'member', owner.cookie).expect(200)).body.member.role).toBe('member');
     await request(server).get('/api/community/admin/members').set('Cookie', member.cookie).expect(403);
+  });
+});
+
+describe('guard', () => {
+  let app: INestApplication<App>;
+  beforeAll(async () => (app = await createApp()));
+  afterAll(async () => app.close());
+  const from = (ip: string) => `${ip}, 172.18.0.1`;
+
+  it('털기 주소를 10분에 3번 두드린 IP 는 하루 막고, 관리실에서 끝을 가린 주소로 보고 풀 수 있음', async () => {
+    const server = app.getHttpServer();
+    const trap = (ip: string, path: string) => request(server).get('/api/guard/trap').set('X-Forwarded-For', from(ip)).set('X-Trap-Path', path).set('User-Agent', 'zgrab/0.x');
+    const posts = (ip: string) => request(server).get('/api/community/posts').set('X-Forwarded-For', from(ip));
+
+    await trap('198.51.100.7', '/wp-login.php').expect(404);
+    await trap('198.51.100.7', '/.env').expect(404);
+    await posts('198.51.100.7').expect(200);
+    await trap('198.51.100.7', '/.git/config').expect(404);
+    const blocked = await posts('198.51.100.7').expect(403);
+    expect(blocked.body.message).toContain('잠시 막은 주소');
+    await posts('198.51.100.8').expect(200);
+
+    // 집과 tailnet, 서버 안쪽은 세지도 막지도 않음
+    for (let i = 0; i < 5; i++) await trap('100.101.102.103', '/wp-admin/').expect(404);
+    await posts('100.101.102.103').expect(200);
+
+    const admin = () => request(server).get('/api/community/admin/guard').set('Authorization', `Bearer ${ADMIN_TOKEN}`);
+    await request(server).get('/api/community/admin/guard').expect(401);
+    const overview = (await admin().expect(200)).body;
+    expect(overview.counts.scanner).toBe(3);
+    expect(overview.bans).toEqual([expect.objectContaining({ ip: '198.51.100.*', kind: 'scanner', reason: '10분 안에 털기 주소 3번' })]);
+    expect(overview.bans[0]).not.toHaveProperty('ipHash');
+    expect(overview.events.map((event: { path: string }) => event.path)).toEqual(['/.git/config', '/.env', '/wp-login.php']);
+    expect(JSON.stringify(overview)).not.toContain('198.51.100.7');
+
+    await request(server).delete(`/api/community/admin/guard/bans/${overview.bans[0].id}`).set('Authorization', `Bearer ${ADMIN_TOKEN}`).expect(204);
+    await request(server).delete(`/api/community/admin/guard/bans/${overview.bans[0].id}`).set('Authorization', `Bearer ${ADMIN_TOKEN}`).expect(404);
+    await posts('198.51.100.7').expect(200);
+    expect((await admin().expect(200)).body.bans).toEqual([]);
+  });
+
+  it('쪽지의 숨은 칸을 채운 봇은 한 번에 막음', async () => {
+    const server = app.getHttpServer();
+    await request(server).post('/api/messages').set('X-Forwarded-For', from('198.51.100.20'))
+      .send({ name: 'bot', message: 'buy cheap things now', website: 'http://spam.example' }).expect(201);
+    await request(server).get('/api/high-fives').set('X-Forwarded-For', from('198.51.100.20')).expect(403);
+    const overview = (await request(server).get('/api/community/admin/guard').set('Authorization', `Bearer ${ADMIN_TOKEN}`).expect(200)).body;
+    expect(overview.bans).toEqual(expect.arrayContaining([expect.objectContaining({ ip: '198.51.100.*', kind: 'honeypot' })]));
   });
 });
 

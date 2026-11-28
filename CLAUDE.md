@@ -37,7 +37,7 @@ npm run typecheck && npm run lint && npm run build && npm test   # push 전 검�
 
 ### apps/api (NestJS 12, DDD)
 
-- `src/modules/<영역>/{domain,application,infrastructure,presentation}`. 영역: identity, feed, blog, messages, visits, high-fives, deploys, ops, backoffice
+- `src/modules/<영역>/{domain,application,infrastructure,presentation}`. 영역: identity, feed, blog, messages, visits, high-fives, deploys, ops, backoffice, guard
 - domain 은 Nest, Mongoose 를 모른다. 저장소와 바깥 서비스는 domain 에 추상 클래스로 약속하고, infrastructure 가 구현하고, `<영역>.module.ts` 가 `{ provide, useClass }` 로 잇는다
 - 다른 영역은 그 영역의 `index.ts` 로만 쓴다. 계정 정보는 `UserDirectory`, 로그인 확인은 `CurrentUser`, 권한은 `RequirePermission` 을 쓴다
 - 영역끼리 직접 부르기 어려운 일(예: 이름 변경을 피드에 알리기)은 `shared/events` 의 이벤트로 알린다

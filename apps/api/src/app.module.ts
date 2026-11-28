@@ -10,6 +10,7 @@ import { DeploysModule } from './modules/deploys/index.js';
 import { FeedModule } from './modules/feed/index.js';
 import { HighFivesModule } from './modules/high-fives/index.js';
 import { IdentityModule } from './modules/identity/index.js';
+import { GuardModule } from './modules/guard/index.js';
 import { MessagesModule } from './modules/messages/index.js';
 import { OpsModule } from './modules/ops/index.js';
 import { VisitsModule } from './modules/visits/index.js';
@@ -38,6 +39,7 @@ import { TelemetryModule } from './shared/infrastructure/telemetry/telemetry.mod
     MailModule,
     StorageModule,
     OpsModule,
+    GuardModule,
     VisitsModule,
     HighFivesModule,
     MessagesModule,

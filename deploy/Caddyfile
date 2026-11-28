@@ -26,6 +26,16 @@ http://:8090 {
 		-Server
 	}
 
+	# 흔한 털기 주소(워드프레스, PHP, .env, .git, 관리 도구). 이 사이트에는 없는 주소라 페이지 서버를 깨우지 않고
+	# api 의 덫(/api/guard/trap)으로 보내 기록하고 404. 같은 IP 가 10분에 3번 넘게 두드리면 api 가 하루 막음
+	@scanner path *.php *.php5 *.php7 *.phtml *.asp *.aspx *.jsp *.cgi *.env /wp-* /wordpress* /xmlrpc* /.env* /.git* /.svn* /.hg* /.aws* /.ssh* /.docker* /.vscode* /.DS_Store /phpmyadmin* /pma* /myadmin* /cgi-bin/* /vendor/* /actuator* /server-status* /boaform* /HNAP1* /owa/* /autodiscover* /telescope* /_ignition* /solr/* /druid/* /console* /manager/html*
+	handle @scanner {
+		rewrite * /api/guard/trap
+		reverse_proxy api:3000 {
+			header_up X-Trap-Path {http.request.orig_uri.path}
+		}
+	}
+
 	handle /api/* {
 		reverse_proxy api:3000
 	}

@@ -11,5 +11,10 @@ export function visitorHash(req: Request, salt: string): string {
 
 /** IP 단위. 누적 방문 수는 같은 IP 를 브라우저와 상관없이 한 번만 셈 */
 export function ipHash(req: Request, salt: string): string {
-  return createHash('sha256').update(`${salt}:ip:${req.ip}`).digest('hex');
+  return hashIp(req.ip ?? '', salt);
+}
+
+/** ipHash 와 같은 값. 요청 밖에서 IP 만 있을 때 씀 (봇 방어) */
+export function hashIp(ip: string, salt: string): string {
+  return createHash('sha256').update(`${salt}:ip:${ip}`).digest('hex');
 }

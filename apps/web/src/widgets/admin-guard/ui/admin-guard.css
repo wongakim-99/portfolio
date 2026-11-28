@@ -1,0 +1,55 @@
+/* 관리실 '이상 징후'. 서버 상태 칸과 같은 색인 카드, 점선 장부, 영수증 기록 */
+.guard-reload { padding: 5px 12px; border: 1px solid var(--paper-rule); border-radius: 999px; background: var(--paper); color: var(--ink-soft); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.guard-reload:hover { color: var(--ink); }
+.guard-reload:focus-visible, .guard-lift:focus-visible, .guard-more:focus-visible { outline: 2px solid var(--pen); outline-offset: 2px; }
+.guard-lead { margin: 14px 0 0; color: var(--ink-soft); font-size: 14px; line-height: 1.6; }
+.guard-empty { margin: 0; color: var(--ink-soft); font-size: 14px; }
+.guard-note { margin: 10px 0 0; color: var(--ink-soft); font-size: 12px; }
+.guard-subtitle { margin: 32px 0 10px; font-size: 15px; letter-spacing: -.01em; }
+
+.guard-counts { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 150px), 1fr)); gap: 14px; margin-top: 22px; }
+.guard-count { padding: 12px 14px; border-top: 2px solid color-mix(in srgb, var(--stamp-red) 40%, transparent); background: var(--receipt); color: var(--receipt-ink); box-shadow: var(--shadow-sticker); }
+.guard-count p { margin: 0; }
+.guard-count-label { color: color-mix(in srgb, var(--receipt-ink) 70%, transparent); font-size: 12px; font-weight: 600; }
+.guard-count-value { margin-top: 4px !important; font-family: var(--font-mono); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.guard-count.is-hot .guard-count-value { color: var(--stamp-red); }
+.guard-count-rule { margin-top: 4px !important; color: color-mix(in srgb, var(--receipt-ink) 62%, transparent); font-size: 11.5px; line-height: 1.4; }
+
+.guard-table-wrap { overflow-x: auto; }
+.guard-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.guard-table th { padding: 6px 8px; border-bottom: 1.5px solid color-mix(in srgb, var(--ink) 55%, transparent); color: var(--ink-soft); font-size: 12px; font-weight: 600; text-align: left; white-space: nowrap; }
+.guard-table td { padding: 8px; border-bottom: 1px dashed var(--paper-rule); white-space: nowrap; }
+.guard-table th:first-child, .guard-table td:first-child { padding-left: 0; }
+.guard-table td:last-child { text-align: right; }
+.guard-ip { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+/* 풀기 단추: 라벨 테이프 */
+.guard-lift { padding: 4px 10px; border: 0; border-radius: 2px; background: var(--tape); color: var(--tape-text); font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+
+.guard-columns { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 0 36px; }
+.guard-top { display: grid; gap: 0; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.guard-top li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px dashed var(--paper-rule); }
+.guard-kinds { overflow: hidden; color: var(--ink-soft); font-size: 12px; white-space: nowrap; text-overflow: ellipsis; }
+.guard-top b { font-family: var(--font-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; }
+
+.guard-log-wrap { padding: 12px 14px; background: var(--receipt); color: var(--receipt-ink); box-shadow: var(--shadow-sticker); }
+.guard-log { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-family: var(--font-mono); font-size: 11.5px; }
+.guard-log li { display: grid; grid-template-columns: auto auto auto minmax(0, 1fr); align-items: baseline; gap: 8px; }
+.guard-log li span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.guard-kind { padding: 0 5px; border: 1px solid currentColor; border-radius: 3px; font-family: var(--font-body); font-size: 10.5px; font-weight: 700; }
+.guard-kind.is-scanner, .guard-kind.is-honeypot { color: var(--stamp-red); }
+.guard-kind.is-throttled, .guard-kind.is-login { color: color-mix(in srgb, var(--led-warn) 70%, var(--receipt-ink)); }
+.guard-more { margin-top: 10px; padding: 0; border: 0; background: none; color: var(--pen); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+
+@media (max-width: 720px) {
+  .guard-columns { grid-template-columns: minmax(0, 1fr); }
+  .guard-counts { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  /* 막은 주소는 줄마다 주소와 풀기 단추를 한 줄에, 까닭과 때는 그 아래로 */
+  .guard-table thead { display: none; }
+  .guard-table tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 10px; padding: 10px 0; border-bottom: 1px dashed var(--paper-rule); }
+  .guard-table td { padding: 0 !important; border: 0; white-space: normal; text-align: left; }
+  .guard-table td:not(:first-child, :last-child) { grid-column: 1; color: var(--ink-soft); font-size: 12px; }
+  .guard-table td:last-child { grid-row: 1; grid-column: 2; }
+  /* 좁은 화면에서는 시각을 빼고 종류, 주소, 경로만 */
+  .guard-log li { grid-template-columns: auto auto minmax(0, 1fr); }
+  .guard-log li span:first-child { display: none; }
+}
